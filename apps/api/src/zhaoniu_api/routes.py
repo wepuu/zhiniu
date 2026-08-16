@@ -1,13 +1,16 @@
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from zhaoniu_api.dependencies import CurrentUserId, StockRepo, WatchlistRepo
-from zhaoniu_api.domain.models import Watchlist
+from zhaoniu_api.dependencies import CurrentUserId, DailyBarRepo, StockRepo, WatchlistRepo
+from zhaoniu_api.domain.models import Watchlist, resolve_symbol
 from zhaoniu_api.schemas import (
     AddWatchlistItemRequest,
     CreateWatchlistRequest,
+    DailyBarListResponse,
+    DailyBarResponse,
     HealthResponse,
     StockResponse,
     StockSearchResponse,
@@ -39,6 +42,47 @@ async def get_stock(symbol: str, repository: StockRepo) -> StockResponse:
     if stock is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
     return StockResponse.from_domain(stock)
+
+
+@router.get("/stocks/{symbol}/daily-bars", response_model=DailyBarListResponse, tags=["stocks"])
+async def get_daily_bars(
+    symbol: str,
+    stocks: StockRepo,
+    bars: DailyBarRepo,
+    start: date | None = None,
+    end: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 120,
+    adjust: Literal["none"] = "none",
+) -> DailyBarListResponse:
+    stock = await stocks.get(symbol)
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    resolved = resolve_symbol(symbol)
+    records = await bars.list_for_symbol(resolved.canonical, start=start, end=end, limit=limit)
+    items = [
+        DailyBarResponse(
+            trade_date=bar.trade_date,
+            adjust_type=bar.adjust_type,
+            open=bar.open,
+            high=bar.high,
+            low=bar.low,
+            close=bar.close,
+            pre_close=bar.pre_close,
+            volume=bar.volume,
+            amount=bar.amount,
+            pct_change=bar.pct_change,
+            source=bar.source,
+            collected_at=bar.collected_at,
+        )
+        for bar in records
+    ]
+    return DailyBarListResponse(
+        symbol=resolved.ticker,
+        canonical_symbol=resolved.canonical,
+        adjust=adjust,
+        items=items,
+        total=len(items),
+    )
 
 
 @router.get("/watchlists", response_model=list[WatchlistResponse], tags=["watchlists"])

@@ -14,9 +14,12 @@ export default function WatchlistPage() {
         description="围绕关注公司组织研究，不重复存储公共市场数据。"
       />
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-slate text-sm">
-          核心观察 · {watchlist.length} 家公司
-        </p>
+        <div>
+          <p className="text-slate text-sm">
+            核心观察 · {watchlist.length} 家公司
+          </p>
+          <p className="text-amber mt-1 text-xs">演示行情 · 自选股尚未持久化</p>
+        </div>
         <button
           className="bg-blue flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white"
           type="button"

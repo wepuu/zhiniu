@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     auth_cookie_name: str = "zhaoniu_session"
     auth_cookie_secure: bool = False
-    market_data_provider: str = "mock"
+    market_data_provider: Literal["akshare"] = "akshare"
 
 
 @lru_cache

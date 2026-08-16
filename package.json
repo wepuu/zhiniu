@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter @zhaoniu/web typecheck",
-    "test": "pnpm --filter @zhaoniu/web test"
+    "test": "pnpm --filter @zhaoniu/web test",
+    "api:generate": "pnpm --filter @zhaoniu/api-client generate",
+    "api:check": "pnpm --filter @zhaoniu/api-client generate:check"
   },
   "devDependencies": {
     "prettier": "3.6.2",

@@ -1,7 +1,8 @@
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from zhaoniu_api.domain.models import Stock, Watchlist
+from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist, resolve_symbol
 
 
 class InMemoryStockRepository:
@@ -27,7 +28,49 @@ class InMemoryStockRepository:
         ][:limit]
 
     async def get(self, symbol: str) -> Stock | None:
-        return self._stocks.get(symbol.upper())
+        try:
+            return self._stocks.get(resolve_symbol(symbol).ticker)
+        except ValueError:
+            return None
+
+    async def upsert_many(self, stocks: list[Stock]) -> int:
+        self._stocks.update({stock.symbol: stock for stock in stocks})
+        return len(stocks)
+
+
+class InMemoryDailyBarRepository:
+    def __init__(self, bars: list[DailyBar] | None = None) -> None:
+        self._bars = bars or []
+
+    async def list_for_symbol(
+        self,
+        canonical_symbol: str,
+        *,
+        start: date | None,
+        end: date | None,
+        limit: int,
+    ) -> list[DailyBar]:
+        matches = [
+            bar
+            for bar in self._bars
+            if bar.canonical_symbol == canonical_symbol
+            and (start is None or bar.trade_date >= start)
+            and (end is None or bar.trade_date <= end)
+        ]
+        return sorted(matches, key=lambda item: item.trade_date)[-limit:]
+
+    async def latest_date(self, canonical_symbol: str) -> date | None:
+        dates = [bar.trade_date for bar in self._bars if bar.canonical_symbol == canonical_symbol]
+        return max(dates) if dates else None
+
+    async def upsert_many(self, bars: list[DailyBar]) -> int:
+        identities = {(bar.canonical_symbol, bar.trade_date, bar.adjust_type) for bar in bars}
+        self._bars = [
+            bar
+            for bar in self._bars
+            if (bar.canonical_symbol, bar.trade_date, bar.adjust_type) not in identities
+        ] + bars
+        return len(bars)
 
 
 class InMemoryWatchlistRepository:

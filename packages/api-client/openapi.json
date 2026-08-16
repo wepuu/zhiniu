@@ -8,7 +8,9 @@
   "paths": {
     "/api/v1/health": {
       "get": {
-        "tags": ["system"],
+        "tags": [
+          "system"
+        ],
         "summary": "Health",
         "operationId": "health_api_v1_health_get",
         "responses": {
@@ -27,7 +29,9 @@
     },
     "/api/v1/stocks/search": {
       "get": {
-        "tags": ["stocks"],
+        "tags": [
+          "stocks"
+        ],
         "summary": "Search Stocks",
         "operationId": "search_stocks_api_v1_stocks_search_get",
         "parameters": [
@@ -81,7 +85,9 @@
     },
     "/api/v1/stocks/{symbol}": {
       "get": {
-        "tags": ["stocks"],
+        "tags": [
+          "stocks"
+        ],
         "summary": "Get Stock",
         "operationId": "get_stock_api_v1_stocks__symbol__get",
         "parameters": [
@@ -119,9 +125,110 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/daily-bars": {
+      "get": {
+        "tags": [
+          "stocks"
+        ],
+        "summary": "Get Daily Bars",
+        "operationId": "get_daily_bars_api_v1_stocks__symbol__daily_bars_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 120,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "adjust",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "none",
+              "type": "string",
+              "default": "none",
+              "title": "Adjust"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyBarListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/watchlists": {
       "get": {
-        "tags": ["watchlists"],
+        "tags": [
+          "watchlists"
+        ],
         "summary": "List Watchlists",
         "operationId": "list_watchlists_api_v1_watchlists_get",
         "responses": {
@@ -142,7 +249,9 @@
         }
       },
       "post": {
-        "tags": ["watchlists"],
+        "tags": [
+          "watchlists"
+        ],
         "summary": "Create Watchlist",
         "operationId": "create_watchlist_api_v1_watchlists_post",
         "requestBody": {
@@ -181,7 +290,9 @@
     },
     "/api/v1/watchlists/{watchlist_id}/items": {
       "post": {
-        "tags": ["watchlists"],
+        "tags": [
+          "watchlists"
+        ],
         "summary": "Add Watchlist Item",
         "operationId": "add_watchlist_item_api_v1_watchlists__watchlist_id__items_post",
         "parameters": [
@@ -243,7 +354,9 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["symbol"],
+        "required": [
+          "symbol"
+        ],
         "title": "AddWatchlistItemRequest"
       },
       "CreateWatchlistRequest": {
@@ -257,8 +370,137 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "title": "CreateWatchlistRequest"
+      },
+      "DailyBarListResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "adjust": {
+            "type": "string",
+            "title": "Adjust"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DailyBarResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "adjust",
+          "items",
+          "total"
+        ],
+        "title": "DailyBarListResponse"
+      },
+      "DailyBarResponse": {
+        "properties": {
+          "trade_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trade Date"
+          },
+          "adjust_type": {
+            "type": "string",
+            "title": "Adjust Type"
+          },
+          "open": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "Open"
+          },
+          "high": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "High"
+          },
+          "low": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "Low"
+          },
+          "close": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "Close"
+          },
+          "pre_close": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre Close"
+          },
+          "volume": {
+            "type": "integer",
+            "title": "Volume"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "Amount"
+          },
+          "pct_change": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct Change"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Collected At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_date",
+          "adjust_type",
+          "open",
+          "high",
+          "low",
+          "close",
+          "pre_close",
+          "volume",
+          "amount",
+          "pct_change",
+          "source",
+          "collected_at"
+        ],
+        "title": "DailyBarResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -289,7 +531,11 @@
           }
         },
         "type": "object",
-        "required": ["status", "service", "version"],
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
         "title": "HealthResponse"
       },
       "StockResponse": {
@@ -298,6 +544,10 @@
             "type": "string",
             "title": "Symbol"
           },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -305,6 +555,30 @@
           "exchange": {
             "type": "string",
             "title": "Exchange"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "list_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Date"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
           },
           "industry": {
             "anyOf": [
@@ -321,7 +595,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
               },
               {
                 "type": "null"
@@ -333,23 +607,66 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
               },
               {
                 "type": "null"
               }
             ],
             "title": "Change Percent"
+          },
+          "latest_trade_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Trade Date"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "collected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected At"
           }
         },
         "type": "object",
         "required": [
           "symbol",
+          "canonical_symbol",
           "name",
           "exchange",
+          "board",
+          "asset_type",
+          "list_date",
+          "status",
           "industry",
           "latest_price",
-          "change_percent"
+          "change_percent",
+          "latest_trade_date",
+          "source",
+          "collected_at"
         ],
         "title": "StockResponse"
       },
@@ -368,7 +685,10 @@
           }
         },
         "type": "object",
-        "required": ["items", "total"],
+        "required": [
+          "items",
+          "total"
+        ],
         "title": "StockSearchResponse"
       },
       "ValidationError": {
@@ -404,7 +724,11 @@
           }
         },
         "type": "object",
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError"
       },
       "WatchlistItemResponse": {
@@ -420,7 +744,10 @@
           }
         },
         "type": "object",
-        "required": ["symbol", "added_at"],
+        "required": [
+          "symbol",
+          "added_at"
+        ],
         "title": "WatchlistItemResponse"
       },
       "WatchlistResponse": {
@@ -443,7 +770,11 @@
           }
         },
         "type": "object",
-        "required": ["id", "name", "items"],
+        "required": [
+          "id",
+          "name",
+          "items"
+        ],
         "title": "WatchlistResponse"
       }
     }

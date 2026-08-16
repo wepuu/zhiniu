@@ -49,7 +49,12 @@ export default function Home() {
           </div>
         </section>
         <aside>
-          <h2 className="font-display mb-4 text-xl font-semibold">市场切片</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-display text-xl font-semibold">市场切片</h2>
+            <span className="bg-amber/10 text-amber rounded-full px-2.5 py-1 text-[10px]">
+              演示行情
+            </span>
+          </div>
           <Card className="overflow-hidden">
             <div className="border-ink/8 font-data text-slate grid grid-cols-[1fr_auto_auto] gap-3 border-b px-4 py-3 text-[10px] uppercase tracking-wider">
               <span>Stock</span>

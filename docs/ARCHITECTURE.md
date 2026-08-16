@@ -2,7 +2,7 @@
 
 ## System context
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. The Phase 0 system is a modular monolith: one Next.js web application, one FastAPI application, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes for research, data, and traceable insight—not trading or investment advice.
+Zhaoniu is a browser-based, multi-user A-share research SaaS. The Phase 1 system remains a modular monolith: one Next.js web application, one FastAPI application, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes for research, data, and traceable insight—not trading or investment advice.
 
 ```text
 Desktop / Mobile browser
@@ -24,9 +24,14 @@ The visual system is a research instrument rather than an admin template: paper/
 
 ## Backend architecture
 
-`apps/api` separates routes, application ports, domain models, and infrastructure adapters. Routes translate HTTP only. Domain services will own business rules. Repositories own persistence. Vendor providers own remote calls. A Mock Repository supports Phase 0 without coupling the UI to AKShare.
+`apps/api` separates routes, application services, ports, domain models, and infrastructure adapters.
+Routes translate HTTP only. The market-data service coordinates the Provider → Normalizer →
+Canonical Model → Quality Validator → Repository flow. SQLAlchemy repositories own stock, daily
+bar, and sync-run persistence. AKShare's synchronous SDK is contained in a bounded thread adapter.
 
-Authentication is currently a deliberate seam returning a fixed demo identity. Phase 1 will replace it with email/password, Argon2id hashes, server-side sessions, and `Secure + HttpOnly + SameSite` cookies. Authorization and entitlements are separate concerns.
+Authentication remains a deliberate seam returning a fixed demo identity. Persistent Watchlist and
+production authentication are deferred to Phase 2. Authorization and entitlements remain separate
+concerns.
 
 ## Data architecture
 
@@ -64,7 +69,9 @@ Tushare / AKShare / BaoStock adapter
               -> repository
 ```
 
-Application services target the `MarketDataProvider` contract. Fallback orchestration decides provider order, observes quotas/freshness, and records provenance. It never leaks vendor models into domain code.
+Application services target the `MarketDataProvider` contract. Phase 1 registers only AKShare for
+development/evaluation. The fallback contract is verified with fake providers; no real fallback is
+claimed. Vendor models never leak into domain code.
 
 ## Research pipeline
 

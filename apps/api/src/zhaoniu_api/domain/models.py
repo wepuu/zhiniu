@@ -1,7 +1,27 @@
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from uuid import UUID, uuid4
+
+
+class Exchange(StrEnum):
+    SSE = "SSE"
+    SZSE = "SZSE"
+    BSE = "BSE"
+
+
+class Board(StrEnum):
+    MAIN = "main"
+    SME = "sme"
+    CHINEXT = "chinext"
+    STAR = "star"
+    BEIJING = "beijing"
+    UNKNOWN = "unknown"
+
+
+class AdjustType(StrEnum):
+    NONE = "none"
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,6 +32,87 @@ class Stock:
     industry: str | None = None
     latest_price: Decimal | None = None
     change_percent: Decimal | None = None
+    canonical_symbol: str | None = None
+    board: str = Board.UNKNOWN
+    asset_type: str = "stock"
+    list_date: date | None = None
+    status: str = "listed"
+    latest_trade_date: date | None = None
+    source: str | None = None
+    collected_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.canonical_symbol is None:
+            object.__setattr__(self, "canonical_symbol", resolve_symbol(self.symbol).canonical)
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedSymbol:
+    ticker: str
+    exchange: Exchange
+    board: Board
+
+    @property
+    def canonical(self) -> str:
+        suffix = {Exchange.SSE: "SH", Exchange.SZSE: "SZ", Exchange.BSE: "BJ"}[self.exchange]
+        return f"{self.ticker}.{suffix}"
+
+
+def resolve_symbol(value: str) -> ResolvedSymbol:
+    normalized = value.strip().upper()
+    suffix: str | None = None
+    if "." in normalized:
+        ticker, suffix = normalized.rsplit(".", 1)
+    else:
+        ticker = normalized
+    if len(ticker) != 6 or not ticker.isdigit():
+        raise ValueError("A-share symbol must contain exactly six digits")
+
+    if ticker.startswith(("688", "689")):
+        inferred = ResolvedSymbol(ticker, Exchange.SSE, Board.STAR)
+    elif ticker.startswith("30"):
+        inferred = ResolvedSymbol(ticker, Exchange.SZSE, Board.CHINEXT)
+    elif ticker.startswith("002"):
+        inferred = ResolvedSymbol(ticker, Exchange.SZSE, Board.SME)
+    elif ticker.startswith("6"):
+        inferred = ResolvedSymbol(ticker, Exchange.SSE, Board.MAIN)
+    elif ticker.startswith(("000", "001", "003")):
+        inferred = ResolvedSymbol(ticker, Exchange.SZSE, Board.MAIN)
+    elif ticker.startswith(("4", "8", "92")):
+        inferred = ResolvedSymbol(ticker, Exchange.BSE, Board.BEIJING)
+    else:
+        raise ValueError(f"unsupported A-share symbol: {ticker}")
+
+    expected_suffix = {Exchange.SSE: "SH", Exchange.SZSE: "SZ", Exchange.BSE: "BJ"}[
+        inferred.exchange
+    ]
+    if suffix is not None and suffix not in {expected_suffix, inferred.exchange.value}:
+        raise ValueError(f"symbol suffix {suffix} does not match ticker {ticker}")
+    return inferred
+
+
+@dataclass(frozen=True, slots=True)
+class DailyBar:
+    canonical_symbol: str
+    trade_date: date
+    adjust_type: AdjustType
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    pre_close: Decimal | None
+    volume: int
+    amount: Decimal
+    source: str
+    collected_at: datetime
+
+    @property
+    def pct_change(self) -> Decimal | None:
+        if self.pre_close is None or self.pre_close == 0:
+            return None
+        return ((self.close - self.pre_close) / self.pre_close * Decimal("100")).quantize(
+            Decimal("0.0001")
+        )
 
 
 @dataclass(slots=True)

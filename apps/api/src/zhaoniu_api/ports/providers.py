@@ -1,33 +1,30 @@
 from datetime import date
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class RawQuote(BaseModel):
+class RawStock(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     provider: str
     payload: dict[str, object]
 
 
-class CanonicalQuote(BaseModel):
-    symbol: str
-    trading_date: date
-    close: float
-    currency: str = "CNY"
+class RawDailyBar(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    requested_symbol: str = Field(pattern=r"^[0-9]{6}$")
+    payload: dict[str, object]
 
 
 class MarketDataProvider(Protocol):
-    async def get_quote(self, symbol: str) -> RawQuote: ...
+    name: str
 
-    async def get_daily_bars(self, symbol: str, start: date, end: date) -> list[RawQuote]: ...
+    async def get_stock_master(self) -> list[RawStock]: ...
 
-    async def get_financials(self, symbol: str) -> list[dict[str, object]]: ...
-
-
-class QuoteNormalizer(Protocol):
-    def normalize(self, raw: RawQuote) -> CanonicalQuote: ...
+    async def get_daily_bars(self, symbol: str, start: date, end: date) -> list[RawDailyBar]: ...
 
 
 class LLMUsage(BaseModel):

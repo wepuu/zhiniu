@@ -5,5 +5,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "python ../../scripts/export_openapi.py && openapi-typescript openapi.json -o src/schema.d.ts",
+    "generate:check": "python ../../scripts/check_openapi.py"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.10.1"
   }
 }

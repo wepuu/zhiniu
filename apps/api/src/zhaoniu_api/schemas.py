@@ -1,10 +1,17 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSchema
 
 from zhaoniu_api.domain.models import Stock, Watchlist
+
+DecimalString = Annotated[
+    Decimal,
+    PlainSerializer(lambda value: format(value, "f"), return_type=str),
+    WithJsonSchema({"type": "string", "pattern": r"^-?[0-9]+(?:\.[0-9]+)?$"}),
+]
 
 
 class HealthResponse(BaseModel):
@@ -17,11 +24,19 @@ class StockResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     symbol: str
+    canonical_symbol: str
     name: str
     exchange: str
+    board: str
+    asset_type: str
+    list_date: date | None
+    status: str
     industry: str | None
-    latest_price: Decimal | None
-    change_percent: Decimal | None
+    latest_price: DecimalString | None
+    change_percent: DecimalString | None
+    latest_trade_date: date | None
+    source: str | None
+    collected_at: datetime | None
 
     @classmethod
     def from_domain(cls, stock: Stock) -> "StockResponse":
@@ -30,6 +45,29 @@ class StockResponse(BaseModel):
 
 class StockSearchResponse(BaseModel):
     items: list[StockResponse]
+    total: int
+
+
+class DailyBarResponse(BaseModel):
+    trade_date: date
+    adjust_type: str
+    open: DecimalString
+    high: DecimalString
+    low: DecimalString
+    close: DecimalString
+    pre_close: DecimalString | None
+    volume: int
+    amount: DecimalString
+    pct_change: DecimalString | None
+    source: str
+    collected_at: datetime
+
+
+class DailyBarListResponse(BaseModel):
+    symbol: str
+    canonical_symbol: str
+    adjust: str
+    items: list[DailyBarResponse]
     total: int
 
 

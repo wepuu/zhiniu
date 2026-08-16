@@ -9,7 +9,8 @@ from zhaoniu_api.ports.repositories import StockRepository
 
 def test_port_contracts_are_runtime_structural() -> None:
     assert hasattr(StockRepository, "search")
-    assert hasattr(MarketDataProvider, "get_quote")
+    assert hasattr(MarketDataProvider, "get_stock_master")
+    assert hasattr(MarketDataProvider, "get_daily_bars")
 
 
 @pytest.mark.asyncio

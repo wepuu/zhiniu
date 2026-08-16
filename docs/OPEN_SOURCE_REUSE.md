@@ -1,14 +1,20 @@
 # Open-source Reuse Register
 
-Neither `references/StockAgent` nor `references/daily_stock_analysis` existed during Phase 0 initialization on 2026-08-16. No source, license, dependency manifest, or core module from either project was inspected, copied, or claimed as reused.
+Open-source code licenses do not grant rights to redistribute an upstream financial-data feed.
+AKShare is therefore a development and technical-evaluation provider in Phase 1. Commercial use,
+attribution, display, caching, and redistribution remain `TBD / requires legal review`.
 
-## Planned evaluation
+| Project              | Repository and evaluated commit                                                                | License | Evaluation scope                                                                   | Reuse decision                                                                                                                                                       | Copied code |
+| -------------------- | ---------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| daily_stock_analysis | https://github.com/ZhuLinsen/daily_stock_analysis @ `5c964bf23bade6571d09a085fc42199882b77f8f` | MIT     | A-share symbol handling, AKShare fetcher, normalization, exceptions, fallback      | Rewrite the narrow contracts and adapters behind Zhaoniu ports. Its combined cleaning/indicator pipeline and multi-provider manager do not match Zhaoniu boundaries. | None        |
+| StockAgent           | https://github.com/qilihei/StockAgent @ `82fbd6619e92e79172756d7c689bb1ec5dc0f8b6`             | MIT     | data-source port, sync-SDK executor wrapping, collector/storage and Redis patterns | Retain architectural lessons only. The adapters, Mongo/Redis managers, and node orchestration are coupled to a different distributed runtime.                        | None        |
 
-| Project              | Candidate areas                                                                                                 | Avoid by default                                                                 | Preferred approach                                                                             | Upgrade strategy                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| StockAgent           | data-source concepts, collectors, factors, backtest boundaries, event clustering, Redis patterns, A-share rules | UI, application shell, implicit globals, tightly coupled runtime orchestration   | Adapter for providers; isolated extraction only for small licensed deterministic algorithms    | Pin evaluated upstream commit, record license/notice and local patch set, rerun contract tests before upgrades |
-| daily_stock_analysis | provider fallback, symbol resolution, LiteLLM gateway ideas, analysis context, SSE progress, historical reports | product-specific workflow/UI and any code without verified license compatibility | Port interfaces first; adapter around stable behavior; extraction only after provenance review | Track upstream release/commit, keep compatibility fixtures, review migrations on each upgrade                  |
+Both repositories were evaluated on 2026-08-16 from their `main` branch. The local reference
+working copies are Git-ignored. Detailed findings are in `docs/references/`.
 
-## Required process
+## Modification and upgrade strategy
 
-When references are added, inspect README, LICENSE, dependency files, source layout, and the relevant core modules. Update this register with exact repository URL, commit, license, copied file/function list, modifications, notices, and tests before migration. Third-party code remains physically and logically separated from first-party modules.
+There is no vendored or extracted third-party code and therefore no local patch set. Zhaoniu owns
+its provider port, canonical models, normalizer, validator, repository, and tests. A future upstream
+upgrade requires pinning a new commit, reviewing its license and relevant modules again, updating
+the audit, and rerunning provider fixture and contract tests before adopting any behavior change.
