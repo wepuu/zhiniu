@@ -1,0 +1,1 @@
+"""Zhaoniu API application."""

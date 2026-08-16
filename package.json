@@ -1,0 +1,22 @@
+{
+  "name": "zhaoniu",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @zhaoniu/web dev",
+    "build": "pnpm --filter @zhaoniu/web build",
+    "lint": "pnpm --filter @zhaoniu/web lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm --filter @zhaoniu/web typecheck",
+    "test": "pnpm --filter @zhaoniu/web test"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "prettier-plugin-tailwindcss": "0.6.14"
+  }
+}

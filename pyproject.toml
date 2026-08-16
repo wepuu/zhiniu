@@ -1,0 +1,51 @@
+[project]
+name = "zhaoniu-foundation"
+version = "0.1.0"
+description = "Foundation for the Zhaoniu A-share research SaaS"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.15,<2",
+  "asyncpg>=0.30,<1",
+  "celery[redis]>=5.5,<6",
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "numpy>=2.2,<3",
+  "pandas>=2.2,<3",
+  "polars>=1.30,<2",
+  "pydantic-settings>=2.10,<3",
+  "pydantic>=2.11,<3",
+  "pwdlib[argon2]>=0.2,<1",
+  "redis>=6,<7",
+  "sqlalchemy[asyncio]>=2.0,<3",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.16,<2",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.0,<2",
+  "ruff>=0.12,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["references"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = ["apps/api/src", "apps/worker/src"]
+exclude = ["references"]
+
+[tool.pytest.ini_options]
+pythonpath = ["apps/api/src", "apps/worker/src"]
+testpaths = ["apps/api/tests", "apps/worker/tests"]
+asyncio_mode = "auto"

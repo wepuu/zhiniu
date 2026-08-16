@@ -1,0 +1,10 @@
+packages:
+  - apps/web
+  - packages/api-client
+
+allowBuilds:
+  unrs-resolver: true
+
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
