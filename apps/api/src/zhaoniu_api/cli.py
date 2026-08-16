@@ -2,10 +2,12 @@ import argparse
 import asyncio
 import json
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
 
-from zhaoniu_api.composition import build_market_data_service
+from zhaoniu_api.composition import build_fundamental_service, build_market_data_service
 from zhaoniu_api.database import engine, session_factory
+from zhaoniu_api.fundamentals.models import FundamentalSnapshot
+from zhaoniu_api.market_data.service import SyncResult
 
 
 def _date(value: str) -> date:
@@ -25,18 +27,44 @@ def _parser() -> argparse.ArgumentParser:
     daily.add_argument("--start", type=_date)
     daily.add_argument("--end", type=_date)
     daily.add_argument("--force", action="store_true")
+    financials = subcommands.add_parser("sync-financial-statements")
+    financials.add_argument("symbol")
+    financials.add_argument("--start-year", type=int, default=date.today().year - 6)
+    financials.add_argument("--force", action="store_true")
+    valuations = subcommands.add_parser("sync-valuations")
+    valuations.add_argument("symbol")
+    valuations.add_argument("--start", type=_date)
+    valuations.add_argument("--end", type=_date)
+    valuations.add_argument("--force", action="store_true")
+    compute = subcommands.add_parser("compute-fundamentals")
+    compute.add_argument("symbol")
+    compute.add_argument("--as-of", type=datetime.fromisoformat)
     return parser
 
 
 async def _run(args: argparse.Namespace) -> None:
     try:
         async with session_factory() as session:
-            service = build_market_data_service(session)
+            result: SyncResult | FundamentalSnapshot
             if args.command == "sync-stock-master":
-                result = await service.sync_stock_master(force=args.force)
-            else:
-                result = await service.sync_daily_bars(
+                result = await build_market_data_service(session).sync_stock_master(
+                    force=args.force
+                )
+            elif args.command == "sync-daily-bars":
+                result = await build_market_data_service(session).sync_daily_bars(
                     args.symbol, start=args.start, end=args.end, force=args.force
+                )
+            elif args.command == "sync-financial-statements":
+                result = await build_fundamental_service(session).sync_financial_statements(
+                    args.symbol, start_year=args.start_year, force=args.force
+                )
+            elif args.command == "sync-valuations":
+                result = await build_fundamental_service(session).sync_valuations(
+                    args.symbol, start=args.start, end=args.end, force=args.force
+                )
+            else:
+                result = await build_fundamental_service(session).compute_snapshot(
+                    args.symbol, as_of=args.as_of
                 )
             print(json.dumps(asdict(result), default=str, ensure_ascii=False))
     finally:

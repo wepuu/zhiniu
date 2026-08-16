@@ -72,6 +72,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/research/fundamentals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fundamental Research */
+        get: operations["get_fundamental_research_api_v1_stocks__symbol__research_fundamentals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/financials/periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Financial Periods */
+        get: operations["get_financial_periods_api_v1_stocks__symbol__financials_periods_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Valuations */
+        get: operations["get_valuations_api_v1_stocks__symbol__valuations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/watchlists": {
         parameters: {
             query?: never;
@@ -115,6 +166,42 @@ export interface components {
         AddWatchlistItemRequest: {
             /** Symbol */
             symbol: string;
+        };
+        /** BalanceSheetResponse */
+        BalanceSheetResponse: {
+            /** Cash */
+            cash: string | null;
+            /** Accounts Receivable */
+            accounts_receivable: string | null;
+            /** Inventory */
+            inventory: string | null;
+            /** Current Assets */
+            current_assets: string | null;
+            /** Total Assets */
+            total_assets: string | null;
+            /** Current Liabilities */
+            current_liabilities: string | null;
+            /** Total Liabilities */
+            total_liabilities: string | null;
+            /** Parent Equity */
+            parent_equity: string | null;
+            /** Total Equity */
+            total_equity: string | null;
+            /** Goodwill */
+            goodwill: string | null;
+        };
+        /** CashFlowStatementResponse */
+        CashFlowStatementResponse: {
+            /** Operating Cash Flow */
+            operating_cash_flow: string | null;
+            /** Investing Cash Flow */
+            investing_cash_flow: string | null;
+            /** Financing Cash Flow */
+            financing_cash_flow: string | null;
+            /** Cash Paid For Long Term Assets */
+            cash_paid_for_long_term_assets: string | null;
+            /** Ending Cash */
+            ending_cash: string | null;
         };
         /** CreateWatchlistRequest */
         CreateWatchlistRequest: {
@@ -167,6 +254,130 @@ export interface components {
              */
             collected_at: string;
         };
+        /** FinancialPeriodListResponse */
+        FinancialPeriodListResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Items */
+            items: components["schemas"]["FinancialPeriodResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** FinancialPeriodResponse */
+        FinancialPeriodResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Fiscal Year */
+            fiscal_year: number;
+            /** Fiscal Period */
+            fiscal_period: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Statement Scope */
+            statement_scope: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Published At Precision */
+            published_at_precision: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Is Audited */
+            is_audited: boolean | null;
+            /** Provider */
+            provider: string;
+            /** Provider Revision */
+            provider_revision: string;
+            /** Normalizer Version */
+            normalizer_version: string;
+            /** Quality Warnings */
+            quality_warnings: string[];
+            income: components["schemas"]["IncomeStatementResponse"] | null;
+            balance: components["schemas"]["BalanceSheetResponse"] | null;
+            cash_flow: components["schemas"]["CashFlowStatementResponse"] | null;
+        };
+        /** FundamentalDimensionResponse */
+        FundamentalDimensionResponse: {
+            /** Code */
+            code: string;
+            /** Display Name */
+            display_name: string;
+            /** Items */
+            items: components["schemas"]["FundamentalMetricResponse"][];
+        };
+        /** FundamentalMetricResponse */
+        FundamentalMetricResponse: {
+            /** Code */
+            code: string;
+            /** Display Name */
+            display_name: string;
+            /** Dimension */
+            dimension: string;
+            /** Value */
+            value: string | null;
+            /** Unit */
+            unit: string;
+            /** Status */
+            status: string;
+            /** Period End */
+            period_end: string | null;
+            /** Basis */
+            basis: string;
+            /** Source Report Ids */
+            source_report_ids: string[];
+            /** Detail */
+            detail: string | null;
+        };
+        /** FundamentalResearchResponse */
+        FundamentalResearchResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Latest Report Period */
+            latest_report_period: string | null;
+            /** Latest Report Published At */
+            latest_report_published_at: string | null;
+            /** Published At Precision */
+            published_at_precision: string | null;
+            /** Issuer Type */
+            issuer_type: string;
+            /** Provider */
+            provider: string | null;
+            /** Data Version */
+            data_version: string;
+            /** Metric Definition Version */
+            metric_definition_version: string;
+            /** Freshness */
+            freshness: string;
+            /** Dimensions */
+            dimensions: components["schemas"]["FundamentalDimensionResponse"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -180,6 +391,21 @@ export interface components {
             service: string;
             /** Version */
             version: string;
+        };
+        /** IncomeStatementResponse */
+        IncomeStatementResponse: {
+            /** Revenue */
+            revenue: string | null;
+            /** Operating Cost */
+            operating_cost: string | null;
+            /** Operating Profit */
+            operating_profit: string | null;
+            /** Total Profit */
+            total_profit: string | null;
+            /** Net Profit */
+            net_profit: string | null;
+            /** Parent Net Profit */
+            parent_net_profit: string | null;
         };
         /** StockResponse */
         StockResponse: {
@@ -199,6 +425,8 @@ export interface components {
             list_date: string | null;
             /** Status */
             status: string;
+            /** Issuer Type */
+            issuer_type: string;
             /** Industry */
             industry: string | null;
             /** Latest Price */
@@ -231,6 +459,45 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValuationCoverageResponse */
+        ValuationCoverageResponse: {
+            /** Start */
+            start: string | null;
+            /** End */
+            end: string | null;
+            /** Sample Count */
+            sample_count: number;
+            /** Metric Codes */
+            metric_codes: string[];
+        };
+        /** ValuationListResponse */
+        ValuationListResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Items */
+            items: components["schemas"]["ValuationObservationResponse"][];
+            /** Total */
+            total: number;
+            coverage: components["schemas"]["ValuationCoverageResponse"];
+        };
+        /** ValuationObservationResponse */
+        ValuationObservationResponse: {
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Value */
+            value: string;
+            /** Unit */
+            unit: string;
+            /** Provider */
+            provider: string;
         };
         /** WatchlistItemResponse */
         WatchlistItemResponse: {
@@ -369,6 +636,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyBarListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_fundamental_research_api_v1_stocks__symbol__research_fundamentals_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundamentalResearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_financial_periods_api_v1_stocks__symbol__financials_periods_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialPeriodListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_valuations_api_v1_stocks__symbol__valuations_get: {
+        parameters: {
+            query?: {
+                start?: string | null;
+                end?: string | null;
+                metrics?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationListResponse"];
                 };
             };
             /** @description Validation Error */

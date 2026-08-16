@@ -1,105 +1,87 @@
 # Zhaoniu Architecture
 
-## System context
-
-Zhaoniu is a browser-based, multi-user A-share research SaaS. The Phase 1 system remains a modular monolith: one Next.js web application, one FastAPI application, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes for research, data, and traceable insight—not trading or investment advice.
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 2 remains a modular monolith:
+one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
+for traceable research, not trading or investment advice.
 
 ```text
 Desktop / Mobile browser
-        | REST + later SSE
+        | versioned REST
         v
-Next.js web  --> FastAPI modular monolith --> PostgreSQL
-                        |                       (canonical state)
-                        +--> Redis <--> Celery workers
-                        |
-                        +--> provider adapters --> external data vendors
-                        +--> LLM gateway --------> compatible model providers
+Next.js web -> FastAPI modular monolith -> PostgreSQL
+                    |                       canonical truth
+                    +-> Redis <-> Celery workers
+                    +-> provider adapters -> external vendors
+                    +-> future LLM gateway -> model providers
 ```
 
-## Frontend architecture
+## Frontend
 
-`apps/web` uses Next.js App Router, strict TypeScript, Tailwind CSS, Radix-compatible UI primitives, TanStack Query/Table, Zustand-ready local state, React Hook Form + Zod, ECharts and Lightweight Charts. The base shell has separately composed desktop navigation and mobile bottom navigation. Shared hooks, API models, formatters, chart primitives, and research cards will remain device-agnostic.
+`apps/web` uses Next.js App Router, strict TypeScript, Tailwind, TanStack Query, ECharts and
+Lightweight Charts. Desktop and mobile stock research pages are separately composed while sharing
+API types, formatters, chart adapters and business components.
 
-The visual system is a research instrument rather than an admin template: paper/mist surfaces, graphite text, restrained research blue, amber evidence rails, serif research headings, and monospaced data labels. Accessibility includes visible focus, touch-sized navigation, semantic landmarks, and reduced-motion handling.
+The visual system behaves like a research instrument: paper/mist surfaces, graphite text,
+restrained research blue, serif headings, monospaced data labels, visible focus, touch-sized
+navigation, and reduced-motion support. Every financial state distinguishes missing input,
+insufficient history, not applicable, invalid input, and operational failure.
 
-## Backend architecture
+## Backend boundaries
 
-`apps/api` separates routes, application services, ports, domain models, and infrastructure adapters.
-Routes translate HTTP only. The market-data service coordinates the Provider → Normalizer →
-Canonical Model → Quality Validator → Repository flow. SQLAlchemy repositories own stock, daily
-bar, and sync-run persistence. AKShare's synchronous SDK is contained in a bounded thread adapter.
-
-Authentication remains a deliberate seam returning a fixed demo identity. Persistent Watchlist and
-production authentication are deferred to Phase 2. Authorization and entitlements remain separate
-concerns.
-
-## Data architecture
-
-PostgreSQL is the system of record. Redis is for bounded caching, task coordination, rate limiting, and distributed locks—not durable business truth. pgvector is available for evidence retrieval when justified. Raw payloads, normalized clean data, derived metrics, research context, structured AI output, and evidence are separate layers and tables/modules.
-
-## AI architecture
-
-Business code targets `LLMGateway`, never a vendor SDK. Requests use named tasks and structured schemas. Each call can record task type, provider/model, token counts, latency, cost, and status. The LLM receives deterministic metrics and evidence; it summarizes and explains but never calculates metrics or chooses UI.
-
-A shared research snapshot key is:
+Routes translate HTTP. Application services coordinate. Domain modules own formulas and period
+rules. Repositories own persistence. Vendor SDK calls stay inside provider adapters.
 
 ```text
-symbol + data_version + research_template_version + model_version
+Provider DTO -> provider normalizer -> canonical model -> quality validator -> repository
 ```
 
-That unique identity prevents thousands of users following one stock from triggering thousands of equivalent model calls. User-specific analysis is separate only when it actually includes private user data.
+The financial adapter wraps AKShare's synchronous SDK in bounded worker threads. Financial facts
+are immutable versions. Deterministic metrics reference input report IDs and a formula version.
+The LLM boundary is not involved in any financial calculation.
+
+## Data layers
+
+- Raw/provider DTOs exist only at the edge.
+- Clean stock, bar, statement and valuation facts are typed and use Decimal.
+- Derived metrics use version-controlled Python formulas.
+- Fundamental snapshots materialize current research reads without Redis dependency.
+- Future AI research receives metrics and evidence; Markdown is presentation, not the contract.
+
+PostgreSQL is the system of record. Redis is limited to task coordination, bounded caching, rate
+limiting and locks; it is not durable business truth.
+
+## Point-in-time semantics
+
+Report period and publication availability are separate. A report revision stores provider,
+payload checksum, normalizer version, publication precision, `known_at`, and first observation.
+Date-only disclosures use a conservative next-China-day boundary. This prevents obvious future
+leakage but is not represented as intraday/backtest-grade point-in-time data.
 
 ## Background jobs
 
-Celery workers handle data sync, financial/news/event processing, research, reports, notifications, and future backtests. A production task must have a deterministic idempotency key, bounded retry policy, duplicate suppression, appropriate distributed lock, and queryable task status. An example is `analysis:600519:20260815:v1`.
+Celery entry points call the same application services as CLI commands. Statement and valuation
+syncs use deterministic idempotency keys, bounded retries, queryable sync runs and batched
+PostgreSQL Upserts. Celery Beat is intentionally deferred.
 
-## Shared data vs user data
+## Shared versus user data
 
-Shared: stocks, market data, financials, metrics, industries, announcements, news, events, evidence, and public research snapshots.
+Shared: stocks, bars, financial reports, valuation observations, deterministic metrics, events,
+evidence and public research snapshots.
 
-User-owned: users, sessions, watchlists/items, alerts, preferences, AI chats, subscriptions, and usage. Every user-owned table and query carries `user_id`; even `watchlist_items` keeps it explicitly for isolation and future row-level security.
-
-## Data provider pattern
-
-```text
-Tushare / AKShare / BaoStock adapter
-              -> raw provider response
-              -> provider-specific normalizer
-              -> canonical domain model
-              -> repository
-```
-
-Application services target the `MarketDataProvider` contract. Phase 1 registers only AKShare for
-development/evaluation. The fallback contract is verified with fake providers; no real fallback is
-claimed. Vendor models never leak into domain code.
-
-## Research pipeline
-
-```text
-Raw data -> normalization -> clean data -> deterministic metrics
-         -> change/event engines -> research context -> LLM gateway
-         -> structured research -> evidence links -> research snapshot
-```
+User-owned: users, sessions, watchlists/items, alerts, preferences, chats, subscriptions and usage.
+Every user-owned record and query carries `user_id`. Watchlist persistence and real authentication
+remain the next product phase.
 
 ## Module boundaries
 
-- `market_data`: provider contracts/adapters, normalization, canonical quotes and bars.
-- `fundamentals`: statements and deterministic fundamental metrics.
-- `indicators`: deterministic technical/statistical calculations.
-- `research_engine`: context assembly and structured snapshot orchestration.
-- `change_engine`: version comparison and material-change detection.
-- `event_engine`: event canonicalization and clustering.
-- `evidence_engine`: source identity, citations, provenance, and retrieval.
-- `llm`: provider-neutral gateway and usage records.
-- `news`: news provider adapters and normalized articles.
-- `backtest`: later isolated research simulation; absent from Phase 0 behavior.
+- `market_data`: symbols, stock master, bars and market provider adapters.
+- `fundamentals`: financial providers, versions, typed statements, formulas and research service.
+- `indicators`: future technical/statistical calculations.
+- `research_engine`: future structured context and snapshot orchestration.
+- `change_engine`: future version comparison and material-change rules.
+- `event_engine`: future announcement/news canonicalization.
+- `evidence_engine`: future source identity, citations and retrieval.
+- `llm`: provider-neutral structured generation and usage audit.
 
-Top-level `packages/*` currently reserve these boundaries. They should become installable packages only when they contain cohesive code; premature packaging would add build complexity without isolation.
-
-## Future scaling strategy
-
-Scale vertically and add worker queues first. Add read replicas, partition high-volume time series, cache hot canonical reads, and isolate workloads only after profiling. Kafka, ClickHouse, OpenSearch, Kubernetes, gRPC, vector databases beyond pgvector, and independent microservices require explicit scale evidence and an ADR.
-
-## Third-party reuse strategy
-
-Reference repositories live under `references/` and never join the product workspace. Prefer adapters around stable upstream surfaces, then extract small licensed algorithms with provenance when an adapter is impossible. Keep local patches minimal and retain tests against upstream behavior. See `OPEN_SOURCE_REUSE.md`.
+Reference repositories remain isolated under `references/` and never enter product packages. See
+`OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.

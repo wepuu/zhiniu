@@ -224,6 +224,240 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/research/fundamentals": {
+      "get": {
+        "tags": [
+          "fundamentals"
+        ],
+        "summary": "Get Fundamental Research",
+        "operationId": "get_fundamental_research_api_v1_stocks__symbol__research_fundamentals_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalResearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/financials/periods": {
+      "get": {
+        "tags": [
+          "fundamentals"
+        ],
+        "summary": "Get Financial Periods",
+        "operationId": "get_financial_periods_api_v1_stocks__symbol__financials_periods_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 40,
+              "minimum": 1,
+              "default": 12,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialPeriodListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/valuations": {
+      "get": {
+        "tags": [
+          "fundamentals"
+        ],
+        "summary": "Get Valuations",
+        "operationId": "get_valuations_api_v1_stocks__symbol__valuations_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "metrics",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metrics"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 4000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/watchlists": {
       "get": {
         "tags": [
@@ -358,6 +592,217 @@
           "symbol"
         ],
         "title": "AddWatchlistItemRequest"
+      },
+      "BalanceSheetResponse": {
+        "properties": {
+          "cash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "accounts_receivable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accounts Receivable"
+          },
+          "inventory": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory"
+          },
+          "current_assets": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Assets"
+          },
+          "total_assets": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Assets"
+          },
+          "current_liabilities": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Liabilities"
+          },
+          "total_liabilities": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Liabilities"
+          },
+          "parent_equity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Equity"
+          },
+          "total_equity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Equity"
+          },
+          "goodwill": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goodwill"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cash",
+          "accounts_receivable",
+          "inventory",
+          "current_assets",
+          "total_assets",
+          "current_liabilities",
+          "total_liabilities",
+          "parent_equity",
+          "total_equity",
+          "goodwill"
+        ],
+        "title": "BalanceSheetResponse"
+      },
+      "CashFlowStatementResponse": {
+        "properties": {
+          "operating_cash_flow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Cash Flow"
+          },
+          "investing_cash_flow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investing Cash Flow"
+          },
+          "financing_cash_flow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financing Cash Flow"
+          },
+          "cash_paid_for_long_term_assets": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Paid For Long Term Assets"
+          },
+          "ending_cash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ending Cash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operating_cash_flow",
+          "investing_cash_flow",
+          "financing_cash_flow",
+          "cash_paid_for_long_term_assets",
+          "ending_cash"
+        ],
+        "title": "CashFlowStatementResponse"
       },
       "CreateWatchlistRequest": {
         "properties": {
@@ -502,6 +947,381 @@
         ],
         "title": "DailyBarResponse"
       },
+      "FinancialPeriodListResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FinancialPeriodResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "items",
+          "total"
+        ],
+        "title": "FinancialPeriodListResponse"
+      },
+      "FinancialPeriodResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "fiscal_year": {
+            "type": "integer",
+            "title": "Fiscal Year"
+          },
+          "fiscal_period": {
+            "type": "string",
+            "title": "Fiscal Period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "statement_scope": {
+            "type": "string",
+            "title": "Statement Scope"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "published_at_precision": {
+            "type": "string",
+            "title": "Published At Precision"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "is_audited": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Audited"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "provider_revision": {
+            "type": "string",
+            "title": "Provider Revision"
+          },
+          "normalizer_version": {
+            "type": "string",
+            "title": "Normalizer Version"
+          },
+          "quality_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Quality Warnings"
+          },
+          "income": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncomeStatementResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BalanceSheetResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cash_flow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashFlowStatementResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fiscal_year",
+          "fiscal_period",
+          "period_start",
+          "period_end",
+          "statement_scope",
+          "currency",
+          "published_at",
+          "published_at_precision",
+          "known_at",
+          "is_audited",
+          "provider",
+          "provider_revision",
+          "normalizer_version",
+          "quality_warnings",
+          "income",
+          "balance",
+          "cash_flow"
+        ],
+        "title": "FinancialPeriodResponse"
+      },
+      "FundamentalDimensionResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FundamentalMetricResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "display_name",
+          "items"
+        ],
+        "title": "FundamentalDimensionResponse"
+      },
+      "FundamentalMetricResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "basis": {
+            "type": "string",
+            "title": "Basis"
+          },
+          "source_report_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Source Report Ids"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "display_name",
+          "dimension",
+          "value",
+          "unit",
+          "status",
+          "period_end",
+          "basis",
+          "source_report_ids",
+          "detail"
+        ],
+        "title": "FundamentalMetricResponse"
+      },
+      "FundamentalResearchResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "latest_report_period": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Report Period"
+          },
+          "latest_report_published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Report Published At"
+          },
+          "published_at_precision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At Precision"
+          },
+          "issuer_type": {
+            "type": "string",
+            "title": "Issuer Type"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          },
+          "metric_definition_version": {
+            "type": "string",
+            "title": "Metric Definition Version"
+          },
+          "freshness": {
+            "type": "string",
+            "title": "Freshness"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/FundamentalDimensionResponse"
+            },
+            "type": "array",
+            "title": "Dimensions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "as_of",
+          "latest_report_period",
+          "latest_report_published_at",
+          "published_at_precision",
+          "issuer_type",
+          "provider",
+          "data_version",
+          "metric_definition_version",
+          "freshness",
+          "dimensions"
+        ],
+        "title": "FundamentalResearchResponse"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -537,6 +1357,92 @@
           "version"
         ],
         "title": "HealthResponse"
+      },
+      "IncomeStatementResponse": {
+        "properties": {
+          "revenue": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "operating_cost": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Cost"
+          },
+          "operating_profit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Profit"
+          },
+          "total_profit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Profit"
+          },
+          "net_profit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Profit"
+          },
+          "parent_net_profit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Net Profit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revenue",
+          "operating_cost",
+          "operating_profit",
+          "total_profit",
+          "net_profit",
+          "parent_net_profit"
+        ],
+        "title": "IncomeStatementResponse"
       },
       "StockResponse": {
         "properties": {
@@ -579,6 +1485,10 @@
           "status": {
             "type": "string",
             "title": "Status"
+          },
+          "issuer_type": {
+            "type": "string",
+            "title": "Issuer Type"
           },
           "industry": {
             "anyOf": [
@@ -661,6 +1571,7 @@
           "asset_type",
           "list_date",
           "status",
+          "issuer_type",
           "industry",
           "latest_price",
           "change_percent",
@@ -730,6 +1641,123 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValuationCoverageResponse": {
+        "properties": {
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "sample_count": {
+            "type": "integer",
+            "title": "Sample Count"
+          },
+          "metric_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metric Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "sample_count",
+          "metric_codes"
+        ],
+        "title": "ValuationCoverageResponse"
+      },
+      "ValuationListResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ValuationObservationResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/ValuationCoverageResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "items",
+          "total",
+          "coverage"
+        ],
+        "title": "ValuationListResponse"
+      },
+      "ValuationObservationResponse": {
+        "properties": {
+          "trade_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trade Date"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$",
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_date",
+          "metric_code",
+          "value",
+          "unit",
+          "provider"
+        ],
+        "title": "ValuationObservationResponse"
       },
       "WatchlistItemResponse": {
         "properties": {

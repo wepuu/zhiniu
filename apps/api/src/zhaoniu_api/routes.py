@@ -1,21 +1,44 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from zhaoniu_api.dependencies import CurrentUserId, DailyBarRepo, StockRepo, WatchlistRepo
+from zhaoniu_api.dependencies import (
+    CurrentUserId,
+    DailyBarRepo,
+    FundamentalService,
+    StockRepo,
+    WatchlistRepo,
+)
 from zhaoniu_api.domain.models import Watchlist, resolve_symbol
 from zhaoniu_api.schemas import (
     AddWatchlistItemRequest,
     CreateWatchlistRequest,
     DailyBarListResponse,
     DailyBarResponse,
+    FinancialPeriodListResponse,
+    FinancialPeriodResponse,
+    FundamentalDimensionResponse,
+    FundamentalMetricResponse,
+    FundamentalResearchResponse,
     HealthResponse,
     StockResponse,
     StockSearchResponse,
+    ValuationCoverageResponse,
+    ValuationListResponse,
+    ValuationObservationResponse,
     WatchlistResponse,
 )
+
+_DIMENSIONS = {
+    "growth": "成长",
+    "profitability": "盈利能力",
+    "quality": "经营质量",
+    "balance": "资产负债",
+    "valuation": "估值",
+}
+_VALUATION_CODES = {"pe_ttm", "pb", "pcf", "market_cap"}
 
 router = APIRouter(prefix="/api/v1")
 
@@ -82,6 +105,129 @@ async def get_daily_bars(
         adjust=adjust,
         items=items,
         total=len(items),
+    )
+
+
+@router.get(
+    "/stocks/{symbol}/research/fundamentals",
+    response_model=FundamentalResearchResponse,
+    tags=["fundamentals"],
+)
+async def get_fundamental_research(
+    symbol: str,
+    stocks: StockRepo,
+    service: FundamentalService,
+    as_of: datetime | None = None,
+) -> FundamentalResearchResponse:
+    stock = await stocks.get(symbol)
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    effective_as_of = as_of or datetime.now(UTC)
+    if effective_as_of.tzinfo is None:
+        effective_as_of = effective_as_of.replace(tzinfo=UTC)
+    reports = await service.list_reports(symbol, as_of=effective_as_of, limit=64)
+    snapshot = await service.get_snapshot(symbol, as_of=as_of)
+    latest = max(reports, key=lambda item: item.period_end, default=None)
+    grouped: dict[str, list[FundamentalMetricResponse]] = {code: [] for code in _DIMENSIONS}
+    for metric in snapshot.metrics:
+        response = FundamentalMetricResponse.from_domain(metric)
+        grouped[response.dimension].append(response)
+    freshness = "unavailable"
+    if latest is not None:
+        freshness = (
+            "stale" if (effective_as_of.date() - latest.period_end).days > 240 else "current"
+        )
+    return FundamentalResearchResponse(
+        symbol=stock.symbol,
+        canonical_symbol=stock.canonical_symbol or resolve_symbol(stock.symbol).canonical,
+        as_of=effective_as_of,
+        latest_report_period=latest.period_end if latest else None,
+        latest_report_published_at=latest.published_at if latest else None,
+        published_at_precision=latest.published_at_precision if latest else None,
+        issuer_type=latest.issuer_type if latest else stock.issuer_type,
+        provider=latest.provider if latest else None,
+        data_version=snapshot.data_version,
+        metric_definition_version=snapshot.metric_version,
+        freshness=freshness,
+        dimensions=[
+            FundamentalDimensionResponse(code=code, display_name=name, items=grouped[code])
+            for code, name in _DIMENSIONS.items()
+        ],
+    )
+
+
+@router.get(
+    "/stocks/{symbol}/financials/periods",
+    response_model=FinancialPeriodListResponse,
+    tags=["fundamentals"],
+)
+async def get_financial_periods(
+    symbol: str,
+    stocks: StockRepo,
+    service: FundamentalService,
+    as_of: datetime | None = None,
+    limit: Annotated[int, Query(ge=1, le=40)] = 12,
+) -> FinancialPeriodListResponse:
+    stock = await stocks.get(symbol)
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    effective_as_of = as_of
+    if effective_as_of is not None and effective_as_of.tzinfo is None:
+        effective_as_of = effective_as_of.replace(tzinfo=UTC)
+    reports = await service.list_reports(symbol, as_of=effective_as_of, limit=limit)
+    items = [FinancialPeriodResponse.from_domain(item) for item in reports]
+    return FinancialPeriodListResponse(
+        symbol=stock.symbol,
+        canonical_symbol=stock.canonical_symbol or resolve_symbol(stock.symbol).canonical,
+        items=items,
+        total=len(items),
+    )
+
+
+@router.get(
+    "/stocks/{symbol}/valuations",
+    response_model=ValuationListResponse,
+    tags=["fundamentals"],
+)
+async def get_valuations(
+    symbol: str,
+    stocks: StockRepo,
+    service: FundamentalService,
+    start: date | None = None,
+    end: date | None = None,
+    metrics: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=10000)] = 4000,
+) -> ValuationListResponse:
+    stock = await stocks.get(symbol)
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    requested_codes = (
+        tuple(item.strip() for item in metrics.split(",") if item.strip()) if metrics else None
+    )
+    if requested_codes and not set(requested_codes).issubset(_VALUATION_CODES):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported valuation metric",
+        )
+    observations = await service.list_valuations(
+        symbol,
+        start=start,
+        end=end,
+        metric_codes=requested_codes,
+        limit=limit,
+    )
+    dates = [item.trade_date for item in observations]
+    return ValuationListResponse(
+        symbol=stock.symbol,
+        canonical_symbol=stock.canonical_symbol or resolve_symbol(stock.symbol).canonical,
+        items=[ValuationObservationResponse.from_domain(item) for item in observations],
+        total=len(observations),
+        coverage=ValuationCoverageResponse(
+            start=min(dates, default=None),
+            end=max(dates, default=None),
+            sample_count=len(observations),
+            metric_codes=sorted({item.metric_code for item in observations}),
+        ),
     )
 
 

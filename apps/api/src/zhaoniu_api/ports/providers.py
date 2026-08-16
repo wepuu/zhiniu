@@ -19,12 +19,42 @@ class RawDailyBar(BaseModel):
     payload: dict[str, object]
 
 
+class RawFinancialStatement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    requested_symbol: str = Field(pattern=r"^[0-9]{6}$")
+    statement_type: str
+    payload: dict[str, object]
+
+
+class RawValuationObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    requested_symbol: str = Field(pattern=r"^[0-9]{6}$")
+    metric_code: str
+    payload: dict[str, object]
+
+
 class MarketDataProvider(Protocol):
     name: str
 
     async def get_stock_master(self) -> list[RawStock]: ...
 
     async def get_daily_bars(self, symbol: str, start: date, end: date) -> list[RawDailyBar]: ...
+
+
+class FinancialDataProvider(Protocol):
+    name: str
+
+    async def get_financial_statements(
+        self, symbol: str, start_year: int
+    ) -> list[RawFinancialStatement]: ...
+
+    async def get_valuation_observations(
+        self, symbol: str, start: date, end: date
+    ) -> list[RawValuationObservation]: ...
 
 
 class LLMUsage(BaseModel):

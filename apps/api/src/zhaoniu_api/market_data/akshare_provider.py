@@ -21,7 +21,7 @@ class AKShareProvider:
     def _load_sdk(self) -> Any:
         if self._sdk is None:
             try:
-                import akshare  # type: ignore[import-not-found]
+                import akshare  # type: ignore[import-untyped]
             except ImportError as exc:
                 raise ProviderUnavailableError("AKShare is not installed") from exc
             self._sdk = akshare

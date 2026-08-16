@@ -3,6 +3,11 @@ from typing import Protocol
 from uuid import UUID
 
 from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist
+from zhaoniu_api.fundamentals.models import (
+    FinancialReport,
+    FundamentalSnapshot,
+    ValuationObservation,
+)
 
 
 class StockRepository(Protocol):
@@ -26,6 +31,36 @@ class DailyBarRepository(Protocol):
     async def latest_date(self, canonical_symbol: str) -> date | None: ...
 
     async def upsert_many(self, bars: list[DailyBar]) -> int: ...
+
+
+class FundamentalRepository(Protocol):
+    async def upsert_reports(self, reports: list[FinancialReport]) -> int: ...
+
+    async def list_reports(
+        self,
+        canonical_symbol: str,
+        *,
+        as_of: datetime | None,
+        limit: int,
+    ) -> list[FinancialReport]: ...
+
+    async def save_snapshot(self, snapshot: FundamentalSnapshot) -> int: ...
+
+    async def latest_snapshot(
+        self, canonical_symbol: str, *, as_of: datetime | None
+    ) -> FundamentalSnapshot | None: ...
+
+    async def upsert_valuations(self, observations: list[ValuationObservation]) -> int: ...
+
+    async def list_valuations(
+        self,
+        canonical_symbol: str,
+        *,
+        start: date | None,
+        end: date | None,
+        metric_codes: tuple[str, ...] | None,
+        limit: int,
+    ) -> list[ValuationObservation]: ...
 
 
 class SyncRunRepository(Protocol):

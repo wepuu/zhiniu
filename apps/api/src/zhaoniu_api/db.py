@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -56,6 +57,7 @@ class StockRecord(TimestampMixin, Base):
     board: Mapped[str] = mapped_column(String(24), default="unknown")
     list_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="listed")
+    issuer_type: Mapped[str] = mapped_column(String(32), default="general")
     source: Mapped[str] = mapped_column(String(40))
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -105,6 +107,183 @@ class DataSyncRunRecord(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class FinancialReportRevisionRecord(Base):
+    __tablename__ = "financial_report_revisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "provider",
+            "period_end",
+            "statement_scope",
+            "normalizer_version",
+            "payload_checksum",
+            name="uq_financial_report_revision_identity",
+        ),
+        Index("ix_financial_report_symbol_period", "symbol", "period_end"),
+        Index("ix_financial_report_symbol_known_at", "symbol", "known_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    fiscal_year: Mapped[int]
+    fiscal_period: Mapped[str] = mapped_column(String(4))
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    statement_scope: Mapped[str] = mapped_column(String(24))
+    currency: Mapped[str] = mapped_column(String(8))
+    provider: Mapped[str] = mapped_column(String(40))
+    provider_record_id: Mapped[str] = mapped_column(String(160))
+    provider_revision: Mapped[str] = mapped_column(String(80))
+    normalizer_version: Mapped[str] = mapped_column(String(40))
+    payload_checksum: Mapped[str] = mapped_column(String(64))
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    published_at_precision: Mapped[str] = mapped_column(String(16))
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    first_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_audited: Mapped[bool | None] = mapped_column(Boolean)
+    issuer_type: Mapped[str] = mapped_column(String(32))
+    quality_warnings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class IncomeStatementRecord(Base):
+    __tablename__ = "income_statement_facts"
+
+    report_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_report_revisions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    total_revenue: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    revenue: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    operating_cost: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    selling_expenses: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    administrative_expenses: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    research_expenses: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    finance_expenses: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    operating_profit: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    total_profit: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    income_tax_expense: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    net_profit: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    parent_net_profit: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+
+
+class BalanceSheetRecord(Base):
+    __tablename__ = "balance_sheet_facts"
+
+    report_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_report_revisions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    cash: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    accounts_receivable: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    inventory: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    contract_assets: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    current_assets: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    total_assets: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    short_term_borrowings: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    current_portion_noncurrent_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    long_term_borrowings: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    bonds_payable: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    lease_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    contract_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    current_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    total_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    parent_equity: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    total_equity: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    goodwill: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+
+
+class CashFlowStatementRecord(Base):
+    __tablename__ = "cash_flow_statement_facts"
+
+    report_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_report_revisions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    operating_cash_flow: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    investing_cash_flow: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    financing_cash_flow: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    cash_paid_for_long_term_assets: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+    ending_cash: Mapped[Decimal | None] = mapped_column(Numeric(30, 4))
+
+
+class FundamentalSnapshotRecord(Base):
+    __tablename__ = "fundamental_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol", "data_version", "metric_version", name="uq_fundamental_snapshot_identity"
+        ),
+        Index("ix_fundamental_snapshot_symbol_as_of", "symbol", "as_of"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    data_version: Mapped[str] = mapped_column(String(64))
+    metric_version: Mapped[str] = mapped_column(String(40))
+    latest_period_end: Mapped[date | None] = mapped_column(Date)
+    calculated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class FundamentalMetricRecord(Base):
+    __tablename__ = "fundamental_metric_values"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "code", name="uq_fundamental_metric_snapshot_code"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("fundamental_snapshots.id", ondelete="CASCADE"),
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(String(80))
+    value: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    unit: Mapped[str] = mapped_column(String(24))
+    status: Mapped[str] = mapped_column(String(32))
+    period_end: Mapped[date | None] = mapped_column(Date)
+    basis: Mapped[str] = mapped_column(String(24))
+    input_report_ids: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    detail: Mapped[str | None] = mapped_column(String(240))
+
+
+class ValuationObservationRecord(TimestampMixin, Base):
+    __tablename__ = "valuation_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "trade_date",
+            "metric_code",
+            "provider",
+            name="uq_valuation_observation_identity",
+        ),
+        Index("ix_valuation_symbol_metric_date", "symbol", "metric_code", "trade_date"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    trade_date: Mapped[date] = mapped_column(Date)
+    metric_code: Mapped[str] = mapped_column(String(40))
+    value: Mapped[Decimal] = mapped_column(Numeric(30, 8))
+    unit: Mapped[str] = mapped_column(String(24))
+    provider: Mapped[str] = mapped_column(String(40))
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class WatchlistRecord(TimestampMixin, Base):

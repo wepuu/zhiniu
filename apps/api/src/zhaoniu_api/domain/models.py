@@ -24,6 +24,12 @@ class AdjustType(StrEnum):
     NONE = "none"
 
 
+class IssuerType(StrEnum):
+    GENERAL = "general"
+    BANK = "bank"
+    OTHER_FINANCIAL = "other_financial"
+
+
 @dataclass(frozen=True, slots=True)
 class Stock:
     symbol: str
@@ -37,6 +43,7 @@ class Stock:
     asset_type: str = "stock"
     list_date: date | None = None
     status: str = "listed"
+    issuer_type: str = IssuerType.GENERAL
     latest_trade_date: date | None = None
     source: str | None = None
     collected_at: datetime | None = None

@@ -1,8 +1,13 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
 from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist, resolve_symbol
+from zhaoniu_api.fundamentals.models import (
+    FinancialReport,
+    FundamentalSnapshot,
+    ValuationObservation,
+)
 
 
 class InMemoryStockRepository:
@@ -71,6 +76,126 @@ class InMemoryDailyBarRepository:
             if (bar.canonical_symbol, bar.trade_date, bar.adjust_type) not in identities
         ] + bars
         return len(bars)
+
+
+class InMemoryFundamentalRepository:
+    def __init__(
+        self,
+        reports: list[FinancialReport] | None = None,
+        valuations: list[ValuationObservation] | None = None,
+    ) -> None:
+        self._reports = reports or []
+        self._valuations = valuations or []
+        self._snapshots: list[FundamentalSnapshot] = []
+
+    async def upsert_reports(self, reports: list[FinancialReport]) -> int:
+        identities = {
+            (
+                item.canonical_symbol,
+                item.provider,
+                item.period_end,
+                item.statement_scope,
+                item.normalizer_version,
+                item.payload_checksum,
+            )
+            for item in self._reports
+        }
+        inserted = 0
+        for report in reports:
+            identity = (
+                report.canonical_symbol,
+                report.provider,
+                report.period_end,
+                report.statement_scope,
+                report.normalizer_version,
+                report.payload_checksum,
+            )
+            if identity not in identities:
+                self._reports.append(report)
+                identities.add(identity)
+                inserted += 1
+        return inserted
+
+    async def list_reports(
+        self,
+        canonical_symbol: str,
+        *,
+        as_of: datetime | None,
+        limit: int,
+    ) -> list[FinancialReport]:
+        candidates = [
+            item
+            for item in self._reports
+            if item.canonical_symbol == canonical_symbol
+            and (as_of is None or item.known_at <= as_of)
+        ]
+        selected: list[FinancialReport] = []
+        seen: set[tuple[date, str]] = set()
+        for item in sorted(
+            candidates, key=lambda report: (report.period_end, report.known_at), reverse=True
+        ):
+            identity = (item.period_end, item.statement_scope)
+            if identity not in seen:
+                selected.append(item)
+                seen.add(identity)
+            if len(selected) >= limit:
+                break
+        return selected
+
+    async def save_snapshot(self, snapshot: FundamentalSnapshot) -> int:
+        self._snapshots = [
+            item
+            for item in self._snapshots
+            if not (
+                item.canonical_symbol == snapshot.canonical_symbol
+                and item.data_version == snapshot.data_version
+                and item.metric_version == snapshot.metric_version
+            )
+        ]
+        self._snapshots.append(snapshot)
+        return len(snapshot.metrics)
+
+    async def latest_snapshot(
+        self, canonical_symbol: str, *, as_of: datetime | None
+    ) -> FundamentalSnapshot | None:
+        candidates = [
+            item
+            for item in self._snapshots
+            if item.canonical_symbol == canonical_symbol and (as_of is None or item.as_of <= as_of)
+        ]
+        return max(candidates, key=lambda item: item.as_of, default=None)
+
+    async def upsert_valuations(self, observations: list[ValuationObservation]) -> int:
+        identities = {
+            (item.canonical_symbol, item.trade_date, item.metric_code, item.provider)
+            for item in observations
+        }
+        self._valuations = [
+            item
+            for item in self._valuations
+            if (item.canonical_symbol, item.trade_date, item.metric_code, item.provider)
+            not in identities
+        ] + observations
+        return len(observations)
+
+    async def list_valuations(
+        self,
+        canonical_symbol: str,
+        *,
+        start: date | None,
+        end: date | None,
+        metric_codes: tuple[str, ...] | None,
+        limit: int,
+    ) -> list[ValuationObservation]:
+        matches = [
+            item
+            for item in self._valuations
+            if item.canonical_symbol == canonical_symbol
+            and (start is None or item.trade_date >= start)
+            and (end is None or item.trade_date <= end)
+            and (not metric_codes or item.metric_code in metric_codes)
+        ]
+        return sorted(matches, key=lambda item: item.trade_date)[-limit:]
 
 
 class InMemoryWatchlistRepository:

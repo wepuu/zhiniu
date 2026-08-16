@@ -53,3 +53,63 @@ def sync_daily_bars(
 ) -> dict[str, object]:
     """Celery entry point; CLI and worker share the same application service."""
     return asyncio.run(_sync_daily_bars(symbol, start, end))
+
+
+async def _sync_financial_statements(symbol: str, start_year: int) -> dict[str, object]:
+    from zhaoniu_api.composition import build_fundamental_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_fundamental_service(session).sync_financial_statements(
+            symbol, start_year=start_year
+        )
+        return {
+            "status": result.status,
+            "received_count": result.received_count,
+            "written_count": result.written_count,
+            "idempotency_key": result.idempotency_key,
+        }
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    name="fundamentals.sync_financial_statements",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def sync_financial_statements(symbol: str, start_year: int) -> dict[str, object]:
+    """Idempotent financial-statement sync using the shared application service."""
+    return asyncio.run(_sync_financial_statements(symbol, start_year))
+
+
+async def _sync_valuations(symbol: str, start: str | None, end: str | None) -> dict[str, object]:
+    from zhaoniu_api.composition import build_fundamental_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_fundamental_service(session).sync_valuations(
+            symbol,
+            start=date.fromisoformat(start) if start else None,
+            end=date.fromisoformat(end) if end else None,
+        )
+        return {
+            "status": result.status,
+            "received_count": result.received_count,
+            "written_count": result.written_count,
+            "idempotency_key": result.idempotency_key,
+        }
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    name="fundamentals.sync_valuations",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def sync_valuations(
+    symbol: str, start: str | None = None, end: str | None = None
+) -> dict[str, object]:
+    """Idempotent historical-valuation sync using the shared application service."""
+    return asyncio.run(_sync_valuations(symbol, start, end))

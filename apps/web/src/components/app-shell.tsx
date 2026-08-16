@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Bell,
   Bookmark,
@@ -8,6 +7,7 @@ import {
   Settings,
   Telescope,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 const navigation = [
@@ -29,11 +29,11 @@ export function Header() {
           type="button"
         >
           <Search className="size-4" />
-          搜索股票、行业或研究记录{" "}
+          搜索股票、行业或研究记录
           <kbd className="font-data ml-auto text-xs">⌘K</kbd>
         </button>
         <p className="text-slate ml-auto hidden text-xs sm:block">
-          数据为演示内容 · 非投资建议
+          研究工具 · 非投资建议
         </p>
         <button
           aria-label="通知"

@@ -6,6 +6,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSchema
 
 from zhaoniu_api.domain.models import Stock, Watchlist
+from zhaoniu_api.fundamentals.metrics import DEFINITION_BY_CODE
+from zhaoniu_api.fundamentals.models import FinancialReport, FundamentalMetric, ValuationObservation
 
 DecimalString = Annotated[
     Decimal,
@@ -31,6 +33,7 @@ class StockResponse(BaseModel):
     asset_type: str
     list_date: date | None
     status: str
+    issuer_type: str
     industry: str | None
     latest_price: DecimalString | None
     change_percent: DecimalString | None
@@ -69,6 +72,172 @@ class DailyBarListResponse(BaseModel):
     adjust: str
     items: list[DailyBarResponse]
     total: int
+
+
+class FundamentalMetricResponse(BaseModel):
+    code: str
+    display_name: str
+    dimension: str
+    value: DecimalString | None
+    unit: str
+    status: str
+    period_end: date | None
+    basis: str
+    source_report_ids: list[UUID]
+    detail: str | None
+
+    @classmethod
+    def from_domain(cls, metric: FundamentalMetric) -> "FundamentalMetricResponse":
+        definition = DEFINITION_BY_CODE[metric.code]
+        return cls(
+            code=metric.code,
+            display_name=definition.display_name,
+            dimension=definition.dimension,
+            value=metric.value,
+            unit=metric.unit,
+            status=metric.status,
+            period_end=metric.period_end,
+            basis=metric.basis,
+            source_report_ids=list(metric.input_report_ids),
+            detail=metric.detail,
+        )
+
+
+class FundamentalDimensionResponse(BaseModel):
+    code: str
+    display_name: str
+    items: list[FundamentalMetricResponse]
+
+
+class FundamentalResearchResponse(BaseModel):
+    symbol: str
+    canonical_symbol: str
+    as_of: datetime
+    latest_report_period: date | None
+    latest_report_published_at: datetime | None
+    published_at_precision: str | None
+    issuer_type: str
+    provider: str | None
+    data_version: str
+    metric_definition_version: str
+    freshness: str
+    dimensions: list[FundamentalDimensionResponse]
+
+
+class IncomeStatementResponse(BaseModel):
+    revenue: DecimalString | None
+    operating_cost: DecimalString | None
+    operating_profit: DecimalString | None
+    total_profit: DecimalString | None
+    net_profit: DecimalString | None
+    parent_net_profit: DecimalString | None
+
+
+class BalanceSheetResponse(BaseModel):
+    cash: DecimalString | None
+    accounts_receivable: DecimalString | None
+    inventory: DecimalString | None
+    current_assets: DecimalString | None
+    total_assets: DecimalString | None
+    current_liabilities: DecimalString | None
+    total_liabilities: DecimalString | None
+    parent_equity: DecimalString | None
+    total_equity: DecimalString | None
+    goodwill: DecimalString | None
+
+
+class CashFlowStatementResponse(BaseModel):
+    operating_cash_flow: DecimalString | None
+    investing_cash_flow: DecimalString | None
+    financing_cash_flow: DecimalString | None
+    cash_paid_for_long_term_assets: DecimalString | None
+    ending_cash: DecimalString | None
+
+
+class FinancialPeriodResponse(BaseModel):
+    id: UUID
+    fiscal_year: int
+    fiscal_period: str
+    period_start: date
+    period_end: date
+    statement_scope: str
+    currency: str
+    published_at: datetime
+    published_at_precision: str
+    known_at: datetime
+    is_audited: bool | None
+    provider: str
+    provider_revision: str
+    normalizer_version: str
+    quality_warnings: list[str]
+    income: IncomeStatementResponse | None
+    balance: BalanceSheetResponse | None
+    cash_flow: CashFlowStatementResponse | None
+
+    @classmethod
+    def from_domain(cls, report: FinancialReport) -> "FinancialPeriodResponse":
+        return cls(
+            id=report.id,
+            fiscal_year=report.fiscal_year,
+            fiscal_period=report.fiscal_period,
+            period_start=report.period_start,
+            period_end=report.period_end,
+            statement_scope=report.statement_scope,
+            currency=report.currency,
+            published_at=report.published_at,
+            published_at_precision=report.published_at_precision,
+            known_at=report.known_at,
+            is_audited=report.is_audited,
+            provider=report.provider,
+            provider_revision=report.provider_revision,
+            normalizer_version=report.normalizer_version,
+            quality_warnings=list(report.quality_warnings),
+            income=IncomeStatementResponse.model_validate(report.income, from_attributes=True)
+            if report.income
+            else None,
+            balance=BalanceSheetResponse.model_validate(report.balance, from_attributes=True)
+            if report.balance
+            else None,
+            cash_flow=CashFlowStatementResponse.model_validate(
+                report.cash_flow, from_attributes=True
+            )
+            if report.cash_flow
+            else None,
+        )
+
+
+class FinancialPeriodListResponse(BaseModel):
+    symbol: str
+    canonical_symbol: str
+    items: list[FinancialPeriodResponse]
+    total: int
+
+
+class ValuationObservationResponse(BaseModel):
+    trade_date: date
+    metric_code: str
+    value: DecimalString
+    unit: str
+    provider: str
+
+    @classmethod
+    def from_domain(cls, item: ValuationObservation) -> "ValuationObservationResponse":
+        return cls.model_validate(item, from_attributes=True)
+
+
+class ValuationCoverageResponse(BaseModel):
+    start: date | None
+    end: date | None
+    sample_count: int
+    metric_codes: list[str]
+
+
+class ValuationListResponse(BaseModel):
+    symbol: str
+    canonical_symbol: str
+    items: list[ValuationObservationResponse]
+    total: int
+    coverage: ValuationCoverageResponse
 
 
 class WatchlistItemResponse(BaseModel):
