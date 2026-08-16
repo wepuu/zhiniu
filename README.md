@@ -3,9 +3,9 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 2：真实 A 股行情、不可变财报版本、确定性基本面指标、三年历史
-估值观测、版本化研究 API，以及分别设计的桌面和移动股票研究页。AKShare 仍仅用于开发
-和技术评估；Watchlist、正式认证、AI 研究和支付尚未生产化。
+当前仓库已完成 Phase 3：在真实 A 股行情、不可变财报和确定性基本面指标之上，增加了
+历史指标点、版本化变化规则、可追溯证据、不可变研究快照和分别设计的桌面/移动证据流。
+AKShare 仍仅用于开发和技术评估；Watchlist、正式认证、AI 研究和支付尚未生产化。
 
 ## Repository map
 
@@ -58,6 +58,7 @@ uv run python -m zhaoniu_api.cli sync-daily-bars 600519 --start 2025-12-01
 uv run python -m zhaoniu_api.cli sync-financial-statements 600519 --start-year 2019
 uv run python -m zhaoniu_api.cli sync-valuations 600519 --start 2023-08-16
 uv run python -m zhaoniu_api.cli compute-fundamentals 600519
+uv run python -m zhaoniu_api.cli build-research-snapshot 600519
 ```
 
 AKShare is not approved here for commercial display or redistribution. Read
@@ -95,11 +96,15 @@ GET /api/v1/stocks/{symbol}/daily-bars
 GET /api/v1/stocks/{symbol}/research/fundamentals
 GET /api/v1/stocks/{symbol}/financials/periods
 GET /api/v1/stocks/{symbol}/valuations
+GET /api/v1/stocks/{symbol}/research/snapshot
+GET /api/v1/stocks/{symbol}/research/observations
+GET /api/v1/stocks/{symbol}/research/observations/{observation_id}
 ```
 
 Watchlist endpoints still use a fixed demo identity and in-memory repository. This is an explicit
 seam, not production authentication or persistence.
 
 Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
-[Financial metrics](docs/FINANCIAL_METRICS.md), and [Engineering rules](AGENTS.md) before extending
-the system.
+[Financial metrics](docs/FINANCIAL_METRICS.md), [Change rules](docs/CHANGE_RULES.md),
+[Research snapshots](docs/RESEARCH_SNAPSHOT.md), and [Engineering rules](AGENTS.md) before
+extending the system.

@@ -1,12 +1,18 @@
 from datetime import date, datetime
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist, resolve_symbol
 from zhaoniu_api.fundamentals.models import (
     FinancialReport,
     FundamentalSnapshot,
     ValuationObservation,
+)
+from zhaoniu_api.research.models import (
+    FundamentalMetricPoint,
+    ResearchObservation,
+    ResearchRunLease,
+    ResearchSnapshotDocument,
 )
 
 
@@ -196,6 +202,123 @@ class InMemoryFundamentalRepository:
             and (not metric_codes or item.metric_code in metric_codes)
         ]
         return sorted(matches, key=lambda item: item.trade_date)[-limit:]
+
+
+class InMemoryResearchRepository:
+    def __init__(self) -> None:
+        self.metric_points: dict[str, FundamentalMetricPoint] = {}
+        self.snapshots: list[ResearchSnapshotDocument] = []
+        self.observations: dict[UUID, ResearchObservation] = {}
+        self.runs: dict[str, dict[str, object]] = {}
+
+    async def upsert_metric_points(self, points: list[FundamentalMetricPoint]) -> int:
+        before = len(self.metric_points)
+        self.metric_points.update({item.input_fingerprint: item for item in points})
+        return len(self.metric_points) - before
+
+    async def find_snapshot(
+        self,
+        canonical_symbol: str,
+        *,
+        data_version: str,
+        metric_version: str,
+        rule_set_version: str,
+        template_version: str,
+    ) -> ResearchSnapshotDocument | None:
+        return next(
+            (
+                item
+                for item in self.snapshots
+                if item.symbol == canonical_symbol
+                and item.data_version == data_version
+                and item.metric_version == metric_version
+                and item.rule_set_version == rule_set_version
+                and item.research_template_version == template_version
+            ),
+            None,
+        )
+
+    async def latest_research_snapshot(
+        self, canonical_symbol: str
+    ) -> ResearchSnapshotDocument | None:
+        return max(
+            (item for item in self.snapshots if item.symbol == canonical_symbol),
+            key=lambda item: item.knowledge_cutoff,
+            default=None,
+        )
+
+    async def save_research_snapshot(
+        self,
+        snapshot: ResearchSnapshotDocument,
+        observations: list[ResearchObservation],
+    ) -> None:
+        if all(item.id != snapshot.id for item in self.snapshots):
+            self.snapshots.append(snapshot)
+        self.observations.update({item.id: item for item in observations})
+
+    async def list_research_observations(
+        self, canonical_symbol: str, *, limit: int
+    ) -> tuple[UUID | None, list[ResearchObservation]]:
+        snapshot = await self.latest_research_snapshot(canonical_symbol)
+        if snapshot is None:
+            return None, []
+        return snapshot.id, list(snapshot.observations[:limit])
+
+    async def get_research_observation(
+        self, canonical_symbol: str, observation_id: UUID
+    ) -> ResearchObservation | None:
+        item = self.observations.get(observation_id)
+        return item if item and item.symbol == canonical_symbol else None
+
+    async def acquire_research_run(
+        self,
+        *,
+        canonical_symbol: str,
+        idempotency_key: str,
+        data_version: str,
+        metric_version: str,
+        rule_set_version: str,
+        template_version: str,
+    ) -> ResearchRunLease:
+        existing = self.runs.get(idempotency_key)
+        if existing and existing["status"] != "failed":
+            return ResearchRunLease(
+                run_id=existing["id"],  # type: ignore[arg-type]
+                acquired=False,
+                status=str(existing["status"]),
+            )
+        run_id = existing["id"] if existing else uuid4()
+        self.runs[idempotency_key] = {
+            "id": run_id,
+            "symbol": canonical_symbol,
+            "status": "running",
+            "data_version": data_version,
+            "metric_version": metric_version,
+            "rule_set_version": rule_set_version,
+            "template_version": template_version,
+        }
+        return ResearchRunLease(run_id=run_id, acquired=True, status="running")  # type: ignore[arg-type]
+
+    async def finish_research_run(
+        self,
+        run_id: UUID,
+        *,
+        status: str,
+        snapshot_id: UUID | None,
+        observation_count: int,
+        error_summary: str | None,
+        finished_at: datetime,
+    ) -> None:
+        for item in self.runs.values():
+            if item["id"] == run_id:
+                item.update(
+                    status=status,
+                    snapshot_id=snapshot_id,
+                    observation_count=observation_count,
+                    error_summary=error_summary,
+                    finished_at=finished_at,
+                )
+                return
 
 
 class InMemoryWatchlistRepository:

@@ -6,6 +6,7 @@ import {
   type FinancialPeriodListResponse,
   type FundamentalMetricResponse,
   type FundamentalResearchResponse,
+  type ResearchSnapshotEnvelope,
   type StockResponse,
   type ValuationListResponse,
 } from "@zhaoniu/api-client";
@@ -16,6 +17,7 @@ import {
   CalendarDays,
   Database,
   FileText,
+  ListTree,
   RefreshCw,
   ShieldCheck,
   TriangleAlert,
@@ -36,8 +38,10 @@ import {
   parseFiniteDecimal,
   toCandles,
 } from "@/lib/market-data";
+import { assertResearchSnapshot } from "@/lib/research";
 
 import { StockChart } from "./stock-chart";
+import { ResearchChanges } from "./research-changes";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
 
@@ -45,15 +49,17 @@ const api = createZhaoniuClient({
   baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
 });
 
-type WorkspaceTab = "market" | "financials" | "valuation";
+type WorkspaceTab = "changes" | "market" | "financials" | "valuation";
 
 type ResearchData = {
   fundamentals: FundamentalResearchResponse;
   periods: FinancialPeriodListResponse;
   valuations: ValuationListResponse;
+  snapshot: ResearchSnapshotEnvelope;
 };
 
 const tabs: { code: WorkspaceTab; label: string; icon: typeof Activity }[] = [
+  { code: "changes", label: "关键变化", icon: ListTree },
   { code: "market", label: "行情", icon: Activity },
   { code: "financials", label: "财务", icon: FileText },
   { code: "valuation", label: "估值", icon: BarChart3 },
@@ -121,7 +127,7 @@ function WorkspaceTabs({
       aria-label="股票研究视图"
       className={
         mobile
-          ? "bg-paper border-ink/10 grid grid-cols-3 rounded-2xl border p-1"
+          ? "bg-paper border-ink/10 grid grid-cols-4 rounded-2xl border p-1"
           : "border-ink/10 flex gap-1 border-b"
       }
     >
@@ -255,9 +261,9 @@ function ResearchState({
       <Card className="grid min-h-72 place-items-center p-6" role="status">
         <div className="text-center">
           <RefreshCw className="text-blue mx-auto size-5 animate-spin" />
-          <p className="mt-3 font-medium">正在读取财务证据</p>
+          <p className="mt-3 font-medium">正在读取研究证据</p>
           <p className="text-slate mt-1 text-sm">
-            报表、指标与估值会一起校验。
+            变化快照、报表、指标与估值会一起校验。
           </p>
         </div>
       </Card>
@@ -267,7 +273,7 @@ function ResearchState({
     return (
       <Card className="border-risk/30 p-6" role="alert">
         <TriangleAlert className="text-risk size-5" />
-        <p className="mt-3 font-medium">财务研究数据暂时无法读取</p>
+        <p className="mt-3 font-medium">研究数据暂时无法读取</p>
         <p className="text-slate mt-1 text-sm">
           行情仍可使用。确认财报同步完成后再试一次。
         </p>
@@ -588,7 +594,7 @@ function DesktopStock({
   researchError: boolean;
   retryResearch: () => void;
 }) {
-  const [tab, setTab] = useState<WorkspaceTab>("market");
+  const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
   const candles = useMemo(() => toCandles(bars), [bars]);
   return (
@@ -617,6 +623,9 @@ function DesktopStock({
         <WorkspaceTabs value={tab} onChange={setTab} />
       </div>
       <div className="mt-5">
+        {tab === "changes" && research && (
+          <ResearchChanges symbol={stock.symbol} envelope={research.snapshot} />
+        )}
         {tab === "market" && (
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-5">
             <ChartCard candles={candles} empty={bars.length === 0} />
@@ -666,7 +675,7 @@ function MobileStock({
   researchError: boolean;
   retryResearch: () => void;
 }) {
-  const [tab, setTab] = useState<WorkspaceTab>("market");
+  const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
   const candles = useMemo(() => toCandles(bars), [bars]);
   return (
@@ -696,6 +705,13 @@ function MobileStock({
         <WorkspaceTabs value={tab} onChange={setTab} mobile />
       </div>
       <div className="mt-4">
+        {tab === "changes" && research && (
+          <ResearchChanges
+            symbol={stock.symbol}
+            envelope={research.snapshot}
+            compact
+          />
+        )}
         {tab === "market" && (
           <div className="space-y-4">
             <ChartCard candles={candles} empty={bars.length === 0} />
@@ -746,15 +762,17 @@ export function StockDetail({ symbol }: { symbol: string }) {
   const research = useQuery({
     queryKey: ["stock", symbol, "fundamentals"],
     queryFn: async () => {
-      const [fundamentals, periods, valuations] = await Promise.all([
+      const [fundamentals, periods, valuations, snapshot] = await Promise.all([
         api.getFundamentals(symbol),
         api.getFinancialPeriods(symbol),
         api.getValuations(symbol),
+        api.getResearchSnapshot(symbol),
       ]);
       return {
         fundamentals: assertFundamentals(fundamentals),
         periods: assertFinancialPeriods(periods),
         valuations: assertValuations(valuations),
+        snapshot: assertResearchSnapshot(snapshot),
       };
     },
     retry: 1,

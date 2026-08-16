@@ -90,6 +90,13 @@ METRIC_DEFINITIONS = (
         "operating_cash_flow", "经营现金流", "quality", "CNY", "经营活动产生的现金流量净额"
     ),
     MetricDefinition(
+        "operating_cash_flow_yoy",
+        "经营现金流同比",
+        "quality",
+        "percent",
+        "同口径经营活动产生的现金流量净额同比变化",
+    ),
+    MetricDefinition(
         "ocf_to_parent_net_profit", "现金利润比", "quality", "ratio", "经营现金流除以归母净利润"
     ),
     MetricDefinition(
@@ -454,8 +461,24 @@ def compute_fundamental_metrics(reports: list[FinancialReport]) -> tuple[Fundame
     )
 
     ocf = cash_flow.operating_cash_flow if cash_flow else None
+    prior_ocf = (
+        prior.cash_flow.operating_cash_flow if prior and prior.cash_flow is not None else None
+    )
     capex = cash_flow.cash_paid_for_long_term_assets if cash_flow else None
     metrics.append(_result("operating_cash_flow", latest, ocf, inputs=(latest,)))
+    metrics.append(
+        _result(
+            "operating_cash_flow_yoy",
+            latest,
+            _growth(ocf, prior_ocf) if prior_ocf is not None and prior_ocf > 0 else None,
+            status=(
+                MetricStatus.INVALID_INPUT
+                if prior_ocf is not None and prior_ocf <= 0
+                else None
+            ),
+            inputs=prior_inputs,
+        )
+    )
     metrics.append(
         _result("ocf_to_parent_net_profit", latest, _divide(ocf, parent_profit), inputs=(latest,))
     )

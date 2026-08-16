@@ -4,10 +4,15 @@ import json
 from dataclasses import asdict
 from datetime import date, datetime
 
-from zhaoniu_api.composition import build_fundamental_service, build_market_data_service
+from zhaoniu_api.composition import (
+    build_fundamental_service,
+    build_market_data_service,
+    build_research_service,
+)
 from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.market_data.service import SyncResult
+from zhaoniu_api.research.models import ResearchBuildResult
 
 
 def _date(value: str) -> date:
@@ -39,13 +44,16 @@ def _parser() -> argparse.ArgumentParser:
     compute = subcommands.add_parser("compute-fundamentals")
     compute.add_argument("symbol")
     compute.add_argument("--as-of", type=datetime.fromisoformat)
+    research = subcommands.add_parser("build-research-snapshot")
+    research.add_argument("symbol")
+    research.add_argument("--as-of", type=datetime.fromisoformat)
     return parser
 
 
 async def _run(args: argparse.Namespace) -> None:
     try:
         async with session_factory() as session:
-            result: SyncResult | FundamentalSnapshot
+            result: SyncResult | FundamentalSnapshot | ResearchBuildResult
             if args.command == "sync-stock-master":
                 result = await build_market_data_service(session).sync_stock_master(
                     force=args.force
@@ -61,6 +69,10 @@ async def _run(args: argparse.Namespace) -> None:
             elif args.command == "sync-valuations":
                 result = await build_fundamental_service(session).sync_valuations(
                     args.symbol, start=args.start, end=args.end, force=args.force
+                )
+            elif args.command == "build-research-snapshot":
+                result = await build_research_service(session).build_snapshot(
+                    args.symbol, as_of=args.as_of
                 )
             else:
                 result = await build_fundamental_service(session).compute_snapshot(

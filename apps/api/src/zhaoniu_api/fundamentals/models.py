@@ -121,6 +121,7 @@ class ValuationObservation:
     unit: str
     provider: str
     collected_at: datetime
+    id: UUID = field(default_factory=uuid4)
 
 
 @dataclass(frozen=True, slots=True)

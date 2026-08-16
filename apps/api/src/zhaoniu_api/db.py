@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
@@ -286,6 +287,40 @@ class ValuationObservationRecord(TimestampMixin, Base):
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class FundamentalMetricPointRecord(Base):
+    __tablename__ = "fundamental_metric_points"
+    __table_args__ = (
+        UniqueConstraint("input_fingerprint", name="uq_fundamental_metric_point_fingerprint"),
+        Index(
+            "ix_fundamental_metric_point_series",
+            "symbol",
+            "code",
+            "period_end",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(80), nullable=False)
+    value: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    unit: Mapped[str] = mapped_column(String(24), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    fiscal_period: Mapped[str] = mapped_column(String(12), nullable=False)
+    basis: Mapped[str] = mapped_column(String(24), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metric_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_report_ids: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    input_valuation_ids: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class WatchlistRecord(TimestampMixin, Base):
     __tablename__ = "watchlists"
     __table_args__ = (Index("ix_watchlists_user_created", "user_id", "created_at"),)
@@ -325,20 +360,120 @@ class ResearchSnapshotRecord(Base):
             "symbol",
             "data_version",
             "research_template_version",
-            "model_version",
+            "metric_version",
+            "rule_set_version",
+            "producer_version",
             name="uq_research_snapshot_identity",
         ),
+        Index("ix_research_snapshot_symbol_cutoff", "symbol", "knowledge_cutoff"),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     symbol: Mapped[str] = mapped_column(ForeignKey("stocks.symbol"), index=True)
     data_version: Mapped[str] = mapped_column(String(80))
     research_template_version: Mapped[str] = mapped_column(String(40))
-    model_version: Mapped[str] = mapped_column(String(80))
+    metric_version: Mapped[str] = mapped_column(String(40))
+    rule_set_version: Mapped[str] = mapped_column(String(80))
+    snapshot_schema_version: Mapped[str] = mapped_column(String(40))
+    producer_kind: Mapped[str] = mapped_column(String(24))
+    producer_version: Mapped[str] = mapped_column(String(80))
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    input_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB)
     structured_result: Mapped[dict[str, Any]] = mapped_column(JSONB)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class ResearchObservationRecord(Base):
+    __tablename__ = "research_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id", "content_fingerprint", name="uq_research_observation_content"
+        ),
+        Index("ix_research_observation_symbol_snapshot", "symbol", "snapshot_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    dimension: Mapped[str] = mapped_column(String(32), nullable=False)
+    observation_family: Mapped[str] = mapped_column(String(120), nullable=False)
+    observation_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    attention_level: Mapped[str] = mapped_column(String(24), nullable=False)
+    movement: Mapped[str] = mapped_column(String(24), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[str] = mapped_column(String(500), nullable=False)
+    current_period: Mapped[date] = mapped_column(Date, nullable=False)
+    comparison_periods: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    rule_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(24), nullable=False)
+    observation_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    detail_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ResearchObservationInputRecord(Base):
+    __tablename__ = "research_observation_inputs"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN metric_point_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN report_revision_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN valuation_observation_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="ck_research_observation_input_one_reference",
+        ),
+    )
+
+    observation_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_observations.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    role: Mapped[str] = mapped_column(String(48), primary_key=True)
+    ordinal: Mapped[int] = mapped_column(primary_key=True)
+    metric_point_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("fundamental_metric_points.id", ondelete="RESTRICT"),
+    )
+    report_revision_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("financial_report_revisions.id", ondelete="RESTRICT"),
+    )
+    valuation_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("valuation_observations.id", ondelete="RESTRICT"),
+    )
+
+
+class ResearchBuildRunRecord(Base):
+    __tablename__ = "research_build_runs"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False, index=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    data_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    metric_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    research_template_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("research_snapshots.id", ondelete="SET NULL")
+    )
+    observation_count: Mapped[int] = mapped_column(default=0)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class LLMCallRecord(Base):

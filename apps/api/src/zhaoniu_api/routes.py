@@ -8,10 +8,16 @@ from zhaoniu_api.dependencies import (
     CurrentUserId,
     DailyBarRepo,
     FundamentalService,
+    ResearchService,
     StockRepo,
     WatchlistRepo,
 )
 from zhaoniu_api.domain.models import Watchlist, resolve_symbol
+from zhaoniu_api.research.models import (
+    ObservationList,
+    ResearchObservation,
+    ResearchSnapshotEnvelope,
+)
 from zhaoniu_api.schemas import (
     AddWatchlistItemRequest,
     CreateWatchlistRequest,
@@ -154,6 +160,63 @@ async def get_fundamental_research(
             for code, name in _DIMENSIONS.items()
         ],
     )
+
+
+@router.get(
+    "/stocks/{symbol}/research/snapshot",
+    response_model=ResearchSnapshotEnvelope,
+    tags=["research"],
+)
+async def get_research_snapshot(
+    symbol: str,
+    stocks: StockRepo,
+    service: ResearchService,
+) -> ResearchSnapshotEnvelope:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    snapshot = await service.latest_snapshot(symbol)
+    return ResearchSnapshotEnvelope(
+        status="ready" if snapshot else "not_built",
+        snapshot=snapshot,
+    )
+
+
+@router.get(
+    "/stocks/{symbol}/research/observations",
+    response_model=ObservationList,
+    tags=["research"],
+)
+async def list_research_observations(
+    symbol: str,
+    stocks: StockRepo,
+    service: ResearchService,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ObservationList:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    return await service.list_observations(symbol, limit=limit)
+
+
+@router.get(
+    "/stocks/{symbol}/research/observations/{observation_id}",
+    response_model=ResearchObservation,
+    tags=["research"],
+)
+async def get_research_observation(
+    symbol: str,
+    observation_id: UUID,
+    stocks: StockRepo,
+    service: ResearchService,
+) -> ResearchObservation:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    observation = await service.get_observation(symbol, observation_id)
+    if observation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Research observation not found",
+        )
+    return observation
 
 
 @router.get(

@@ -14,6 +14,12 @@ export type ValuationListResponse =
   components["schemas"]["ValuationListResponse"];
 export type ValuationObservationResponse =
   components["schemas"]["ValuationObservationResponse"];
+export type ResearchSnapshotEnvelope =
+  components["schemas"]["ResearchSnapshotEnvelope"];
+export type ResearchSnapshotDocument =
+  components["schemas"]["ResearchSnapshotDocument"];
+export type ResearchObservation = components["schemas"]["ResearchObservation"];
+export type ObservationList = components["schemas"]["ObservationList"];
 
 export class ApiError extends Error {
   constructor(
@@ -85,6 +91,22 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       const query = new URLSearchParams({ metrics, limit: "4000" });
       return request<ValuationListResponse>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/valuations?${query}`,
+      );
+    },
+    getResearchSnapshot(symbol: string) {
+      return request<ResearchSnapshotEnvelope>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/research/snapshot`,
+      );
+    },
+    getResearchObservations(symbol: string, limit = 50) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      return request<ObservationList>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/research/observations?${query}`,
+      );
+    },
+    getResearchObservation(symbol: string, observationId: string) {
+      return request<ResearchObservation>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/research/observations/${encodeURIComponent(observationId)}`,
       );
     },
   };

@@ -89,6 +89,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/research/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Snapshot */
+        get: operations["get_research_snapshot_api_v1_stocks__symbol__research_snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/research/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Research Observations */
+        get: operations["list_research_observations_api_v1_stocks__symbol__research_observations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/research/observations/{observation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Observation */
+        get: operations["get_research_observation_api_v1_stocks__symbol__research_observations__observation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/financials/periods": {
         parameters: {
             query?: never;
@@ -167,6 +218,11 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /**
+         * AttentionLevel
+         * @enum {string}
+         */
+        AttentionLevel: "info" | "notice" | "important";
         /** BalanceSheetResponse */
         BalanceSheetResponse: {
             /** Cash */
@@ -190,6 +246,17 @@ export interface components {
             /** Goodwill */
             goodwill: string | null;
         };
+        /** CalculationTrace */
+        CalculationTrace: {
+            /** Method */
+            method: string;
+            /** Expression */
+            expression: string;
+            /** Change Value */
+            change_value?: string | null;
+            /** Change Unit */
+            change_unit?: string | null;
+        };
         /** CashFlowStatementResponse */
         CashFlowStatementResponse: {
             /** Operating Cash Flow */
@@ -203,6 +270,11 @@ export interface components {
             /** Ending Cash */
             ending_cash: string | null;
         };
+        /**
+         * CoverageStatus
+         * @enum {string}
+         */
+        CoverageStatus: "available" | "missing" | "not_applicable" | "insufficient_history" | "provider_unavailable";
         /** CreateWatchlistRequest */
         CreateWatchlistRequest: {
             /** Name */
@@ -253,6 +325,74 @@ export interface components {
              * Format: date-time
              */
             collected_at: string;
+        };
+        /** EvidenceMetric */
+        EvidenceMetric: {
+            /**
+             * Metric Point Id
+             * Format: uuid
+             */
+            metric_point_id: string;
+            /** Role */
+            role: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Fiscal Period */
+            fiscal_period: string;
+            /** Basis */
+            basis: string;
+            /** Value */
+            value: string | null;
+            /** Unit */
+            unit: string;
+            /** Status */
+            status: string;
+            /** Input Report Ids */
+            input_report_ids?: string[];
+            /** Input Valuation Ids */
+            input_valuation_ids?: string[];
+            /** Detail */
+            detail?: {
+                [key: string]: unknown;
+            };
+        };
+        /** EvidenceSource */
+        EvidenceSource: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Provider */
+            provider: string;
+            /** Provider Record Id */
+            provider_record_id: string;
+            /** Fiscal Period */
+            fiscal_period: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Published At Precision */
+            published_at_precision: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
         };
         /** FinancialPeriodListResponse */
         FinancialPeriodListResponse: {
@@ -406,6 +546,139 @@ export interface components {
             net_profit: string | null;
             /** Parent Net Profit */
             parent_net_profit: string | null;
+        };
+        /**
+         * Movement
+         * @enum {string}
+         */
+        Movement: "up" | "down" | "crossed_up" | "crossed_down" | "neutral";
+        /**
+         * ObservationDimension
+         * @enum {string}
+         */
+        ObservationDimension: "growth" | "profitability" | "quality" | "balance" | "valuation";
+        /** ObservationList */
+        ObservationList: {
+            /** Symbol */
+            symbol: string;
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Items */
+            items: components["schemas"]["ResearchObservation"][];
+            /** Total */
+            total: number;
+        };
+        /** ResearchCoverage */
+        ResearchCoverage: {
+            dimension: components["schemas"]["ObservationDimension"];
+            status: components["schemas"]["CoverageStatus"];
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ResearchObservation */
+        ResearchObservation: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            dimension: components["schemas"]["ObservationDimension"];
+            /** Observation Family */
+            observation_family: string;
+            /** Observation Type */
+            observation_type: string;
+            attention_level: components["schemas"]["AttentionLevel"];
+            movement: components["schemas"]["Movement"];
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Current Period
+             * Format: date
+             */
+            current_period: string;
+            /** Comparison Periods */
+            comparison_periods: string[];
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Version */
+            rule_version: string;
+            /** Observation Key */
+            observation_key: string;
+            /** Content Fingerprint */
+            content_fingerprint: string;
+            /** Evidence Metrics */
+            evidence_metrics: components["schemas"]["EvidenceMetric"][];
+            /** Evidence Sources */
+            evidence_sources: components["schemas"]["EvidenceSource"][];
+            calculation: components["schemas"]["CalculationTrace"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /** ResearchSnapshotDocument */
+        ResearchSnapshotDocument: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /** Data Version */
+            data_version: string;
+            /** Metric Version */
+            metric_version: string;
+            /** Rule Set Version */
+            rule_set_version: string;
+            /** Research Template Version */
+            research_template_version: string;
+            /** Snapshot Schema Version */
+            snapshot_schema_version: string;
+            /**
+             * Producer Kind
+             * @default deterministic
+             * @constant
+             */
+            producer_kind: "deterministic";
+            /** Producer Version */
+            producer_version: string;
+            /** Latest Financial Period */
+            latest_financial_period: string | null;
+            /** Latest Valuation Date */
+            latest_valuation_date: string | null;
+            /** Input Manifest */
+            input_manifest: {
+                [key: string]: unknown;
+            };
+            /** Coverage */
+            coverage: components["schemas"]["ResearchCoverage"][];
+            /** Observations */
+            observations: components["schemas"]["ResearchObservation"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /** ResearchSnapshotEnvelope */
+        ResearchSnapshotEnvelope: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_built";
+            snapshot?: components["schemas"]["ResearchSnapshotDocument"] | null;
         };
         /** StockResponse */
         StockResponse: {
@@ -669,6 +942,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FundamentalResearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_snapshot_api_v1_stocks__symbol__research_snapshot_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchSnapshotEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_research_observations_api_v1_stocks__symbol__research_observations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_observation_api_v1_stocks__symbol__research_observations__observation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                observation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchObservation"];
                 };
             };
             /** @description Validation Error */

@@ -283,6 +283,154 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/research/snapshot": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Get Research Snapshot",
+        "operationId": "get_research_snapshot_api_v1_stocks__symbol__research_snapshot_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchSnapshotEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/research/observations": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "List Research Observations",
+        "operationId": "list_research_observations_api_v1_stocks__symbol__research_observations_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/research/observations/{observation_id}": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Get Research Observation",
+        "operationId": "get_research_observation_api_v1_stocks__symbol__research_observations__observation_id__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Observation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchObservation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}/financials/periods": {
       "get": {
         "tags": [
@@ -593,6 +741,15 @@
         ],
         "title": "AddWatchlistItemRequest"
       },
+      "AttentionLevel": {
+        "type": "string",
+        "enum": [
+          "info",
+          "notice",
+          "important"
+        ],
+        "title": "AttentionLevel"
+      },
       "BalanceSheetResponse": {
         "properties": {
           "cash": {
@@ -731,6 +888,48 @@
         ],
         "title": "BalanceSheetResponse"
       },
+      "CalculationTrace": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "expression": {
+            "type": "string",
+            "title": "Expression"
+          },
+          "change_value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Value"
+          },
+          "change_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method",
+          "expression"
+        ],
+        "title": "CalculationTrace"
+      },
       "CashFlowStatementResponse": {
         "properties": {
           "operating_cash_flow": {
@@ -803,6 +1002,17 @@
           "ending_cash"
         ],
         "title": "CashFlowStatementResponse"
+      },
+      "CoverageStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "missing",
+          "not_applicable",
+          "insufficient_history",
+          "provider_unavailable"
+        ],
+        "title": "CoverageStatus"
       },
       "CreateWatchlistRequest": {
         "properties": {
@@ -946,6 +1156,149 @@
           "collected_at"
         ],
         "title": "DailyBarResponse"
+      },
+      "EvidenceMetric": {
+        "properties": {
+          "metric_point_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Metric Point Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "fiscal_period": {
+            "type": "string",
+            "title": "Fiscal Period"
+          },
+          "basis": {
+            "type": "string",
+            "title": "Basis"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "input_report_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Input Report Ids"
+          },
+          "input_valuation_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Input Valuation Ids"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_point_id",
+          "role",
+          "metric_code",
+          "display_name",
+          "period_end",
+          "fiscal_period",
+          "basis",
+          "value",
+          "unit",
+          "status"
+        ],
+        "title": "EvidenceMetric"
+      },
+      "EvidenceSource": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "provider_record_id": {
+            "type": "string",
+            "title": "Provider Record Id"
+          },
+          "fiscal_period": {
+            "type": "string",
+            "title": "Fiscal Period"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "published_at_precision": {
+            "type": "string",
+            "title": "Published At Precision"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "report_id",
+          "provider",
+          "provider_record_id",
+          "fiscal_period",
+          "period_end",
+          "published_at",
+          "published_at_precision",
+          "known_at"
+        ],
+        "title": "EvidenceSource"
       },
       "FinancialPeriodListResponse": {
         "properties": {
@@ -1443,6 +1796,353 @@
           "parent_net_profit"
         ],
         "title": "IncomeStatementResponse"
+      },
+      "Movement": {
+        "type": "string",
+        "enum": [
+          "up",
+          "down",
+          "crossed_up",
+          "crossed_down",
+          "neutral"
+        ],
+        "title": "Movement"
+      },
+      "ObservationDimension": {
+        "type": "string",
+        "enum": [
+          "growth",
+          "profitability",
+          "quality",
+          "balance",
+          "valuation"
+        ],
+        "title": "ObservationDimension"
+      },
+      "ObservationList": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchObservation"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "snapshot_id",
+          "items",
+          "total"
+        ],
+        "title": "ObservationList"
+      },
+      "ResearchCoverage": {
+        "properties": {
+          "dimension": {
+            "$ref": "#/components/schemas/ObservationDimension"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoverageStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dimension",
+          "status"
+        ],
+        "title": "ResearchCoverage"
+      },
+      "ResearchObservation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/ObservationDimension"
+          },
+          "observation_family": {
+            "type": "string",
+            "title": "Observation Family"
+          },
+          "observation_type": {
+            "type": "string",
+            "title": "Observation Type"
+          },
+          "attention_level": {
+            "$ref": "#/components/schemas/AttentionLevel"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/Movement"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "current_period": {
+            "type": "string",
+            "format": "date",
+            "title": "Current Period"
+          },
+          "comparison_periods": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Comparison Periods"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "rule_version": {
+            "type": "string",
+            "title": "Rule Version"
+          },
+          "observation_key": {
+            "type": "string",
+            "title": "Observation Key"
+          },
+          "content_fingerprint": {
+            "type": "string",
+            "title": "Content Fingerprint"
+          },
+          "evidence_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMetric"
+            },
+            "type": "array",
+            "title": "Evidence Metrics"
+          },
+          "evidence_sources": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceSource"
+            },
+            "type": "array",
+            "title": "Evidence Sources"
+          },
+          "calculation": {
+            "$ref": "#/components/schemas/CalculationTrace"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "dimension",
+          "observation_family",
+          "observation_type",
+          "attention_level",
+          "movement",
+          "title",
+          "summary",
+          "current_period",
+          "comparison_periods",
+          "rule_id",
+          "rule_version",
+          "observation_key",
+          "content_fingerprint",
+          "evidence_metrics",
+          "evidence_sources",
+          "calculation",
+          "generated_at"
+        ],
+        "title": "ResearchObservation"
+      },
+      "ResearchSnapshotDocument": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          },
+          "metric_version": {
+            "type": "string",
+            "title": "Metric Version"
+          },
+          "rule_set_version": {
+            "type": "string",
+            "title": "Rule Set Version"
+          },
+          "research_template_version": {
+            "type": "string",
+            "title": "Research Template Version"
+          },
+          "snapshot_schema_version": {
+            "type": "string",
+            "title": "Snapshot Schema Version"
+          },
+          "producer_kind": {
+            "type": "string",
+            "const": "deterministic",
+            "title": "Producer Kind",
+            "default": "deterministic"
+          },
+          "producer_version": {
+            "type": "string",
+            "title": "Producer Version"
+          },
+          "latest_financial_period": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Financial Period"
+          },
+          "latest_valuation_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Valuation Date"
+          },
+          "input_manifest": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input Manifest"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchCoverage"
+            },
+            "type": "array",
+            "title": "Coverage"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchObservation"
+            },
+            "type": "array",
+            "title": "Observations"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "knowledge_cutoff",
+          "data_version",
+          "metric_version",
+          "rule_set_version",
+          "research_template_version",
+          "snapshot_schema_version",
+          "producer_version",
+          "latest_financial_period",
+          "latest_valuation_date",
+          "input_manifest",
+          "coverage",
+          "observations",
+          "generated_at"
+        ],
+        "title": "ResearchSnapshotDocument"
+      },
+      "ResearchSnapshotEnvelope": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_built"
+            ],
+            "title": "Status"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchSnapshotDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ResearchSnapshotEnvelope"
       },
       "StockResponse": {
         "properties": {

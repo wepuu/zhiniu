@@ -8,6 +8,12 @@ from zhaoniu_api.fundamentals.models import (
     FundamentalSnapshot,
     ValuationObservation,
 )
+from zhaoniu_api.research.models import (
+    FundamentalMetricPoint,
+    ResearchObservation,
+    ResearchRunLease,
+    ResearchSnapshotDocument,
+)
 
 
 class StockRepository(Protocol):
@@ -84,6 +90,60 @@ class SyncRunRepository(Protocol):
         status: str,
         received_count: int,
         written_count: int,
+        error_summary: str | None,
+        finished_at: datetime,
+    ) -> None: ...
+
+
+class ResearchRepository(Protocol):
+    async def upsert_metric_points(self, points: list[FundamentalMetricPoint]) -> int: ...
+
+    async def find_snapshot(
+        self,
+        canonical_symbol: str,
+        *,
+        data_version: str,
+        metric_version: str,
+        rule_set_version: str,
+        template_version: str,
+    ) -> ResearchSnapshotDocument | None: ...
+
+    async def latest_research_snapshot(
+        self, canonical_symbol: str
+    ) -> ResearchSnapshotDocument | None: ...
+
+    async def save_research_snapshot(
+        self,
+        snapshot: ResearchSnapshotDocument,
+        observations: list[ResearchObservation],
+    ) -> None: ...
+
+    async def list_research_observations(
+        self, canonical_symbol: str, *, limit: int
+    ) -> tuple[UUID | None, list[ResearchObservation]]: ...
+
+    async def get_research_observation(
+        self, canonical_symbol: str, observation_id: UUID
+    ) -> ResearchObservation | None: ...
+
+    async def acquire_research_run(
+        self,
+        *,
+        canonical_symbol: str,
+        idempotency_key: str,
+        data_version: str,
+        metric_version: str,
+        rule_set_version: str,
+        template_version: str,
+    ) -> ResearchRunLease: ...
+
+    async def finish_research_run(
+        self,
+        run_id: UUID,
+        *,
+        status: str,
+        snapshot_id: UUID | None,
+        observation_count: int,
         error_summary: str | None,
         finished_at: datetime,
     ) -> None: ...

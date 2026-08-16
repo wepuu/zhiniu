@@ -12,6 +12,8 @@ from zhaoniu_api.infrastructure.sql_repositories import (
 from zhaoniu_api.market_data.akshare_provider import AKShareProvider
 from zhaoniu_api.market_data.normalizer import AKShareNormalizer
 from zhaoniu_api.market_data.service import MarketDataSyncService
+from zhaoniu_api.research.service import DeterministicResearchService
+from zhaoniu_api.research.sql_repository import SQLAlchemyResearchRepository
 
 
 def build_market_data_service(session: AsyncSession) -> MarketDataSyncService:
@@ -31,4 +33,12 @@ def build_fundamental_service(session: AsyncSession) -> FundamentalResearchServi
         stocks=SQLAlchemyStockRepository(session),
         fundamentals=SQLAlchemyFundamentalRepository(session),
         runs=SQLAlchemySyncRunRepository(session),
+    )
+
+
+def build_research_service(session: AsyncSession) -> DeterministicResearchService:
+    return DeterministicResearchService(
+        stocks=SQLAlchemyStockRepository(session),
+        fundamentals=SQLAlchemyFundamentalRepository(session),
+        research=SQLAlchemyResearchRepository(session),
     )

@@ -694,6 +694,7 @@ class SQLAlchemyFundamentalRepository:
                 unit=row.unit,
                 provider=row.provider,
                 collected_at=row.collected_at,
+                id=row.id,
             )
             for row in reversed(rows)
         ]

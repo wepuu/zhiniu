@@ -1,4 +1,4 @@
-# Phase 2 Data Model
+# Phase 3 Data Model
 
 ## Entity relationships
 
@@ -11,6 +11,10 @@ FinancialReportRevision 1--0..1 CashFlowStatementFact
 Stock 1--* FundamentalSnapshot 1--* FundamentalMetricValue
 Stock 1--* ValuationObservation
 Stock 1--* DataSyncRun
+Stock 1--* FundamentalMetricPoint
+Stock 1--* ResearchSnapshot 1--* ResearchObservation
+ResearchObservation 1--* ResearchObservationInput
+Stock 1--* ResearchBuildRun
 ```
 
 Shared market and financial facts are stored once globally. User-owned Watchlist records remain
@@ -43,3 +47,19 @@ standalone quarters. Balance-sheet facts are always point-in-time and are never 
 
 The Phase 1 stock and daily-bar tables remain unchanged except for `stocks.issuer_type`. Bank
 classification is derived from material bank-specific balance-sheet facts, not ticker allowlists.
+
+## Implemented Phase 3 tables
+
+- `fundamental_metric_points`: addressable historical formula outputs keyed by symbol, metric,
+  period, basis, metric version and input fingerprint. It stores report/valuation reference IDs,
+  not duplicated source facts.
+- `research_snapshots`: immutable structured result plus data, metric, rules, template, schema and
+  producer versions. Equivalent snapshots have one deterministic identity.
+- `research_observations`: queryable card fields plus the exact immutable observation payload.
+- `research_observation_inputs`: normalized links from an observation to metric points, report
+  revisions or valuation observations. A check constraint requires exactly one referenced input.
+- `research_build_runs`: idempotency key, versions, status, redacted error and output snapshot.
+
+Research observations are global shared data. No `user_id` is added because no private user input
+participates in their construction. Future personalized annotations must be separate user-owned
+records and must include `user_id`.

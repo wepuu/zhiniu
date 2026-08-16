@@ -1,6 +1,6 @@
 import asyncio
 import os
-from datetime import date
+from datetime import date, datetime
 
 from celery import Celery  # type: ignore[import-untyped]
 
@@ -113,3 +113,33 @@ def sync_valuations(
 ) -> dict[str, object]:
     """Idempotent historical-valuation sync using the shared application service."""
     return asyncio.run(_sync_valuations(symbol, start, end))
+
+
+async def _build_research_snapshot(symbol: str, as_of: str | None) -> dict[str, object]:
+    from zhaoniu_api.composition import build_research_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_research_service(session).build_snapshot(
+            symbol,
+            as_of=datetime.fromisoformat(as_of) if as_of else None,
+        )
+        return {
+            "status": result.status,
+            "snapshot_id": str(result.snapshot_id),
+            "data_version": result.data_version,
+            "observation_count": result.observation_count,
+            "idempotency_key": result.idempotency_key,
+        }
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    name="research.build_snapshot",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def build_research_snapshot(symbol: str, as_of: str | None = None) -> dict[str, object]:
+    """Build an immutable deterministic research snapshot."""
+    return asyncio.run(_build_research_snapshot(symbol, as_of))
