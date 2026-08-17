@@ -4,7 +4,12 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from zhaoniu_api.composition import build_fundamental_service, build_research_service
+from zhaoniu_api.ai_research.service import AIResearchService
+from zhaoniu_api.composition import (
+    build_ai_research_service,
+    build_fundamental_service,
+    build_research_service,
+)
 from zhaoniu_api.database import get_session
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
 from zhaoniu_api.infrastructure.mock_repositories import InMemoryWatchlistRepository
@@ -50,9 +55,16 @@ def get_research_service(
     return build_research_service(session)
 
 
+def get_ai_research_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AIResearchService:
+    return build_ai_research_service(session)
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 StockRepo = Annotated[StockRepository, Depends(get_stock_repository)]
 DailyBarRepo = Annotated[DailyBarRepository, Depends(get_daily_bar_repository)]
 WatchlistRepo = Annotated[WatchlistRepository, Depends(get_watchlist_repository)]
 FundamentalService = Annotated[FundamentalResearchService, Depends(get_fundamental_service)]
 ResearchService = Annotated[DeterministicResearchService, Depends(get_research_service)]
+AIResearchServiceDependency = Annotated[AIResearchService, Depends(get_ai_research_service)]

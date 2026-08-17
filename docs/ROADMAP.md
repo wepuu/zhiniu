@@ -16,26 +16,28 @@ Immutable financial-report revisions, disclosure-aware availability, typed state
 deterministic fundamental metrics, historical valuation observations, applicability states,
 research APIs, and separately composed desktop/mobile financial workspaces.
 
-## Phase 3 — Change Engine, Evidence & Research Snapshots (current)
+## Phase 3 — Change Engine, Evidence & Research Snapshots
 
 Historical metric points, versioned deterministic change rules, evidence references, immutable
 research snapshots, queryable build runs, stock research APIs, and desktop/mobile evidence flows.
 
-## Phase 4 — Multi-user Watchlist & Auth
+## Phase 4 — Multi-provider AI Stock Health Research (current)
+
+Evidence-bound structured stock-health interpretation, deterministic context selection, stable
+citations, LiteLLM SDK routing, automatic failover, immutable outputs, call audit, and separately
+composed desktop/mobile AI research states. LLMs never calculate or restate financial numbers.
+
+## Phase 5 — Multi-user Watchlist & Auth
 
 Email/password sessions, ownership enforcement, persisted watchlist groups, preferences, quotas,
 and a personalized research feed. The Phase 0 in-memory watchlist is replaced here.
 
-## Phase 5 — Research Expansion
+## Phase 6 — Research Expansion
 
 Licensed financial provider evaluation, bank/financial templates, industry taxonomy and
-benchmarks, trading calendar, company actions, report comparison, richer deterministic rules,
-official disclosure-document ingestion, and explicit episode lifecycle.
-
-## Phase 6 — AI Research
-
-LLM gateway adapters, structured stock health research, evidence-linked Q&A, task progress,
-shared snapshot deduplication, usage audit, and safety evaluation. LLMs never calculate metrics.
+benchmarks, trading calendar, company actions, report-specific deterministic snapshots, period
+report interpretation, richer deterministic rules, official disclosure-document ingestion, and
+explicit episode lifecycle.
 
 ## Phase 7 — Event Engine
 

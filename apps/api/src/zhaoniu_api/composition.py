@@ -1,5 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
+from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
+from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
+from zhaoniu_api.config import get_settings
 from zhaoniu_api.fundamentals.akshare_provider import AKShareFinancialProvider
 from zhaoniu_api.fundamentals.normalizer import AKShareFinancialNormalizer
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
@@ -41,4 +45,21 @@ def build_research_service(session: AsyncSession) -> DeterministicResearchServic
         stocks=SQLAlchemyStockRepository(session),
         fundamentals=SQLAlchemyFundamentalRepository(session),
         research=SQLAlchemyResearchRepository(session),
+    )
+
+
+def build_ai_research_service(session: AsyncSession) -> AIResearchService:
+    settings = get_settings()
+    return AIResearchService(
+        stocks=SQLAlchemyStockRepository(session),
+        research=SQLAlchemyResearchRepository(session),
+        ai_research=SQLAlchemyAIResearchRepository(session),
+        gateway=LiteLLMGateway(),
+        options=AIResearchOptions(
+            enabled=settings.llm_enabled,
+            model_chain=settings.llm_models,
+            max_attempts=settings.llm_max_attempts,
+            per_model_timeout_seconds=settings.llm_per_model_timeout_seconds,
+            run_deadline_seconds=settings.llm_run_deadline_seconds,
+        ),
     )

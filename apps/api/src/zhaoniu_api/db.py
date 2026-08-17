@@ -476,18 +476,105 @@ class ResearchBuildRunRecord(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class AIResearchRunRecord(Base):
+    __tablename__ = "ai_research_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_ai_research_run_idempotency"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'succeeded', 'failed')",
+            name="ck_ai_research_run_status",
+        ),
+        Index("ix_ai_research_run_symbol_started", "symbol", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    research_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    context_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    context_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_route_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    route_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_attempt: Mapped[int] = mapped_column(default=0, nullable=False)
+    retry_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AIResearchOutputRecord(Base):
+    __tablename__ = "ai_research_outputs"
+    __table_args__ = (
+        UniqueConstraint("run_id", name="uq_ai_research_output_run"),
+        UniqueConstraint("idempotency_key", name="uq_ai_research_output_idempotency"),
+        Index("ix_ai_research_output_symbol_generated", "symbol", "generated_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ai_research_runs.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    research_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    model: Mapped[str] = mapped_column(String(160), nullable=False)
+    context_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    context_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_route_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    route_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    structured_result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    evidence_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    coverage_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class LLMCallRecord(Base):
     __tablename__ = "llm_calls"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    ai_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ai_research_runs.id", ondelete="CASCADE"), index=True
+    )
+    attempt_index: Mapped[int | None]
     task_type: Mapped[str] = mapped_column(String(80), index=True)
     provider: Mapped[str] = mapped_column(String(40))
-    model: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
     input_tokens: Mapped[int]
     output_tokens: Mapped[int]
     latency_ms: Mapped[int]
     cost_microunits: Mapped[int | None]
     status: Mapped[str] = mapped_column(String(32), index=True)
+    finish_reason: Mapped[str | None] = mapped_column(String(80))
+    error_code: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

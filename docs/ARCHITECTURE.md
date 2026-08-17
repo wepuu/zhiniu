@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 3 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 4 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -12,7 +12,7 @@ Next.js web -> FastAPI modular monolith -> PostgreSQL
                     |                       canonical truth
                     +-> Redis <-> Celery workers
                     +-> provider adapters -> external vendors
-                    +-> future LLM gateway -> model providers
+                    +-> LiteLLM SDK gateway -> configured model providers
 ```
 
 ## Frontend
@@ -46,7 +46,8 @@ The LLM boundary is not involved in any financial calculation.
 - Derived metrics use version-controlled Python formulas.
 - Fundamental metric points make historical formula outputs addressable and evidence-linkable.
 - Research snapshots freeze a data version, metric version, rule-set version and structured result.
-- Future AI research receives metrics and evidence; Markdown is presentation, not the contract.
+- AI research receives one immutable research snapshot, emits a versioned Pydantic document and
+  persists its evidence map. It cannot query provider payloads or user records.
 
 PostgreSQL is the system of record. Redis is limited to task coordination, bounded caching, rate
 limiting and locks; it is not durable business truth.
@@ -65,6 +66,12 @@ syncs use deterministic idempotency keys, bounded retries, queryable sync runs a
 PostgreSQL Upserts. Research snapshot jobs deduplicate by symbol, data version, metric version,
 rule-set version and template version; stale build leases may be reclaimed after 30 minutes.
 Celery Beat is intentionally deferred.
+
+AI jobs use the same application service from CLI and Celery. An atomic idempotency key covers the
+snapshot, canonical context, prompt, schema and ordered model route. Each configured model is
+attempted at most once, calls have bounded timeouts, and only a fully schema/citation/safety-valid
+result is persisted. An expired 30-minute lease may be reclaimed; a failed run requires explicit
+retry. API routes remain read-only and cannot trigger generation.
 
 ## Shared versus user data
 
@@ -85,7 +92,9 @@ remain the next product phase.
 - `change_engine`: implemented inside `research` until an extracted package is justified.
 - `event_engine`: future announcement/news canonicalization.
 - `evidence_engine`: current typed evidence references; future disclosure-document retrieval.
-- `llm`: provider-neutral structured generation and usage audit.
+- `ai_research`: snapshot-only context, prompt, validation, orchestration, immutable outputs and
+  API read model.
+- `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See
 `OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.

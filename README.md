@@ -3,9 +3,9 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 3：在真实 A 股行情、不可变财报和确定性基本面指标之上，增加了
-历史指标点、版本化变化规则、可追溯证据、不可变研究快照和分别设计的桌面/移动证据流。
-AKShare 仍仅用于开发和技术评估；Watchlist、正式认证、AI 研究和支付尚未生产化。
+当前仓库已完成 Phase 4：在不可变研究快照之上增加结构化 AI 股票体检、多模型自动
+fallback、稳定证据引用、不可变输出、调用审计和分别设计的桌面/移动 AI 研究体验。
+AKShare 仍仅用于开发和技术评估；Watchlist、正式认证、AI 问股和支付尚未生产化。
 
 ## Repository map
 
@@ -59,7 +59,12 @@ uv run python -m zhaoniu_api.cli sync-financial-statements 600519 --start-year 2
 uv run python -m zhaoniu_api.cli sync-valuations 600519 --start 2023-08-16
 uv run python -m zhaoniu_api.cli compute-fundamentals 600519
 uv run python -m zhaoniu_api.cli build-research-snapshot 600519
+uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519
+uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519 --retry-failed
 ```
+
+AI 默认为关闭。启用前显式配置 `LLM_ENABLED=true`、有序 `LLM_MODEL_CHAIN` 和对应
+Provider API Key；模型名没有非禁用默认值。密钥不得进入日志、数据库或版本控制。
 
 AKShare is not approved here for commercial display or redistribution. Read
 `docs/DATA_SOURCE_POLICY.md` and `docs/FINANCIAL_DATA_SOURCE_DECISION.md` before using the data
@@ -99,6 +104,7 @@ GET /api/v1/stocks/{symbol}/valuations
 GET /api/v1/stocks/{symbol}/research/snapshot
 GET /api/v1/stocks/{symbol}/research/observations
 GET /api/v1/stocks/{symbol}/research/observations/{observation_id}
+GET /api/v1/stocks/{symbol}/ai-research
 ```
 
 Watchlist endpoints still use a fixed demo identity and in-memory repository. This is an explicit
@@ -106,5 +112,5 @@ seam, not production authentication or persistence.
 
 Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [Financial metrics](docs/FINANCIAL_METRICS.md), [Change rules](docs/CHANGE_RULES.md),
-[Research snapshots](docs/RESEARCH_SNAPSHOT.md), and [Engineering rules](AGENTS.md) before
-extending the system.
+[Research snapshots](docs/RESEARCH_SNAPSHOT.md), [AI research](docs/AI_RESEARCH.md),
+[LLM policy](docs/LLM_POLICY.md), and [Engineering rules](AGENTS.md) before extending the system.

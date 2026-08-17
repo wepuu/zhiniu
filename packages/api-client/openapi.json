@@ -325,6 +325,48 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/ai-research": {
+      "get": {
+        "tags": [
+          "ai-research"
+        ],
+        "summary": "Get Ai Research",
+        "operationId": "get_ai_research_api_v1_stocks__symbol__ai_research_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResearchEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}/research/observations": {
       "get": {
         "tags": [
@@ -726,6 +768,238 @@
   },
   "components": {
     "schemas": {
+      "AIAttentionItem": {
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/CitedText"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/CitedText"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "interpretation"
+        ],
+        "title": "AIAttentionItem"
+      },
+      "AIResearchDimension": {
+        "properties": {
+          "dimension": {
+            "$ref": "#/components/schemas/ObservationDimension"
+          },
+          "interpretation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dimension",
+          "interpretation"
+        ],
+        "title": "AIResearchDimension"
+      },
+      "AIResearchEnvelope": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AIResearchStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AIResearchReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "stale"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AIResearchOutputDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AIResearchEnvelope"
+      },
+      "AIResearchOutputDocument": {
+        "properties": {
+          "output_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Output Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Snapshot Id"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "research_type": {
+            "type": "string",
+            "const": "stock_health",
+            "title": "Research Type",
+            "default": "stock_health"
+          },
+          "ai_generated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ai Generated",
+            "default": true
+          },
+          "provider_display_name": {
+            "type": "string",
+            "title": "Provider Display Name"
+          },
+          "model_display_name": {
+            "type": "string",
+            "title": "Model Display Name"
+          },
+          "context_version": {
+            "type": "string",
+            "title": "Context Version"
+          },
+          "context_hash": {
+            "type": "string",
+            "title": "Context Hash"
+          },
+          "prompt_version": {
+            "type": "string",
+            "title": "Prompt Version"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "output_schema_version": {
+            "type": "string",
+            "title": "Output Schema Version"
+          },
+          "model_route_version": {
+            "type": "string",
+            "title": "Model Route Version"
+          },
+          "route_hash": {
+            "type": "string",
+            "title": "Route Hash"
+          },
+          "content": {
+            "$ref": "#/components/schemas/StockHealthResearchV1"
+          },
+          "evidence_index": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceIndexEntry"
+            },
+            "type": "array",
+            "title": "Evidence Index"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchCoverage"
+            },
+            "type": "array",
+            "title": "Coverage"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "output_id",
+          "run_id",
+          "symbol",
+          "snapshot_id",
+          "knowledge_cutoff",
+          "provider_display_name",
+          "model_display_name",
+          "context_version",
+          "context_hash",
+          "prompt_version",
+          "prompt_hash",
+          "output_schema_version",
+          "model_route_version",
+          "route_hash",
+          "content",
+          "evidence_index",
+          "coverage",
+          "generated_at"
+        ],
+        "title": "AIResearchOutputDocument"
+      },
+      "AIResearchReason": {
+        "type": "string",
+        "enum": [
+          "deterministic_snapshot_missing",
+          "unsupported_issuer_type",
+          "llm_disabled",
+          "generation_failed"
+        ],
+        "title": "AIResearchReason"
+      },
+      "AIResearchStatus": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "not_built",
+          "building",
+          "failed",
+          "disabled",
+          "unsupported"
+        ],
+        "title": "AIResearchStatus"
+      },
       "AddWatchlistItemRequest": {
         "properties": {
           "symbol": {
@@ -1003,6 +1277,32 @@
         ],
         "title": "CashFlowStatementResponse"
       },
+      "CitedText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "evidence_refs"
+        ],
+        "title": "CitedText"
+      },
       "CoverageStatus": {
         "type": "string",
         "enum": [
@@ -1156,6 +1456,67 @@
           "collected_at"
         ],
         "title": "DailyBarResponse"
+      },
+      "EvidenceIndexEntry": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "pattern": "^EV-[A-F0-9]{12}$",
+            "title": "Evidence Id"
+          },
+          "observation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Observation Id"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/ObservationDimension"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "current_period": {
+            "type": "string",
+            "format": "date",
+            "title": "Current Period"
+          },
+          "evidence_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMetric"
+            },
+            "type": "array",
+            "title": "Evidence Metrics"
+          },
+          "evidence_sources": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceSource"
+            },
+            "type": "array",
+            "title": "Evidence Sources"
+          },
+          "calculation": {
+            "$ref": "#/components/schemas/CalculationTrace"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "observation_id",
+          "dimension",
+          "title",
+          "summary",
+          "current_period",
+          "evidence_metrics",
+          "evidence_sources",
+          "calculation"
+        ],
+        "title": "EvidenceIndexEntry"
       },
       "EvidenceMetric": {
         "properties": {
@@ -2143,6 +2504,53 @@
           "status"
         ],
         "title": "ResearchSnapshotEnvelope"
+      },
+      "StockHealthResearchV1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "stock-health-v1",
+            "title": "Schema Version",
+            "default": "stock-health-v1"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/CitedText"
+          },
+          "executive_summary": {
+            "items": {
+              "$ref": "#/components/schemas/CitedText"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Executive Summary"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/AIResearchDimension"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Dimensions"
+          },
+          "attention_items": {
+            "items": {
+              "$ref": "#/components/schemas/AIAttentionItem"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Attention Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "headline",
+          "executive_summary",
+          "dimensions"
+        ],
+        "title": "StockHealthResearchV1"
       },
       "StockResponse": {
         "properties": {

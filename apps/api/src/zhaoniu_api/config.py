@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,15 @@ class Settings(BaseSettings):
     auth_cookie_name: str = "zhaoniu_session"
     auth_cookie_secure: bool = False
     market_data_provider: Literal["akshare"] = "akshare"
+    llm_enabled: bool = False
+    llm_model_chain: str = ""
+    llm_max_attempts: int = Field(default=4, ge=1, le=4)
+    llm_per_model_timeout_seconds: float = Field(default=75, gt=0, le=180)
+    llm_run_deadline_seconds: float = Field(default=240, gt=0, le=600)
+
+    @property
+    def llm_models(self) -> tuple[str, ...]:
+        return tuple(item.strip() for item in self.llm_model_chain.split(",") if item.strip())
 
 
 @lru_cache

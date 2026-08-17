@@ -20,6 +20,13 @@ export type ResearchSnapshotDocument =
   components["schemas"]["ResearchSnapshotDocument"];
 export type ResearchObservation = components["schemas"]["ResearchObservation"];
 export type ObservationList = components["schemas"]["ObservationList"];
+export type AIResearchEnvelope = components["schemas"]["AIResearchEnvelope"];
+export type AIResearchOutputDocument =
+  components["schemas"]["AIResearchOutputDocument"];
+export type StockHealthResearchV1 =
+  components["schemas"]["StockHealthResearchV1"];
+export type EvidenceIndexEntry = components["schemas"]["EvidenceIndexEntry"];
+export type CitedText = components["schemas"]["CitedText"];
 
 export class ApiError extends Error {
   constructor(
@@ -107,6 +114,11 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getResearchObservation(symbol: string, observationId: string) {
       return request<ResearchObservation>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/research/observations/${encodeURIComponent(observationId)}`,
+      );
+    },
+    getAIResearch(symbol: string) {
+      return request<AIResearchEnvelope>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/ai-research`,
       );
     },
   };

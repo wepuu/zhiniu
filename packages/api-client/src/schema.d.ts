@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/ai-research": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ai Research */
+        get: operations["get_ai_research_api_v1_stocks__symbol__ai_research_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/research/observations": {
         parameters: {
             query?: never;
@@ -213,6 +230,99 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AIAttentionItem */
+        AIAttentionItem: {
+            title: components["schemas"]["CitedText"];
+            interpretation: components["schemas"]["CitedText"];
+        };
+        /** AIResearchDimension */
+        AIResearchDimension: {
+            dimension: components["schemas"]["ObservationDimension"];
+            interpretation: components["schemas"]["CitedText"] | null;
+        };
+        /** AIResearchEnvelope */
+        AIResearchEnvelope: {
+            status: components["schemas"]["AIResearchStatus"];
+            reason?: components["schemas"]["AIResearchReason"] | null;
+            /** Freshness */
+            freshness?: ("current" | "stale") | null;
+            output?: components["schemas"]["AIResearchOutputDocument"] | null;
+        };
+        /** AIResearchOutputDocument */
+        AIResearchOutputDocument: {
+            /**
+             * Output Id
+             * Format: uuid
+             */
+            output_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /**
+             * Research Type
+             * @default stock_health
+             * @constant
+             */
+            research_type: "stock_health";
+            /**
+             * Ai Generated
+             * @default true
+             * @constant
+             */
+            ai_generated: true;
+            /** Provider Display Name */
+            provider_display_name: string;
+            /** Model Display Name */
+            model_display_name: string;
+            /** Context Version */
+            context_version: string;
+            /** Context Hash */
+            context_hash: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Prompt Hash */
+            prompt_hash: string;
+            /** Output Schema Version */
+            output_schema_version: string;
+            /** Model Route Version */
+            model_route_version: string;
+            /** Route Hash */
+            route_hash: string;
+            content: components["schemas"]["StockHealthResearchV1"];
+            /** Evidence Index */
+            evidence_index: components["schemas"]["EvidenceIndexEntry"][];
+            /** Coverage */
+            coverage: components["schemas"]["ResearchCoverage"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /**
+         * AIResearchReason
+         * @enum {string}
+         */
+        AIResearchReason: "deterministic_snapshot_missing" | "unsupported_issuer_type" | "llm_disabled" | "generation_failed";
+        /**
+         * AIResearchStatus
+         * @enum {string}
+         */
+        AIResearchStatus: "ready" | "not_built" | "building" | "failed" | "disabled" | "unsupported";
         /** AddWatchlistItemRequest */
         AddWatchlistItemRequest: {
             /** Symbol */
@@ -270,6 +380,13 @@ export interface components {
             /** Ending Cash */
             ending_cash: string | null;
         };
+        /** CitedText */
+        CitedText: {
+            /** Text */
+            text: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
         /**
          * CoverageStatus
          * @enum {string}
@@ -325,6 +442,31 @@ export interface components {
              * Format: date-time
              */
             collected_at: string;
+        };
+        /** EvidenceIndexEntry */
+        EvidenceIndexEntry: {
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Observation Id
+             * Format: uuid
+             */
+            observation_id: string;
+            dimension: components["schemas"]["ObservationDimension"];
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Current Period
+             * Format: date
+             */
+            current_period: string;
+            /** Evidence Metrics */
+            evidence_metrics: components["schemas"]["EvidenceMetric"][];
+            /** Evidence Sources */
+            evidence_sources: components["schemas"]["EvidenceSource"][];
+            calculation: components["schemas"]["CalculationTrace"];
         };
         /** EvidenceMetric */
         EvidenceMetric: {
@@ -680,6 +822,22 @@ export interface components {
             status: "ready" | "not_built";
             snapshot?: components["schemas"]["ResearchSnapshotDocument"] | null;
         };
+        /** StockHealthResearchV1 */
+        StockHealthResearchV1: {
+            /**
+             * Schema Version
+             * @default stock-health-v1
+             * @constant
+             */
+            schema_version: "stock-health-v1";
+            headline: components["schemas"]["CitedText"];
+            /** Executive Summary */
+            executive_summary: components["schemas"]["CitedText"][];
+            /** Dimensions */
+            dimensions: components["schemas"]["AIResearchDimension"][];
+            /** Attention Items */
+            attention_items?: components["schemas"]["AIAttentionItem"][];
+        };
         /** StockResponse */
         StockResponse: {
             /** Symbol */
@@ -973,6 +1131,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchSnapshotEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ai_research_api_v1_stocks__symbol__ai_research_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIResearchEnvelope"];
                 };
             };
             /** @description Validation Error */

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Providers } from "./providers";
@@ -176,21 +176,99 @@ const snapshot = {
   },
 };
 
+const aiResearch = {
+  status: "ready",
+  reason: null,
+  freshness: "current",
+  output: {
+    output_id: "00000000-0000-4000-8000-000000000030",
+    run_id: "00000000-0000-4000-8000-000000000031",
+    symbol: "600519.SH",
+    snapshot_id: snapshot.snapshot.id,
+    knowledge_cutoff: snapshot.snapshot.knowledge_cutoff,
+    research_type: "stock_health",
+    ai_generated: true,
+    provider_display_name: "DeepSeek",
+    model_display_name: "research-model",
+    context_version: "ai-context-v1",
+    context_hash: "context-hash",
+    prompt_version: "stock-health-prompt-v1",
+    prompt_hash: "prompt-hash",
+    output_schema_version: "stock-health-v1",
+    model_route_version: "model-route-v1",
+    route_hash: "route-hash",
+    content: {
+      schema_version: "stock-health-v1",
+      headline: {
+        text: "收入动能值得结合后续披露持续核对",
+        evidence_refs: ["EV-FIXTURE0001"],
+      },
+      executive_summary: [
+        {
+          text: "现有证据显示收入动能发生连续变化。",
+          evidence_refs: ["EV-FIXTURE0001"],
+        },
+        {
+          text: "该变化仍需结合后续报告确认持续性。",
+          evidence_refs: ["EV-FIXTURE0001"],
+        },
+      ],
+      dimensions: [
+        {
+          dimension: "growth",
+          interpretation: {
+            text: "成长维度出现连续变化，后续披露可用于核对。",
+            evidence_refs: ["EV-FIXTURE0001"],
+          },
+        },
+        { dimension: "profitability", interpretation: null },
+        { dimension: "quality", interpretation: null },
+        { dimension: "balance", interpretation: null },
+        { dimension: "valuation", interpretation: null },
+      ],
+      attention_items: [],
+    },
+    evidence_index: [
+      {
+        evidence_id: "EV-FIXTURE0001",
+        observation_id: observation.id,
+        dimension: "growth",
+        title: observation.title,
+        summary: observation.summary,
+        current_period: observation.current_period,
+        evidence_metrics: observation.evidence_metrics,
+        evidence_sources: observation.evidence_sources,
+        calculation: observation.calculation,
+      },
+    ],
+    coverage: [
+      { dimension: "growth", status: "available", reason: null },
+      { dimension: "profitability", status: "missing", reason: "证据不足" },
+      { dimension: "quality", status: "missing", reason: "证据不足" },
+      { dimension: "balance", status: "missing", reason: "证据不足" },
+      { dimension: "valuation", status: "missing", reason: "证据不足" },
+    ],
+    generated_at: "2026-08-16T01:00:00Z",
+  },
+};
+
 function successfulFetch(input: RequestInfo | URL) {
   const url = String(input);
   const body = url.includes("daily-bars")
     ? emptyBars
-    : url.includes("research/observations/")
-      ? observation
-      : url.includes("research/snapshot")
-        ? snapshot
-        : url.includes("research/fundamentals")
-          ? fundamentals
-          : url.includes("financials/periods")
-            ? periods
-            : url.includes("valuations")
-              ? valuations
-              : stock;
+    : url.includes("ai-research")
+      ? aiResearch
+      : url.includes("research/observations/")
+        ? observation
+        : url.includes("research/snapshot")
+          ? snapshot
+          : url.includes("research/fundamentals")
+            ? fundamentals
+            : url.includes("financials/periods")
+              ? periods
+              : url.includes("valuations")
+                ? valuations
+                : stock;
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status: 200,
@@ -200,6 +278,7 @@ function successfulFetch(input: RequestInfo | URL) {
 }
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
 });
 
@@ -274,6 +353,64 @@ describe("StockDetail states and responsive compositions", () => {
     expect(
       await screen.findByRole("dialog", { name: "变化证据详情" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders AI research with explicit labels and traceable evidence", async () => {
+    vi.stubGlobal("fetch", vi.fn(successfulFetch));
+    render(
+      <Providers>
+        <StockDetail symbol="600519" />
+      </Providers>,
+    );
+    expect(await screen.findAllByRole("tab", { name: "研究" })).toHaveLength(2);
+    const aiTabs = screen.getAllByRole("tab", { name: "AI 解读" });
+    fireEvent.click(aiTabs[0]);
+    fireEvent.click(aiTabs[1]);
+    expect(screen.getAllByText("AI 生成内容")).toHaveLength(2);
+    expect(
+      screen.getAllByText("收入动能值得结合后续披露持续核对"),
+    ).toHaveLength(2);
+    const citations = screen.getAllByRole("button", {
+      name: "查看 AI 引用证据：收入单季增速连续改善",
+    });
+    fireEvent.click(citations[0]);
+    expect(
+      await screen.findByRole("dialog", { name: "变化证据详情" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows unsupported AI state without a generation action", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        if (String(input).includes("ai-research")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                status: "unsupported",
+                reason: "unsupported_issuer_type",
+                freshness: null,
+                output: null,
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        return successfulFetch(input);
+      }),
+    );
+    render(
+      <Providers>
+        <StockDetail symbol="000001" />
+      </Providers>,
+    );
+    const aiTabs = await screen.findAllByRole("tab", { name: "AI 解读" });
+    fireEvent.click(aiTabs[0]);
+    fireEvent.click(aiTabs[1]);
+    expect(screen.getAllByText("当前发行人模板暂不支持")).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: /生成|重算/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders traceable financial metrics in both compositions", async () => {

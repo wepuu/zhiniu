@@ -2,6 +2,12 @@ from datetime import date, datetime
 from typing import Protocol
 from uuid import UUID
 
+from zhaoniu_api.ai_research.models import (
+    AIResearchOutputDocument,
+    AIResearchRunLease,
+    AIResearchRunView,
+    LLMCallAudit,
+)
 from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist
 from zhaoniu_api.fundamentals.models import (
     FinancialReport,
@@ -148,6 +154,48 @@ class ResearchRepository(Protocol):
         finished_at: datetime,
     ) -> None: ...
 
+
+class AIResearchRepository(Protocol):
+    async def find_output_by_key(
+        self, idempotency_key: str
+    ) -> AIResearchOutputDocument | None: ...
+
+    async def latest_output(
+        self, canonical_symbol: str
+    ) -> AIResearchOutputDocument | None: ...
+
+    async def latest_run(self, canonical_symbol: str) -> AIResearchRunView | None: ...
+
+    async def acquire_run(
+        self,
+        *,
+        canonical_symbol: str,
+        snapshot_id: UUID,
+        idempotency_key: str,
+        context_version: str,
+        context_hash: str,
+        prompt_version: str,
+        prompt_hash: str,
+        output_schema_version: str,
+        model_route_version: str,
+        route_hash: str,
+        retry_failed: bool,
+    ) -> AIResearchRunLease: ...
+
+    async def record_call(self, audit: LLMCallAudit) -> None: ...
+
+    async def complete_run(
+        self, output: AIResearchOutputDocument, *, idempotency_key: str
+    ) -> None: ...
+
+    async def fail_run(
+        self,
+        run_id: UUID,
+        *,
+        error_code: str,
+        error_summary: str,
+        finished_at: datetime,
+    ) -> None: ...
 
 class WatchlistRepository(Protocol):
     async def list_for_user(self, user_id: UUID) -> list[Watchlist]: ...

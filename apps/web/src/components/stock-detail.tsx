@@ -2,6 +2,7 @@
 
 import {
   createZhaoniuClient,
+  type AIResearchEnvelope,
   type DailyBarResponse,
   type FinancialPeriodListResponse,
   type FundamentalMetricResponse,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { assertAIResearch } from "@/lib/ai-research";
 import {
   assertFinancialPeriods,
   assertFundamentals,
@@ -41,6 +43,7 @@ import {
 import { assertResearchSnapshot } from "@/lib/research";
 
 import { StockChart } from "./stock-chart";
+import { AIResearchPanel } from "./ai-research-panel";
 import { ResearchChanges } from "./research-changes";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
@@ -59,7 +62,7 @@ type ResearchData = {
 };
 
 const tabs: { code: WorkspaceTab; label: string; icon: typeof Activity }[] = [
-  { code: "changes", label: "关键变化", icon: ListTree },
+  { code: "changes", label: "研究", icon: ListTree },
   { code: "market", label: "行情", icon: Activity },
   { code: "financials", label: "财务", icon: FileText },
   { code: "valuation", label: "估值", icon: BarChart3 },
@@ -71,6 +74,83 @@ function formatDecimal(value: string | null | undefined, digits = 2) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(parseFiniteDecimal(value, "display value"));
+}
+
+function ResearchWorkspace({
+  symbol,
+  snapshot,
+  ai,
+  aiPending,
+  aiError,
+  retryAI,
+  compact = false,
+}: {
+  symbol: string;
+  snapshot: ResearchSnapshotEnvelope;
+  ai?: AIResearchEnvelope;
+  aiPending: boolean;
+  aiError: boolean;
+  retryAI: () => void;
+  compact?: boolean;
+}) {
+  const [view, setView] = useState<"changes" | "ai">("changes");
+  return (
+    <div>
+      <div
+        className="border-ink/10 bg-paper mb-4 inline-flex rounded-xl border p-1"
+        role="tablist"
+        aria-label="研究内容"
+      >
+        {[
+          ["changes", "关键变化"],
+          ["ai", "AI 解读"],
+        ].map(([code, label]) => (
+          <button
+            key={code}
+            type="button"
+            role="tab"
+            aria-selected={view === code}
+            onClick={() => setView(code as "changes" | "ai")}
+            className={`min-h-9 rounded-lg px-4 text-sm transition ${view === code ? "bg-ink text-white" : "text-slate hover:text-ink"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === "changes" && (
+        <ResearchChanges
+          symbol={symbol}
+          envelope={snapshot}
+          compact={compact}
+        />
+      )}
+      {view === "ai" && ai && (
+        <AIResearchPanel symbol={symbol} envelope={ai} compact={compact} />
+      )}
+      {view === "ai" && !ai && aiPending && (
+        <Card className="grid min-h-64 place-items-center p-6" role="status">
+          <div className="text-center">
+            <RefreshCw className="text-blue mx-auto size-5 animate-spin" />
+            <p className="mt-3 font-medium">正在读取 AI 研究状态</p>
+          </div>
+        </Card>
+      )}
+      {view === "ai" && !ai && aiError && (
+        <Card className="border-risk/30 p-6" role="alert">
+          <TriangleAlert className="text-risk size-5" />
+          <p className="mt-3 font-medium">AI 研究状态暂时无法读取</p>
+          <p className="text-slate mt-1 text-sm">确定性关键变化不受影响。</p>
+          <button
+            type="button"
+            className="bg-ink mt-4 rounded-xl px-4 py-2 text-sm text-white"
+            onClick={retryAI}
+          >
+            重新读取
+          </button>
+        </Card>
+      )}
+    </div>
+  );
 }
 
 function formatInteger(value: number | undefined) {
@@ -586,6 +666,10 @@ function DesktopStock({
   researchPending,
   researchError,
   retryResearch,
+  ai,
+  aiPending,
+  aiError,
+  retryAI,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -593,6 +677,10 @@ function DesktopStock({
   researchPending: boolean;
   researchError: boolean;
   retryResearch: () => void;
+  ai?: AIResearchEnvelope;
+  aiPending: boolean;
+  aiError: boolean;
+  retryAI: () => void;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -624,7 +712,14 @@ function DesktopStock({
       </div>
       <div className="mt-5">
         {tab === "changes" && research && (
-          <ResearchChanges symbol={stock.symbol} envelope={research.snapshot} />
+          <ResearchWorkspace
+            symbol={stock.symbol}
+            snapshot={research.snapshot}
+            ai={ai}
+            aiPending={aiPending}
+            aiError={aiError}
+            retryAI={retryAI}
+          />
         )}
         {tab === "market" && (
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-5">
@@ -667,6 +762,10 @@ function MobileStock({
   researchPending,
   researchError,
   retryResearch,
+  ai,
+  aiPending,
+  aiError,
+  retryAI,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -674,6 +773,10 @@ function MobileStock({
   researchPending: boolean;
   researchError: boolean;
   retryResearch: () => void;
+  ai?: AIResearchEnvelope;
+  aiPending: boolean;
+  aiError: boolean;
+  retryAI: () => void;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -706,9 +809,13 @@ function MobileStock({
       </div>
       <div className="mt-4">
         {tab === "changes" && research && (
-          <ResearchChanges
+          <ResearchWorkspace
             symbol={stock.symbol}
-            envelope={research.snapshot}
+            snapshot={research.snapshot}
+            ai={ai}
+            aiPending={aiPending}
+            aiError={aiError}
+            retryAI={retryAI}
             compact
           />
         )}
@@ -777,6 +884,11 @@ export function StockDetail({ symbol }: { symbol: string }) {
     },
     retry: 1,
   });
+  const ai = useQuery({
+    queryKey: ["stock", symbol, "ai-research"],
+    queryFn: async () => assertAIResearch(await api.getAIResearch(symbol)),
+    retry: 1,
+  });
 
   if (market.isPending) {
     return (
@@ -818,6 +930,10 @@ export function StockDetail({ symbol }: { symbol: string }) {
     researchPending: research.isPending,
     researchError: research.isError,
     retryResearch: () => void research.refetch(),
+    ai: ai.data,
+    aiPending: ai.isPending,
+    aiError: ai.isError,
+    retryAI: () => void ai.refetch(),
   };
   return (
     <>

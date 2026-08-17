@@ -1,4 +1,4 @@
-# Phase 3 Data Model
+# Phase 4 Data Model
 
 ## Entity relationships
 
@@ -15,6 +15,8 @@ Stock 1--* FundamentalMetricPoint
 Stock 1--* ResearchSnapshot 1--* ResearchObservation
 ResearchObservation 1--* ResearchObservationInput
 Stock 1--* ResearchBuildRun
+ResearchSnapshot 1--* AIResearchRun 1--0..1 AIResearchOutput
+AIResearchRun 1--* LLMCall
 ```
 
 Shared market and financial facts are stored once globally. User-owned Watchlist records remain
@@ -63,3 +65,18 @@ classification is derived from material bank-specific balance-sheet facts, not t
 Research observations are global shared data. No `user_id` is added because no private user input
 participates in their construction. Future personalized annotations must be separate user-owned
 records and must include `user_id`.
+
+## Implemented Phase 4 tables
+
+- `ai_research_runs`: deterministic idempotency identity, snapshot/context/prompt/schema/route
+  hashes, pending/running/succeeded/failed status, current attempt, redacted error category and a
+  reclaimable lease. Failed work is retried on the same row only when explicitly requested.
+- `ai_research_outputs`: one immutable, schema-valid stock-health document per successful run,
+  the exact public evidence mapping, actual provider/model, all version hashes and generation
+  timestamp. `current` versus `stale` is derived at read time against the latest snapshot.
+- `llm_calls`: each model attempt's route position, provider/model, token counts, latency,
+  estimated cost, finish reason and redacted error code. Prompt text, provider response, API keys
+  and chain-of-thought are never persisted.
+
+AI research remains shared global research because Phase 4 uses no private user input. A future
+user-specific AI feature must use separate user-owned records and enforce `user_id` on every query.

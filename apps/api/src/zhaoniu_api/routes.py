@@ -4,7 +4,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from zhaoniu_api.ai_research.models import AIResearchEnvelope
 from zhaoniu_api.dependencies import (
+    AIResearchServiceDependency,
     CurrentUserId,
     DailyBarRepo,
     FundamentalService,
@@ -179,6 +181,21 @@ async def get_research_snapshot(
         status="ready" if snapshot else "not_built",
         snapshot=snapshot,
     )
+
+
+@router.get(
+    "/stocks/{symbol}/ai-research",
+    response_model=AIResearchEnvelope,
+    tags=["ai-research"],
+)
+async def get_ai_research(
+    symbol: str,
+    stocks: StockRepo,
+    service: AIResearchServiceDependency,
+) -> AIResearchEnvelope:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    return await service.get_stock_health(symbol)
 
 
 @router.get(

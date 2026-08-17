@@ -4,7 +4,9 @@ import json
 from dataclasses import asdict
 from datetime import date, datetime
 
+from zhaoniu_api.ai_research.models import AIResearchBuildResult
 from zhaoniu_api.composition import (
+    build_ai_research_service,
     build_fundamental_service,
     build_market_data_service,
     build_research_service,
@@ -47,13 +49,16 @@ def _parser() -> argparse.ArgumentParser:
     research = subcommands.add_parser("build-research-snapshot")
     research.add_argument("symbol")
     research.add_argument("--as-of", type=datetime.fromisoformat)
+    ai_research = subcommands.add_parser("generate-ai-stock-health")
+    ai_research.add_argument("symbol")
+    ai_research.add_argument("--retry-failed", action="store_true")
     return parser
 
 
 async def _run(args: argparse.Namespace) -> None:
     try:
         async with session_factory() as session:
-            result: SyncResult | FundamentalSnapshot | ResearchBuildResult
+            result: SyncResult | FundamentalSnapshot | ResearchBuildResult | AIResearchBuildResult
             if args.command == "sync-stock-master":
                 result = await build_market_data_service(session).sync_stock_master(
                     force=args.force
@@ -73,6 +78,10 @@ async def _run(args: argparse.Namespace) -> None:
             elif args.command == "build-research-snapshot":
                 result = await build_research_service(session).build_snapshot(
                     args.symbol, as_of=args.as_of
+                )
+            elif args.command == "generate-ai-stock-health":
+                result = await build_ai_research_service(session).generate_stock_health(
+                    args.symbol, retry_failed=args.retry_failed
                 )
             else:
                 result = await build_fundamental_service(session).compute_snapshot(

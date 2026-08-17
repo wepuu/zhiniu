@@ -276,7 +276,7 @@ function EvidenceBody({ observation }: { observation: ResearchObservation }) {
   );
 }
 
-function EvidenceSheet({
+export function EvidenceSheet({
   observation,
   compact,
   pending,

@@ -1,7 +1,13 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from zhaoniu_api.ai_research.models import (
+    AIResearchOutputDocument,
+    AIResearchRunLease,
+    AIResearchRunView,
+    LLMCallAudit,
+)
 from zhaoniu_api.domain.models import DailyBar, Stock, Watchlist, resolve_symbol
 from zhaoniu_api.fundamentals.models import (
     FinancialReport,
@@ -23,7 +29,13 @@ class InMemoryStockRepository:
                 "600519", "贵州茅台", "SSE", "白酒", Decimal("1438.20"), Decimal("0.62")
             ),
             "000001": Stock(
-                "000001", "平安银行", "SZSE", "银行", Decimal("11.28"), Decimal("-0.18")
+                "000001",
+                "平安银行",
+                "SZSE",
+                "银行",
+                Decimal("11.28"),
+                Decimal("-0.18"),
+                issuer_type="bank",
             ),
             "300750": Stock(
                 "300750", "宁德时代", "SZSE", "电池", Decimal("286.35"), Decimal("1.24")
@@ -319,6 +331,112 @@ class InMemoryResearchRepository:
                     finished_at=finished_at,
                 )
                 return
+
+
+class InMemoryAIResearchRepository:
+    def __init__(self) -> None:
+        self.outputs: dict[str, AIResearchOutputDocument] = {}
+        self.runs: dict[str, dict[str, object]] = {}
+        self.calls: list[LLMCallAudit] = []
+
+    async def find_output_by_key(
+        self, idempotency_key: str
+    ) -> AIResearchOutputDocument | None:
+        return self.outputs.get(idempotency_key)
+
+    async def latest_output(
+        self, canonical_symbol: str
+    ) -> AIResearchOutputDocument | None:
+        return max(
+            (item for item in self.outputs.values() if item.symbol == canonical_symbol),
+            key=lambda item: item.generated_at,
+            default=None,
+        )
+
+    async def latest_run(self, canonical_symbol: str) -> AIResearchRunView | None:
+        matches = [item for item in self.runs.values() if item["symbol"] == canonical_symbol]
+        if not matches:
+            return None
+        row = max(matches, key=lambda item: item["started_at"])  # type: ignore[arg-type,return-value]
+        return AIResearchRunView(
+            run_id=row["id"],  # type: ignore[arg-type]
+            status=str(row["status"]),
+            snapshot_id=row["snapshot_id"],  # type: ignore[arg-type]
+            error_code=str(row["error_code"]) if row.get("error_code") else None,
+        )
+
+    async def acquire_run(
+        self,
+        *,
+        canonical_symbol: str,
+        snapshot_id: UUID,
+        idempotency_key: str,
+        context_version: str,
+        context_hash: str,
+        prompt_version: str,
+        prompt_hash: str,
+        output_schema_version: str,
+        model_route_version: str,
+        route_hash: str,
+        retry_failed: bool,
+    ) -> AIResearchRunLease:
+        now = datetime.now(UTC)
+        existing = self.runs.get(idempotency_key)
+        if existing:
+            lease_expires_at = existing["lease_expires_at"]
+            stale = (
+                existing["status"] == "running"
+                and isinstance(lease_expires_at, datetime)
+                and lease_expires_at < now
+            )
+            retry = existing["status"] == "failed" and retry_failed
+            if not stale and not retry:
+                return AIResearchRunLease(
+                    existing["id"], False, str(existing["status"])  # type: ignore[arg-type]
+                )
+            existing.update(
+                status="running",
+                error_code=None,
+                started_at=now,
+                lease_expires_at=now + timedelta(minutes=30),
+            )
+            return AIResearchRunLease(existing["id"], True, "running")  # type: ignore[arg-type]
+        run_id = uuid4()
+        self.runs[idempotency_key] = {
+            "id": run_id,
+            "symbol": canonical_symbol,
+            "snapshot_id": snapshot_id,
+            "status": "running",
+            "error_code": None,
+            "started_at": now,
+            "lease_expires_at": now + timedelta(minutes=30),
+        }
+        return AIResearchRunLease(run_id, True, "running")
+
+    async def record_call(self, audit: LLMCallAudit) -> None:
+        self.calls.append(audit)
+
+    async def complete_run(
+        self, output: AIResearchOutputDocument, *, idempotency_key: str
+    ) -> None:
+        self.outputs.setdefault(idempotency_key, output)
+        self.runs[idempotency_key]["status"] = "succeeded"
+
+    async def fail_run(
+        self,
+        run_id: UUID,
+        *,
+        error_code: str,
+        error_summary: str,
+        finished_at: datetime,
+    ) -> None:
+        row = next(item for item in self.runs.values() if item["id"] == run_id)
+        row.update(
+            status="failed",
+            error_code=error_code,
+            error_summary=error_summary,
+            finished_at=finished_at,
+        )
 
 
 class InMemoryWatchlistRepository:

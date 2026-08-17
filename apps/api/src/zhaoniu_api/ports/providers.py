@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -68,7 +68,28 @@ class LLMUsage(BaseModel):
     status: str
 
 
+class LLMStructuredResponse(BaseModel):
+    data: dict[str, object]
+    usage: LLMUsage
+    finish_reason: str | None = None
+
+
+class LLMGatewayError(RuntimeError):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class LLMGateway(Protocol):
+    def supports_structured_output(self, model: str) -> bool: ...
+
     async def generate_structured(
-        self, *, task_type: str, input_data: dict[str, object], schema_name: str
-    ) -> tuple[dict[str, object], LLMUsage]: ...
+        self,
+        *,
+        model: str,
+        task_type: str,
+        system_prompt: str,
+        input_data: dict[str, object],
+        response_schema: dict[str, Any],
+        timeout_seconds: float,
+    ) -> LLMStructuredResponse: ...
