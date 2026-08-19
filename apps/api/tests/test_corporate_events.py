@@ -10,6 +10,7 @@ from zhaoniu_api.corporate_events.models import (
     EventRadarEnvelope,
     EventType,
     RawDisclosure,
+    RawEventFact,
 )
 from zhaoniu_api.corporate_events.normalizer import (
     AKShareDisclosureNormalizer,
@@ -78,6 +79,20 @@ def test_normalizer_uses_source_owner_and_stable_identity() -> None:
     assert first.source_owner == "cninfo"
     assert first.source_document_id == second.source_document_id
     assert first.content_fingerprint == second.content_fingerprint
+
+
+def test_source_fact_normalizer_replaces_non_finite_json_numbers() -> None:
+    raw = RawEventFact(
+        provider="akshare",
+        source_owner="eastmoney",
+        requested_symbol="600519",
+        event_family=EventFamily.SHARE_REPURCHASE,
+        payload={"amount": float("nan"), "nested": [float("inf"), 1.0]},
+    )
+
+    fact = AKShareDisclosureNormalizer().source_facts([raw])[0]
+
+    assert fact.raw_payload == {"amount": None, "nested": [None, 1.0]}
 
 
 def test_extractor_preserves_lineage_and_does_not_assign_attention() -> None:

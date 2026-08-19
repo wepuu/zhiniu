@@ -144,7 +144,11 @@ class AKShareDisclosureNormalizer:
 
 
 def _json_safe(payload: dict[str, object]) -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads(json.dumps(payload, ensure_ascii=False, default=str)))
+    serialized = json.dumps(payload, ensure_ascii=False, default=str)
+    return cast(
+        dict[str, Any],
+        json.loads(serialized, parse_constant=lambda _constant: None),
+    )
 
 
 def _hash(payload: object) -> str:
