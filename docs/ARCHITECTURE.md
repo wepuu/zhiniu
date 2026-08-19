@@ -79,8 +79,9 @@ Shared: stocks, bars, financial reports, valuation observations, deterministic m
 evidence and public research snapshots.
 
 User-owned: users, sessions, watchlists/items, alerts, preferences, chats, subscriptions and usage.
-Every user-owned record and query carries `user_id`. Watchlist persistence and real authentication
-remain the next product phase.
+Every user-owned record and query carries `user_id`. Phase 5 implements email/password sessions and
+persisted watchlists for the internal beta; alerts, preferences, chats, paid subscriptions and full
+public account lifecycle remain deferred.
 
 ## Module boundaries
 

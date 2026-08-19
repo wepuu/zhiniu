@@ -3,9 +3,10 @@ from decimal import Decimal
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from zhaoniu_api.db import (
     BalanceSheetRecord,
@@ -18,8 +19,17 @@ from zhaoniu_api.db import (
     StockDailyBarRecord,
     StockRecord,
     ValuationObservationRecord,
+    WatchlistItemRecord,
+    WatchlistRecord,
 )
-from zhaoniu_api.domain.models import AdjustType, DailyBar, Stock, resolve_symbol
+from zhaoniu_api.domain.models import (
+    AdjustType,
+    DailyBar,
+    Stock,
+    Watchlist,
+    WatchlistItem,
+    resolve_symbol,
+)
 from zhaoniu_api.fundamentals.models import (
     BalanceSheet,
     CashFlowStatement,
@@ -759,3 +769,104 @@ class SQLAlchemySyncRunRepository:
         if started is not None:
             record.duration_ms = int((finished_at - started).total_seconds() * 1000)
         await self._session.commit()
+
+
+class SQLAlchemyWatchlistRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    @staticmethod
+    def _domain(row: WatchlistRecord) -> Watchlist:
+        return Watchlist(
+            id=row.id,
+            user_id=row.user_id,
+            name=row.name,
+            is_default=row.is_default,
+            items=[
+                WatchlistItem(symbol=item.symbol, added_at=item.created_at)
+                for item in sorted(row.items, key=lambda child: child.created_at)
+            ],
+        )
+
+    async def list_for_user(self, user_id: UUID) -> list[Watchlist]:
+        rows = (
+            await self._session.scalars(
+                select(WatchlistRecord)
+                .where(WatchlistRecord.user_id == user_id)
+                .options(selectinload(WatchlistRecord.items))
+                .order_by(WatchlistRecord.is_default.desc(), WatchlistRecord.created_at)
+            )
+        ).all()
+        return [self._domain(row) for row in rows]
+
+    async def create(self, watchlist: Watchlist) -> Watchlist:
+        record = WatchlistRecord(
+            id=watchlist.id,
+            user_id=watchlist.user_id,
+            name=watchlist.name.strip(),
+            is_default=watchlist.is_default,
+        )
+        self._session.add(record)
+        try:
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        created = await self.get_owned(record.id, watchlist.user_id)
+        if created is None:
+            raise RuntimeError("watchlist create failed")
+        return created
+
+    async def get_owned(self, watchlist_id: UUID, user_id: UUID) -> Watchlist | None:
+        row = await self._session.scalar(
+            select(WatchlistRecord)
+            .where(WatchlistRecord.id == watchlist_id, WatchlistRecord.user_id == user_id)
+            .options(selectinload(WatchlistRecord.items))
+        )
+        return self._domain(row) if row else None
+
+    async def save(self, watchlist: Watchlist) -> Watchlist:
+        row = await self._session.scalar(
+            select(WatchlistRecord)
+            .where(
+                WatchlistRecord.id == watchlist.id,
+                WatchlistRecord.user_id == watchlist.user_id,
+            )
+            .options(selectinload(WatchlistRecord.items))
+        )
+        if row is None:
+            raise RuntimeError("watchlist not found")
+        existing_symbols = {item.symbol for item in row.items}
+        desired_symbols = {item.symbol for item in watchlist.items}
+        to_add = desired_symbols - existing_symbols
+        to_remove = existing_symbols - desired_symbols
+        try:
+            if to_add:
+                await self._session.execute(
+                    insert(WatchlistItemRecord)
+                    .values(
+                        [
+                            {
+                                "watchlist_id": watchlist.id,
+                                "symbol": symbol,
+                            }
+                            for symbol in sorted(to_add)
+                        ]
+                    )
+                    .on_conflict_do_nothing(constraint="uq_watchlist_symbol")
+                )
+            if to_remove:
+                await self._session.execute(
+                    delete(WatchlistItemRecord).where(
+                        WatchlistItemRecord.watchlist_id == watchlist.id,
+                        WatchlistItemRecord.symbol.in_(to_remove),
+                    )
+                )
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        updated = await self.get_owned(watchlist.id, watchlist.user_id)
+        if updated is None:
+            raise RuntimeError("watchlist save failed")
+        return updated

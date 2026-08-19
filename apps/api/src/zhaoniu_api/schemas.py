@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSchema
 
-from zhaoniu_api.domain.models import Stock, Watchlist
+from zhaoniu_api.domain.models import Stock, UserAccount, UserSession, Watchlist
 from zhaoniu_api.fundamentals.metrics import DEFINITION_BY_CODE
 from zhaoniu_api.fundamentals.models import FinancialReport, FundamentalMetric, ValuationObservation
 
@@ -248,16 +248,20 @@ class WatchlistItemResponse(BaseModel):
 class WatchlistResponse(BaseModel):
     id: UUID
     name: str
+    is_default: bool
     items: list[WatchlistItemResponse]
+    item_count: int
 
     @classmethod
     def from_domain(cls, watchlist: Watchlist) -> "WatchlistResponse":
         return cls(
             id=watchlist.id,
             name=watchlist.name,
+            is_default=watchlist.is_default,
             items=[
                 WatchlistItemResponse(symbol=i.symbol, added_at=i.added_at) for i in watchlist.items
             ],
+            item_count=len(watchlist.items),
         )
 
 
@@ -269,3 +273,60 @@ class CreateWatchlistRequest(BaseModel):
 class AddWatchlistItemRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     symbol: str = Field(pattern=r"^[0-9A-Z.]{1,16}$")
+
+
+class AuthRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: str
+    status: str
+    created_at: datetime
+    last_login_at: datetime | None
+
+    @classmethod
+    def from_domain(cls, user: UserAccount) -> "UserResponse":
+        return cls.model_validate(user, from_attributes=True)
+
+
+class EntitlementsResponse(BaseModel):
+    plan: str
+    limits: dict[str, int]
+
+
+class MeResponse(BaseModel):
+    user: UserResponse
+    entitlements: EntitlementsResponse
+
+
+class AuthResponse(BaseModel):
+    user: UserResponse
+    entitlements: EntitlementsResponse
+
+
+class SessionResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    user_agent: str | None
+    is_current: bool
+
+    @classmethod
+    def from_domain(cls, session: UserSession) -> "SessionResponse":
+        return cls.model_validate(session, from_attributes=True)
+
+
+class SessionListResponse(BaseModel):
+    items: list[SessionResponse]
+    total: int
+
+
+class WatchlistMembershipResponse(BaseModel):
+    symbol: str
+    watchlist_ids: list[UUID]
+    is_member: bool

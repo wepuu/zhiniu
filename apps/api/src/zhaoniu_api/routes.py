@@ -2,11 +2,19 @@ from datetime import UTC, date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Cookie, HTTPException, Query, Request, Response, status
 
 from zhaoniu_api.ai_research.models import AIResearchEnvelope
+from zhaoniu_api.auth.service import (
+    FREE_ENTITLEMENT_LIMITS,
+    FREE_ENTITLEMENT_PLAN,
+    AuthenticationError,
+)
+from zhaoniu_api.config import get_settings
 from zhaoniu_api.dependencies import (
     AIResearchServiceDependency,
+    AuthServiceDependency,
+    CurrentUser,
     CurrentUserId,
     DailyBarRepo,
     FundamentalService,
@@ -22,20 +30,28 @@ from zhaoniu_api.research.models import (
 )
 from zhaoniu_api.schemas import (
     AddWatchlistItemRequest,
+    AuthRequest,
+    AuthResponse,
     CreateWatchlistRequest,
     DailyBarListResponse,
     DailyBarResponse,
+    EntitlementsResponse,
     FinancialPeriodListResponse,
     FinancialPeriodResponse,
     FundamentalDimensionResponse,
     FundamentalMetricResponse,
     FundamentalResearchResponse,
     HealthResponse,
+    MeResponse,
+    SessionListResponse,
+    SessionResponse,
     StockResponse,
     StockSearchResponse,
+    UserResponse,
     ValuationCoverageResponse,
     ValuationListResponse,
     ValuationObservationResponse,
+    WatchlistMembershipResponse,
     WatchlistResponse,
 )
 
@@ -47,6 +63,8 @@ _DIMENSIONS = {
     "valuation": "估值",
 }
 _VALUATION_CODES = {"pe_ttm", "pb", "pcf", "market_cap"}
+_WATCHLIST_GROUP_LIMIT = 5
+_WATCHLIST_MEMBERSHIP_LIMIT = 30
 
 router = APIRouter(prefix="/api/v1")
 
@@ -54,6 +72,110 @@ router = APIRouter(prefix="/api/v1")
 @router.get("/health", response_model=HealthResponse, tags=["system"])
 async def health() -> HealthResponse:
     return HealthResponse(status="ok", service="zhaoniu-api", version="0.1.0")
+
+
+@router.post(
+    "/auth/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["auth"],
+)
+async def register(
+    payload: AuthRequest,
+    request: Request,
+    response: Response,
+    auth: AuthServiceDependency,
+) -> AuthResponse:
+    try:
+        session = await auth.register(
+            email=payload.email,
+            password=payload.password,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
+        )
+    except AuthenticationError as error:
+        code = str(error)
+        if code == "email_already_registered":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=code) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=code,
+        ) from error
+    set_session_cookie(response, session.token, auth.session_max_age_seconds)
+    return AuthResponse(
+        user=UserResponse.from_domain(session.user),
+        entitlements=entitlements_response(),
+    )
+
+
+@router.post("/auth/login", response_model=AuthResponse, tags=["auth"])
+async def login(
+    payload: AuthRequest,
+    request: Request,
+    response: Response,
+    auth: AuthServiceDependency,
+) -> AuthResponse:
+    try:
+        session = await auth.login(
+            email=payload.email,
+            password=payload.password,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
+        )
+    except AuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_credentials",
+        ) from error
+    set_session_cookie(response, session.token, auth.session_max_age_seconds)
+    return AuthResponse(
+        user=UserResponse.from_domain(session.user),
+        entitlements=entitlements_response(),
+    )
+
+
+@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT, tags=["auth"])
+async def logout(
+    response: Response,
+    auth: AuthServiceDependency,
+    token: Annotated[str | None, Cookie(alias="zhaoniu_session")] = None,
+) -> Response:
+    await auth.logout(token)
+    clear_session_cookie(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.get("/me", response_model=MeResponse, tags=["auth"])
+async def get_me(user: CurrentUser) -> MeResponse:
+    return MeResponse(user=UserResponse.from_domain(user), entitlements=entitlements_response())
+
+
+@router.get("/me/sessions", response_model=SessionListResponse, tags=["auth"])
+async def list_sessions(
+    user: CurrentUser,
+    auth: AuthServiceDependency,
+    token: Annotated[str | None, Cookie(alias="zhaoniu_session")] = None,
+) -> SessionListResponse:
+    sessions = await auth.list_sessions(user.id, token)
+    items = [SessionResponse.from_domain(item) for item in sessions]
+    return SessionListResponse(items=items, total=len(items))
+
+
+@router.delete(
+    "/me/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["auth"],
+)
+async def revoke_session(
+    session_id: UUID,
+    user_id: CurrentUserId,
+    auth: AuthServiceDependency,
+) -> Response:
+    revoked = await auth.revoke_session(user_id, session_id)
+    if not revoked:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/stocks/search", response_model=StockSearchResponse, tags=["stocks"])
@@ -327,6 +449,12 @@ async def list_watchlists(
 async def create_watchlist(
     payload: CreateWatchlistRequest, user_id: CurrentUserId, repository: WatchlistRepo
 ) -> WatchlistResponse:
+    lists = await repository.list_for_user(user_id)
+    if len(lists) >= _WATCHLIST_GROUP_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="watchlist_group_limit_reached",
+        )
     item = await repository.create(Watchlist(user_id=user_id, name=payload.name))
     return WatchlistResponse.from_domain(item)
 
@@ -341,10 +469,110 @@ async def add_watchlist_item(
     watchlist_id: UUID,
     payload: AddWatchlistItemRequest,
     user_id: CurrentUserId,
+    stocks: StockRepo,
+    repository: WatchlistRepo,
+) -> WatchlistResponse:
+    stock = await stocks.get(payload.symbol)
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    await enforce_watchlist_membership_limit(repository, user_id, payload.symbol)
+    item = await repository.get_owned(watchlist_id, user_id)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found")
+    item.add(resolve_symbol(payload.symbol).canonical)
+    return WatchlistResponse.from_domain(await repository.save(item))
+
+
+@router.delete(
+    "/watchlists/{watchlist_id}/items/{symbol}",
+    response_model=WatchlistResponse,
+    tags=["watchlists"],
+)
+async def remove_watchlist_item(
+    watchlist_id: UUID,
+    symbol: str,
+    user_id: CurrentUserId,
     repository: WatchlistRepo,
 ) -> WatchlistResponse:
     item = await repository.get_owned(watchlist_id, user_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found")
-    item.add(payload.symbol)
+    try:
+        resolved = resolve_symbol(symbol).canonical
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid symbol",
+        ) from error
+    item.remove(resolved)
     return WatchlistResponse.from_domain(await repository.save(item))
+
+
+@router.get(
+    "/watchlists/membership/{symbol}",
+    response_model=WatchlistMembershipResponse,
+    tags=["watchlists"],
+)
+async def get_watchlist_membership(
+    symbol: str,
+    user_id: CurrentUserId,
+    repository: WatchlistRepo,
+) -> WatchlistMembershipResponse:
+    try:
+        canonical = resolve_symbol(symbol).canonical
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid symbol",
+        ) from error
+    lists = await repository.list_for_user(user_id)
+    watchlist_ids = [
+        item.id
+        for item in lists
+        if any(child.symbol == canonical for child in item.items)
+    ]
+    return WatchlistMembershipResponse(
+        symbol=canonical,
+        watchlist_ids=watchlist_ids,
+        is_member=bool(watchlist_ids),
+    )
+
+
+def set_session_cookie(response: Response, token: str, max_age: int) -> None:
+    settings = get_settings()
+    response.set_cookie(
+        settings.auth_cookie_name,
+        token,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite="lax",
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    settings = get_settings()
+    response.delete_cookie(settings.auth_cookie_name, path="/")
+
+
+def entitlements_response() -> EntitlementsResponse:
+    return EntitlementsResponse(
+        plan=FREE_ENTITLEMENT_PLAN,
+        limits=FREE_ENTITLEMENT_LIMITS,
+    )
+
+
+async def enforce_watchlist_membership_limit(
+    repository: WatchlistRepo, user_id: UUID, symbol: str
+) -> None:
+    resolved = resolve_symbol(symbol).canonical
+    lists = await repository.list_for_user(user_id)
+    if any(child.symbol == resolved for item in lists for child in item.items):
+        return
+    total_memberships = sum(len(item.items) for item in lists)
+    if total_memberships >= _WATCHLIST_MEMBERSHIP_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="watchlist_membership_limit_reached",
+        )

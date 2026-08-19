@@ -1,6 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { AppShell } from "./app-shell";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/watchlist",
+}));
 
 afterEach(cleanup);
 
@@ -30,5 +35,6 @@ describe("AppShell", () => {
     expect(
       screen.getByRole("navigation", { name: "移动端主导航" }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { current: "page" })).toHaveLength(2);
   });
 });

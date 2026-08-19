@@ -3,9 +3,10 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 4：在不可变研究快照之上增加结构化 AI 股票体检、多模型自动
-fallback、稳定证据引用、不可变输出、调用审计和分别设计的桌面/移动 AI 研究体验。
-AKShare 仍仅用于开发和技术评估；Watchlist、正式认证、AI 问股和支付尚未生产化。
+当前仓库已完成 Phase 5：在 Phase 1-4 的真实 A 股行情、财务数据、确定性研究快照和
+AI 股票体检之上，新增内部 beta 的邮箱密码账户、HttpOnly cookie session、PostgreSQL
+持久化自选股、基础额度和桌面/移动自选股体验。AKShare 仍仅用于开发和技术评估；AI 问股、
+支付、邮箱验证、密码找回、账户删除和公开生产合规仍未生产化。
 
 ## Repository map
 
@@ -21,8 +22,8 @@ packages/
   research_engine/     future structured research orchestration
 infrastructure/
   migrations/          Alembic migrations
-docs/                   architecture, data model, metric/source decisions
-references/             isolated, Git-ignored upstream source checkouts
+docs/                  architecture, data model, metric/source decisions
+references/            isolated, Git-ignored upstream source checkouts
 ```
 
 ## Prerequisites
@@ -63,8 +64,9 @@ uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519
 uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519 --retry-failed
 ```
 
-AI 默认为关闭。启用前显式配置 `LLM_ENABLED=true`、有序 `LLM_MODEL_CHAIN` 和对应
-Provider API Key；模型名没有非禁用默认值。密钥不得进入日志、数据库或版本控制。
+AI is disabled by default. Before enabling it, explicitly configure `LLM_ENABLED=true`,
+`LLM_MODEL_CHAIN` and provider API keys. Model names have no non-disabled defaults. Secrets must
+not enter logs, the database or version control.
 
 AKShare is not approved here for commercial display or redistribution. Read
 `docs/DATA_SOURCE_POLICY.md` and `docs/FINANCIAL_DATA_SOURCE_DECISION.md` before using the data
@@ -95,6 +97,12 @@ Regenerate the OpenAPI contract and TypeScript types with `pnpm api:generate`.
 
 ```text
 GET /api/v1/health
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+GET /api/v1/me
+GET /api/v1/me/sessions
+DELETE /api/v1/me/sessions/{session_id}
 GET /api/v1/stocks/search?q=茅台
 GET /api/v1/stocks/{symbol}
 GET /api/v1/stocks/{symbol}/daily-bars
@@ -105,10 +113,16 @@ GET /api/v1/stocks/{symbol}/research/snapshot
 GET /api/v1/stocks/{symbol}/research/observations
 GET /api/v1/stocks/{symbol}/research/observations/{observation_id}
 GET /api/v1/stocks/{symbol}/ai-research
+GET /api/v1/watchlists
+POST /api/v1/watchlists
+POST /api/v1/watchlists/{watchlist_id}/items
+DELETE /api/v1/watchlists/{watchlist_id}/items/{symbol}
+GET /api/v1/watchlists/membership/{symbol}
 ```
 
-Watchlist endpoints still use a fixed demo identity and in-memory repository. This is an explicit
-seam, not production authentication or persistence.
+Watchlist endpoints require a valid HttpOnly session cookie and persist user-owned records in
+PostgreSQL. Shared stocks, bars, financial facts, research snapshots and AI outputs remain global
+shared data.
 
 Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [Financial metrics](docs/FINANCIAL_METRICS.md), [Change rules](docs/CHANGE_RULES.md),

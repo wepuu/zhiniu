@@ -1,12 +1,19 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from uuid import UUID
 
 from fastapi.testclient import TestClient
-from zhaoniu_api.dependencies import get_daily_bar_repository, get_stock_repository
+from zhaoniu_api.dependencies import (
+    get_current_user_id,
+    get_daily_bar_repository,
+    get_stock_repository,
+    get_watchlist_repository,
+)
 from zhaoniu_api.domain.models import AdjustType, DailyBar
 from zhaoniu_api.infrastructure.mock_repositories import (
     InMemoryDailyBarRepository,
     InMemoryStockRepository,
+    InMemoryWatchlistRepository,
 )
 from zhaoniu_api.main import create_app
 
@@ -30,8 +37,13 @@ bars = InMemoryDailyBarRepository(
         )
     ]
 )
+watchlists = InMemoryWatchlistRepository()
 app.dependency_overrides[get_stock_repository] = lambda: stocks
 app.dependency_overrides[get_daily_bar_repository] = lambda: bars
+app.dependency_overrides[get_watchlist_repository] = lambda: watchlists
+app.dependency_overrides[get_current_user_id] = lambda: UUID(
+    "00000000-0000-4000-8000-000000000001"
+)
 client = TestClient(app)
 
 
@@ -42,7 +54,7 @@ def test_health() -> None:
 
 
 def test_stock_search_and_detail() -> None:
-    response = client.get("/api/v1/stocks/search", params={"q": "茅台"})
+    response = client.get("/api/v1/stocks/search", params={"q": "600519"})
     assert response.status_code == 200
     assert response.json()["items"][0]["symbol"] == "600519"
     detail = client.get("/api/v1/stocks/600519.SH")
@@ -61,9 +73,15 @@ def test_daily_bars_contract_and_empty_state() -> None:
 
 
 def test_watchlist_api_flow() -> None:
-    created = client.post("/api/v1/watchlists", json={"name": "核心观察"})
+    created = client.post("/api/v1/watchlists", json={"name": "Core"})
     assert created.status_code == 201
     watchlist_id = created.json()["id"]
     updated = client.post(f"/api/v1/watchlists/{watchlist_id}/items", json={"symbol": "600519"})
     assert updated.status_code == 201
-    assert updated.json()["items"][0]["symbol"] == "600519"
+    assert updated.json()["items"][0]["symbol"] == "600519.SH"
+    membership = client.get("/api/v1/watchlists/membership/600519")
+    assert membership.status_code == 200
+    assert membership.json()["is_member"] is True
+    removed = client.delete(f"/api/v1/watchlists/{watchlist_id}/items/600519")
+    assert removed.status_code == 200
+    assert removed.json()["items"] == []

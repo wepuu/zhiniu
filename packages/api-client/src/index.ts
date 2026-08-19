@@ -27,6 +27,12 @@ export type StockHealthResearchV1 =
   components["schemas"]["StockHealthResearchV1"];
 export type EvidenceIndexEntry = components["schemas"]["EvidenceIndexEntry"];
 export type CitedText = components["schemas"]["CitedText"];
+export type AuthResponse = components["schemas"]["AuthResponse"];
+export type MeResponse = components["schemas"]["MeResponse"];
+export type SessionListResponse = components["schemas"]["SessionListResponse"];
+export type WatchlistResponse = components["schemas"]["WatchlistResponse"];
+export type WatchlistMembershipResponse =
+  components["schemas"]["WatchlistMembershipResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -51,9 +57,15 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     options.fetcher ??
     ((...arguments_: Parameters<typeof fetch>) => fetch(...arguments_));
 
-  async function request<T>(path: string): Promise<T> {
+  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetcher(`${baseUrl}${path}`, {
-      headers: { Accept: "application/json" },
+      ...init,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
     });
     if (!response.ok) {
       throw new ApiError(
@@ -61,10 +73,47 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         `API request failed with status ${response.status}`,
       );
     }
+    if (response.status === 204) {
+      return undefined as T;
+    }
     return (await response.json()) as T;
   }
 
+  function jsonRequest<T>(path: string, method: string, body: unknown) {
+    return request<T>(path, {
+      method,
+      body: JSON.stringify(body),
+    });
+  }
+
   return {
+    register(email: string, password: string) {
+      return jsonRequest<AuthResponse>("/api/v1/auth/register", "POST", {
+        email,
+        password,
+      });
+    },
+    login(email: string, password: string) {
+      return jsonRequest<AuthResponse>("/api/v1/auth/login", "POST", {
+        email,
+        password,
+      });
+    },
+    logout() {
+      return request<void>("/api/v1/auth/logout", { method: "POST" });
+    },
+    getMe() {
+      return request<MeResponse>("/api/v1/me");
+    },
+    getSessions() {
+      return request<SessionListResponse>("/api/v1/me/sessions");
+    },
+    revokeSession(sessionId: string) {
+      return request<void>(
+        `/api/v1/me/sessions/${encodeURIComponent(sessionId)}`,
+        { method: "DELETE" },
+      );
+    },
     getStock(symbol: string) {
       return request<StockResponse>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}`,
@@ -119,6 +168,32 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getAIResearch(symbol: string) {
       return request<AIResearchEnvelope>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/ai-research`,
+      );
+    },
+    getWatchlists() {
+      return request<WatchlistResponse[]>("/api/v1/watchlists");
+    },
+    createWatchlist(name: string) {
+      return jsonRequest<WatchlistResponse>("/api/v1/watchlists", "POST", {
+        name,
+      });
+    },
+    addWatchlistItem(watchlistId: string, symbol: string) {
+      return jsonRequest<WatchlistResponse>(
+        `/api/v1/watchlists/${encodeURIComponent(watchlistId)}/items`,
+        "POST",
+        { symbol },
+      );
+    },
+    removeWatchlistItem(watchlistId: string, symbol: string) {
+      return request<WatchlistResponse>(
+        `/api/v1/watchlists/${encodeURIComponent(watchlistId)}/items/${encodeURIComponent(symbol)}`,
+        { method: "DELETE" },
+      );
+    },
+    getWatchlistMembership(symbol: string) {
+      return request<WatchlistMembershipResponse>(
+        `/api/v1/watchlists/membership/${encodeURIComponent(symbol)}`,
       );
     },
   };

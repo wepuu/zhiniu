@@ -19,8 +19,8 @@ ResearchSnapshot 1--* AIResearchRun 1--0..1 AIResearchOutput
 AIResearchRun 1--* LLMCall
 ```
 
-Shared market and financial facts are stored once globally. User-owned Watchlist records remain
-behind the Phase 0 in-memory seam until the multi-user phase.
+Shared market and financial facts are stored once globally. User-owned identity, session and
+watchlist records are persisted with explicit `user_id` ownership from Phase 5 onward.
 
 ## Financial report identity
 
@@ -80,3 +80,18 @@ records and must include `user_id`.
 
 AI research remains shared global research because Phase 4 uses no private user input. A future
 user-specific AI feature must use separate user-owned records and enforce `user_id` on every query.
+
+## Implemented Phase 5 tables
+
+- `users`: email/password accounts for the internal beta. Password hashes use Argon2 through the
+  authentication service; raw passwords are never stored.
+- `user_sessions`: opaque HttpOnly cookie sessions stored as SHA-256 token hashes, with expiry,
+  revocation, last-used time and bounded user-agent/IP metadata.
+- `watchlists`: user-owned groups with a single default group per user and unique names per user.
+- `watchlist_items`: symbol memberships keyed by watchlist and canonical stock symbol. Items do not
+  duplicate shared market data and do not carry a redundant `user_id`; ownership is enforced through
+  the parent watchlist.
+
+Phase 5 entitlements are deterministic internal-beta limits only: five watchlist groups and thirty
+total watchlist memberships per user. Paid plans, account deletion, email verification and password
+reset are deferred.

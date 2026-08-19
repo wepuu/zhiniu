@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     auth_cookie_name: str = "zhaoniu_session"
     auth_cookie_secure: bool = False
+    auth_session_days: int = Field(default=30, ge=1, le=90)
+    auth_password_min_length: int = Field(default=15, ge=15, le=128)
     market_data_provider: Literal["akshare"] = "akshare"
     llm_enabled: bool = False
     llm_model_chain: str = ""

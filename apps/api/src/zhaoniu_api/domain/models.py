@@ -133,6 +133,7 @@ class Watchlist:
     user_id: UUID
     name: str
     id: UUID = field(default_factory=uuid4)
+    is_default: bool = False
     items: list[WatchlistItem] = field(default_factory=list)
 
     def add(self, symbol: str) -> None:
@@ -141,3 +142,30 @@ class Watchlist:
             raise ValueError("symbol cannot be empty")
         if all(item.symbol != normalized for item in self.items):
             self.items.append(WatchlistItem(symbol=normalized))
+
+    def remove(self, symbol: str) -> bool:
+        normalized = symbol.strip().upper()
+        before = len(self.items)
+        self.items = [item for item in self.items if item.symbol != normalized]
+        return len(self.items) != before
+
+
+@dataclass(frozen=True, slots=True)
+class UserAccount:
+    id: UUID
+    email: str
+    status: str
+    created_at: datetime
+    last_login_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class UserSession:
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None
+    user_agent: str | None = None
+    is_current: bool = False

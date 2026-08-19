@@ -1,32 +1,55 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.ai_research.service import AIResearchService
+from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.composition import (
     build_ai_research_service,
     build_fundamental_service,
     build_research_service,
 )
+from zhaoniu_api.config import Settings, get_settings
 from zhaoniu_api.database import get_session
+from zhaoniu_api.domain.models import UserAccount
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
-from zhaoniu_api.infrastructure.mock_repositories import InMemoryWatchlistRepository
 from zhaoniu_api.infrastructure.sql_repositories import (
     SQLAlchemyDailyBarRepository,
     SQLAlchemyStockRepository,
+    SQLAlchemyWatchlistRepository,
 )
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
 from zhaoniu_api.research.service import DeterministicResearchService
 
-DEMO_USER_ID = UUID("00000000-0000-4000-8000-000000000001")
-watchlist_repository = InMemoryWatchlistRepository()
+
+def get_auth_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AuthService:
+    return AuthService(session, settings)
 
 
-def get_current_user_id() -> UUID:
-    """Auth seam: replace with secure HttpOnly cookie session validation in Phase 1."""
-    return DEMO_USER_ID
+async def get_current_user_id(
+    auth: Annotated[AuthService, Depends(get_auth_service)],
+    token: Annotated[str | None, Cookie(alias="zhaoniu_session")] = None,
+) -> UUID:
+    account = await get_current_user(auth, token)
+    return account.id
+
+
+async def get_current_user(
+    auth: Annotated[AuthService, Depends(get_auth_service)],
+    token: Annotated[str | None, Cookie(alias="zhaoniu_session")] = None,
+) -> UserAccount:
+    account = await auth.authenticate(token)
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    return account
 
 
 def get_stock_repository(session: Annotated[AsyncSession, Depends(get_session)]) -> StockRepository:
@@ -39,8 +62,10 @@ def get_daily_bar_repository(
     return SQLAlchemyDailyBarRepository(session)
 
 
-def get_watchlist_repository() -> WatchlistRepository:
-    return watchlist_repository
+def get_watchlist_repository(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> WatchlistRepository:
+    return SQLAlchemyWatchlistRepository(session)
 
 
 def get_fundamental_service(
@@ -62,6 +87,8 @@ def get_ai_research_service(
 
 
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
+CurrentUser = Annotated[UserAccount, Depends(get_current_user)]
+AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
 StockRepo = Annotated[StockRepository, Depends(get_stock_repository)]
 DailyBarRepo = Annotated[DailyBarRepository, Depends(get_daily_bar_repository)]
 WatchlistRepo = Annotated[WatchlistRepository, Depends(get_watchlist_repository)]
