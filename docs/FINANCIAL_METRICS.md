@@ -26,8 +26,10 @@ period basis and input report IDs; it is not a runtime-editable formula registry
 Metric states are `available`, `missing_input`, `insufficient_history`, `not_applicable`, or
 `invalid_input`. Provider failures belong to `data_sync_runs`, not to individual metric states.
 
-ROIC, PEG, EV/EBITDA, PS-TTM, mandatory five-year percentiles, industry comparison, and full bank
-metrics are intentionally deferred until their inputs and applicability contracts are stable.
+ROIC, PEG, EV/EBITDA, PS-TTM, mandatory five-year percentiles, and full bank metrics are
+intentionally deferred until their inputs and applicability contracts are stable. Phase 6 adds peer
+comparison only for already materialized `fundamental_metric_points` and existing valuation
+observations; it does not create new metric formulas for benchmarking.
 
 Phase 3 materializes these deterministic outputs as historical `fundamental_metric_points`.
 Point fingerprints include the formula version and referenced input checksums, so a later source

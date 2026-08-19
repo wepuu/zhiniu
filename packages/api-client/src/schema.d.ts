@@ -225,6 +225,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/peers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stock Peers */
+        get: operations["get_stock_peers_api_v1_stocks__symbol__peers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/peer-comparisons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stock Peer Comparisons */
+        get: operations["get_stock_peer_comparisons_api_v1_stocks__symbol__peer_comparisons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/research/observations": {
         parameters: {
             query?: never;
@@ -846,6 +880,25 @@ export interface components {
             /** Parent Net Profit */
             parent_net_profit: string | null;
         };
+        /** IndustryResponse */
+        IndustryResponse: {
+            /** Taxonomy Code */
+            taxonomy_code: string;
+            /** Taxonomy Version */
+            taxonomy_version: string;
+            /** Industry Code */
+            industry_code: string;
+            /** Industry Name */
+            industry_name: string;
+            /** Source */
+            source: string;
+            /** Source Reference */
+            source_reference: string;
+            /** Commercial Use Status */
+            commercial_use_status: string;
+            /** Redistribution Status */
+            redistribution_status: string;
+        };
         /** MeResponse */
         MeResponse: {
             user: components["schemas"]["UserResponse"];
@@ -871,6 +924,130 @@ export interface components {
             items: components["schemas"]["ResearchObservation"][];
             /** Total */
             total: number;
+        };
+        /** PeerBenchmarkEvidenceSummary */
+        PeerBenchmarkEvidenceSummary: {
+            /** Benchmark Snapshot Id */
+            benchmark_snapshot_id: string | null;
+            company_source_kind: components["schemas"]["PeerMetricKind"] | null;
+            /** Company Source Id */
+            company_source_id: string | null;
+            /** Peer Input Count */
+            peer_input_count: number;
+            /** Peer Source Ids */
+            peer_source_ids: string[];
+            /**
+             * Excluded Invalid Value Count
+             * @default 0
+             */
+            excluded_invalid_value_count: number;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+        };
+        /** PeerComparisonEnvelope */
+        PeerComparisonEnvelope: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_built" | "unsupported_template" | "missing_industry" | "insufficient_peers";
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            industry?: components["schemas"]["IndustryResponse"] | null;
+            /** Peer Universe Fingerprint */
+            peer_universe_fingerprint?: string | null;
+            /** Knowledge Cutoff */
+            knowledge_cutoff?: string | null;
+            /** Items */
+            items?: components["schemas"]["PeerMetricComparisonResponse"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /**
+         * PeerComparisonStatus
+         * @enum {string}
+         */
+        PeerComparisonStatus: "available" | "not_applicable" | "unsupported_template" | "missing_industry" | "missing_metric" | "incomparable_basis" | "insufficient_peers" | "invalid_inputs" | "not_built";
+        /** PeerMetricComparisonResponse */
+        PeerMetricComparisonResponse: {
+            /** Metric Code */
+            metric_code: string;
+            metric_kind: components["schemas"]["PeerMetricKind"];
+            /** Dimension */
+            dimension: string;
+            status: components["schemas"]["PeerComparisonStatus"];
+            /** Reason */
+            reason?: string | null;
+            /** Company Value */
+            company_value?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Fiscal Period */
+            fiscal_period?: string | null;
+            /** Basis */
+            basis?: string | null;
+            /** Peer Median */
+            peer_median?: string | null;
+            /** Peer P25 */
+            peer_p25?: string | null;
+            /** Peer P75 */
+            peer_p75?: string | null;
+            /** Numeric Percentile */
+            numeric_percentile?: string | null;
+            /** Numeric Rank Desc */
+            numeric_rank_desc?: number | null;
+            /**
+             * Sample Size
+             * @default 0
+             */
+            sample_size: number;
+            evidence: components["schemas"]["PeerBenchmarkEvidenceSummary"];
+        };
+        /**
+         * PeerMetricKind
+         * @enum {string}
+         */
+        PeerMetricKind: "fundamental" | "valuation";
+        /** PeerStockResponse */
+        PeerStockResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Exchange */
+            exchange: string;
+            /** Issuer Type */
+            issuer_type: string;
+        };
+        /** PeerUniverseResponse */
+        PeerUniverseResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            status: components["schemas"]["PeerComparisonStatus"];
+            /** Reason */
+            reason?: string | null;
+            industry?: components["schemas"]["IndustryResponse"] | null;
+            /** Peer Universe Fingerprint */
+            peer_universe_fingerprint?: string | null;
+            /**
+             * Sample Size
+             * @default 0
+             */
+            sample_size: number;
+            /** Stocks */
+            stocks?: components["schemas"]["PeerStockResponse"][];
         };
         /** ResearchCoverage */
         ResearchCoverage: {
@@ -1578,6 +1755,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AIResearchEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_peers_api_v1_stocks__symbol__peers_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeerUniverseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_peer_comparisons_api_v1_stocks__symbol__peer_comparisons_get: {
+        parameters: {
+            query?: {
+                dimension?: ("growth" | "profitability" | "quality" | "balance" | "valuation") | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeerComparisonEnvelope"];
                 };
             };
             /** @description Validation Error */

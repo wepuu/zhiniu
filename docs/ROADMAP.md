@@ -34,12 +34,12 @@ groups, minimal internal-beta quotas, session listing/revocation, and desktop/mo
 Personalized research feeds, production account lifecycle, email verification, password reset, paid
 plans and public launch compliance remain deferred.
 
-## Phase 6 - Research Expansion
+## Phase 6 - Industry & Peer Benchmark Research
 
-Licensed financial provider evaluation, bank/financial templates, industry taxonomy and benchmarks,
-trading calendar, company actions, report-specific deterministic snapshots, period report
-interpretation, richer deterministic rules, official disclosure-document ingestion, and explicit
-episode lifecycle.
+Industry taxonomy as a first-class domain, deterministic peer universe resolution, cross-sectional
+benchmark snapshots, company peer metric positions, peer evidence, read-only peer APIs, and
+desktop/mobile peer-position cards. Personalized feeds, event radar, bank/financial templates,
+report-specific AI interpretation and stock-picking workflows remain deferred.
 
 ## Phase 7 - Event Engine
 

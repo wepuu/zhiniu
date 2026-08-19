@@ -25,3 +25,16 @@ rules, event rules, episode lifecycle and bank-specific rules are deferred.
 
 Each observation stores the rule ID/version, content fingerprint, comparison periods, calculation
 expression and referenced metric points. The LLM boundary is not involved.
+
+## Phase 6 peer-position observations
+
+Phase 6 may surface a small number of deterministic peer-position observations from stored peer
+benchmark results:
+
+- value materially above peer median;
+- value materially below peer median;
+- value in a high numeric peer percentile;
+- value in a low numeric peer percentile.
+
+These thresholds are attention heuristics only. They are not investment-quality judgments and must
+not be phrased as buy/sell, good/bad, leading/lagging, bullish/bearish or target-price language.

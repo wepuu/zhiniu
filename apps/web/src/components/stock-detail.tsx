@@ -7,6 +7,7 @@ import {
   type FinancialPeriodListResponse,
   type FundamentalMetricResponse,
   type FundamentalResearchResponse,
+  type PeerComparisonEnvelope,
   type ResearchSnapshotEnvelope,
   type StockResponse,
   type ValuationListResponse,
@@ -40,10 +41,12 @@ import {
   parseFiniteDecimal,
   toCandles,
 } from "@/lib/market-data";
+import { assertPeerComparisons } from "@/lib/peer-research";
 import { assertResearchSnapshot } from "@/lib/research";
 
 import { StockChart } from "./stock-chart";
 import { AIResearchPanel } from "./ai-research-panel";
+import { PeerResearchPanel } from "./peer-research-panel";
 import { ResearchChanges } from "./research-changes";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
@@ -59,6 +62,7 @@ type ResearchData = {
   periods: FinancialPeriodListResponse;
   valuations: ValuationListResponse;
   snapshot: ResearchSnapshotEnvelope;
+  peers: PeerComparisonEnvelope;
 };
 
 const tabs: { code: WorkspaceTab; label: string; icon: typeof Activity }[] = [
@@ -79,6 +83,7 @@ function formatDecimal(value: string | null | undefined, digits = 2) {
 function ResearchWorkspace({
   symbol,
   snapshot,
+  peerComparison,
   ai,
   aiPending,
   aiError,
@@ -87,13 +92,14 @@ function ResearchWorkspace({
 }: {
   symbol: string;
   snapshot: ResearchSnapshotEnvelope;
+  peerComparison: PeerComparisonEnvelope;
   ai?: AIResearchEnvelope;
   aiPending: boolean;
   aiError: boolean;
   retryAI: () => void;
   compact?: boolean;
 }) {
-  const [view, setView] = useState<"changes" | "ai">("changes");
+  const [view, setView] = useState<"changes" | "peers" | "ai">("changes");
   return (
     <div>
       <div
@@ -103,6 +109,7 @@ function ResearchWorkspace({
       >
         {[
           ["changes", "关键变化"],
+          ["peers", "同行位置"],
           ["ai", "AI 解读"],
         ].map(([code, label]) => (
           <button
@@ -110,7 +117,7 @@ function ResearchWorkspace({
             type="button"
             role="tab"
             aria-selected={view === code}
-            onClick={() => setView(code as "changes" | "ai")}
+            onClick={() => setView(code as "changes" | "peers" | "ai")}
             className={`min-h-9 rounded-lg px-4 text-sm transition ${view === code ? "bg-ink text-white" : "text-slate hover:text-ink"}`}
           >
             {label}
@@ -123,6 +130,9 @@ function ResearchWorkspace({
           envelope={snapshot}
           compact={compact}
         />
+      )}
+      {view === "peers" && (
+        <PeerResearchPanel envelope={peerComparison} compact={compact} />
       )}
       {view === "ai" && ai && (
         <AIResearchPanel symbol={symbol} envelope={ai} compact={compact} />
@@ -715,6 +725,7 @@ function DesktopStock({
           <ResearchWorkspace
             symbol={stock.symbol}
             snapshot={research.snapshot}
+            peerComparison={research.peers}
             ai={ai}
             aiPending={aiPending}
             aiError={aiError}
@@ -812,6 +823,7 @@ function MobileStock({
           <ResearchWorkspace
             symbol={stock.symbol}
             snapshot={research.snapshot}
+            peerComparison={research.peers}
             ai={ai}
             aiPending={aiPending}
             aiError={aiError}
@@ -869,17 +881,20 @@ export function StockDetail({ symbol }: { symbol: string }) {
   const research = useQuery({
     queryKey: ["stock", symbol, "fundamentals"],
     queryFn: async () => {
-      const [fundamentals, periods, valuations, snapshot] = await Promise.all([
-        api.getFundamentals(symbol),
-        api.getFinancialPeriods(symbol),
-        api.getValuations(symbol),
-        api.getResearchSnapshot(symbol),
-      ]);
+      const [fundamentals, periods, valuations, snapshot, peers] =
+        await Promise.all([
+          api.getFundamentals(symbol),
+          api.getFinancialPeriods(symbol),
+          api.getValuations(symbol),
+          api.getResearchSnapshot(symbol),
+          api.getPeerComparisons(symbol),
+        ]);
       return {
         fundamentals: assertFundamentals(fundamentals),
         periods: assertFinancialPeriods(periods),
         valuations: assertValuations(valuations),
         snapshot: assertResearchSnapshot(snapshot),
+        peers: assertPeerComparisons(peers),
       };
     },
     retry: 1,

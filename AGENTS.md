@@ -23,6 +23,13 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 17. Never commit secrets, credentials, tokens, customer data, or production dumps.
 18. Every API response has an explicit Pydantic schema.
 19. Short-term convenience does not justify crossing a domain boundary.
+20. Peer comparisons must use comparable metric codes, versions, periods, basis and units.
+21. Peer benchmarks must respect `knowledge_cutoff`; future data must not enter older snapshots.
+22. Frontend code must not calculate peer percentiles, ranks or benchmark statistics.
+23. LLMs must not select peer companies or calculate peer benchmarks.
+24. Peer numerical position must not be presented as investment quality, recommendation or ranking.
+25. Financial issuer templates must not be mixed in the same peer universe.
+26. Industry classifications must retain source, version and lineage.
 
 ## Standard commands
 

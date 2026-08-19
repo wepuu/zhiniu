@@ -641,6 +641,130 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/peers": {
+      "get": {
+        "tags": [
+          "peer-research"
+        ],
+        "summary": "Get Stock Peers",
+        "operationId": "get_stock_peers_api_v1_stocks__symbol__peers_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerUniverseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/peer-comparisons": {
+      "get": {
+        "tags": [
+          "peer-research"
+        ],
+        "summary": "Get Stock Peer Comparisons",
+        "operationId": "get_stock_peer_comparisons_api_v1_stocks__symbol__peer_comparisons_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "dimension",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "growth",
+                    "profitability",
+                    "quality",
+                    "balance",
+                    "valuation"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dimension"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerComparisonEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}/research/observations": {
       "get": {
         "tags": [
@@ -2680,6 +2804,55 @@
         ],
         "title": "IncomeStatementResponse"
       },
+      "IndustryResponse": {
+        "properties": {
+          "taxonomy_code": {
+            "type": "string",
+            "title": "Taxonomy Code"
+          },
+          "taxonomy_version": {
+            "type": "string",
+            "title": "Taxonomy Version"
+          },
+          "industry_code": {
+            "type": "string",
+            "title": "Industry Code"
+          },
+          "industry_name": {
+            "type": "string",
+            "title": "Industry Name"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "source_reference": {
+            "type": "string",
+            "title": "Source Reference"
+          },
+          "commercial_use_status": {
+            "type": "string",
+            "title": "Commercial Use Status"
+          },
+          "redistribution_status": {
+            "type": "string",
+            "title": "Redistribution Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "taxonomy_code",
+          "taxonomy_version",
+          "industry_code",
+          "industry_name",
+          "source",
+          "source_reference",
+          "commercial_use_status",
+          "redistribution_status"
+        ],
+        "title": "IndustryResponse"
+      },
       "MeResponse": {
         "properties": {
           "user": {
@@ -2757,6 +2930,435 @@
           "total"
         ],
         "title": "ObservationList"
+      },
+      "PeerBenchmarkEvidenceSummary": {
+        "properties": {
+          "benchmark_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Snapshot Id"
+          },
+          "company_source_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeerMetricKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Source Id"
+          },
+          "peer_input_count": {
+            "type": "integer",
+            "title": "Peer Input Count"
+          },
+          "peer_source_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Peer Source Ids"
+          },
+          "excluded_invalid_value_count": {
+            "type": "integer",
+            "title": "Excluded Invalid Value Count",
+            "default": 0
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "benchmark_snapshot_id",
+          "company_source_kind",
+          "company_source_id",
+          "peer_input_count",
+          "peer_source_ids",
+          "knowledge_cutoff"
+        ],
+        "title": "PeerBenchmarkEvidenceSummary"
+      },
+      "PeerComparisonEnvelope": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_built",
+              "unsupported_template",
+              "missing_industry",
+              "insufficient_peers"
+            ],
+            "title": "Status"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndustryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "peer_universe_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peer Universe Fingerprint"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PeerMetricComparisonResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "symbol",
+          "canonical_symbol"
+        ],
+        "title": "PeerComparisonEnvelope"
+      },
+      "PeerComparisonStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "not_applicable",
+          "unsupported_template",
+          "missing_industry",
+          "missing_metric",
+          "incomparable_basis",
+          "insufficient_peers",
+          "invalid_inputs",
+          "not_built"
+        ],
+        "title": "PeerComparisonStatus"
+      },
+      "PeerMetricComparisonResponse": {
+        "properties": {
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "metric_kind": {
+            "$ref": "#/components/schemas/PeerMetricKind"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PeerComparisonStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "company_value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "fiscal_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiscal Period"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "peer_median": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peer Median"
+          },
+          "peer_p25": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peer P25"
+          },
+          "peer_p75": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peer P75"
+          },
+          "numeric_percentile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numeric Percentile"
+          },
+          "numeric_rank_desc": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numeric Rank Desc"
+          },
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size",
+            "default": 0
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/PeerBenchmarkEvidenceSummary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "metric_kind",
+          "dimension",
+          "status",
+          "evidence"
+        ],
+        "title": "PeerMetricComparisonResponse"
+      },
+      "PeerMetricKind": {
+        "type": "string",
+        "enum": [
+          "fundamental",
+          "valuation"
+        ],
+        "title": "PeerMetricKind"
+      },
+      "PeerStockResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "issuer_type": {
+            "type": "string",
+            "title": "Issuer Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "issuer_type"
+        ],
+        "title": "PeerStockResponse"
+      },
+      "PeerUniverseResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PeerComparisonStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndustryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "peer_universe_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peer Universe Fingerprint"
+          },
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size",
+            "default": 0
+          },
+          "stocks": {
+            "items": {
+              "$ref": "#/components/schemas/PeerStockResponse"
+            },
+            "type": "array",
+            "title": "Stocks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "status"
+        ],
+        "title": "PeerUniverseResponse"
       },
       "ResearchCoverage": {
         "properties": {

@@ -18,11 +18,16 @@ from zhaoniu_api.dependencies import (
     CurrentUserId,
     DailyBarRepo,
     FundamentalService,
+    PeerResearchServiceDependency,
     ResearchService,
     StockRepo,
     WatchlistRepo,
 )
 from zhaoniu_api.domain.models import Watchlist, resolve_symbol
+from zhaoniu_api.peer_research.models import (
+    PeerComparisonEnvelope,
+    PeerUniverseResponse,
+)
 from zhaoniu_api.research.models import (
     ObservationList,
     ResearchObservation,
@@ -318,6 +323,38 @@ async def get_ai_research(
     if await stocks.get(symbol) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
     return await service.get_stock_health(symbol)
+
+
+@router.get(
+    "/stocks/{symbol}/peers",
+    response_model=PeerUniverseResponse,
+    tags=["peer-research"],
+)
+async def get_stock_peers(
+    symbol: str,
+    stocks: StockRepo,
+    service: PeerResearchServiceDependency,
+    as_of: datetime | None = None,
+) -> PeerUniverseResponse:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    return await service.get_peers(symbol, as_of=as_of)
+
+
+@router.get(
+    "/stocks/{symbol}/peer-comparisons",
+    response_model=PeerComparisonEnvelope,
+    tags=["peer-research"],
+)
+async def get_stock_peer_comparisons(
+    symbol: str,
+    stocks: StockRepo,
+    service: PeerResearchServiceDependency,
+    dimension: Literal["growth", "profitability", "quality", "balance", "valuation"] | None = None,
+) -> PeerComparisonEnvelope:
+    if await stocks.get(symbol) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+    return await service.get_peer_comparisons(symbol, dimension=dimension)
 
 
 @router.get(

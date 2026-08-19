@@ -9,6 +9,7 @@ from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.composition import (
     build_ai_research_service,
     build_fundamental_service,
+    build_peer_research_service,
     build_research_service,
 )
 from zhaoniu_api.config import Settings, get_settings
@@ -20,6 +21,7 @@ from zhaoniu_api.infrastructure.sql_repositories import (
     SQLAlchemyStockRepository,
     SQLAlchemyWatchlistRepository,
 )
+from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
 from zhaoniu_api.research.service import DeterministicResearchService
 
@@ -86,6 +88,12 @@ def get_ai_research_service(
     return build_ai_research_service(session)
 
 
+def get_peer_research_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> PeerResearchService:
+    return build_peer_research_service(session)
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 CurrentUser = Annotated[UserAccount, Depends(get_current_user)]
 AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
@@ -95,3 +103,6 @@ WatchlistRepo = Annotated[WatchlistRepository, Depends(get_watchlist_repository)
 FundamentalService = Annotated[FundamentalResearchService, Depends(get_fundamental_service)]
 ResearchService = Annotated[DeterministicResearchService, Depends(get_research_service)]
 AIResearchServiceDependency = Annotated[AIResearchService, Depends(get_ai_research_service)]
+PeerResearchServiceDependency = Annotated[
+    PeerResearchService, Depends(get_peer_research_service)
+]

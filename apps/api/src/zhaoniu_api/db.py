@@ -113,6 +113,79 @@ class StockDailyBarRecord(TimestampMixin, Base):
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class IndustryTaxonomyRecord(TimestampMixin, Base):
+    __tablename__ = "industry_taxonomies"
+    __table_args__ = (
+        UniqueConstraint("code", "version", name="uq_industry_taxonomy_identity"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(80), nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    version: Mapped[str] = mapped_column(String(80), nullable=False)
+    source: Mapped[str] = mapped_column(String(80), nullable=False)
+    source_reference: Mapped[str] = mapped_column(String(240), nullable=False)
+    commercial_use_status: Mapped[str] = mapped_column(String(80), nullable=False)
+    redistribution_status: Mapped[str] = mapped_column(String(80), nullable=False)
+
+
+class IndustryRecord(TimestampMixin, Base):
+    __tablename__ = "industries"
+    __table_args__ = (
+        UniqueConstraint(
+            "taxonomy_code",
+            "taxonomy_version",
+            "code",
+            name="uq_industry_identity",
+        ),
+        Index("ix_industries_taxonomy", "taxonomy_code", "taxonomy_version"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    taxonomy_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    code: Mapped[str] = mapped_column(String(80), nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    level: Mapped[int] = mapped_column(nullable=False, default=1)
+    parent_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+
+class IndustryMembershipRecord(TimestampMixin, Base):
+    __tablename__ = "industry_memberships"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "taxonomy_code",
+            "taxonomy_version",
+            "industry_code",
+            "known_at",
+            name="uq_industry_membership_identity",
+        ),
+        Index("ix_industry_membership_symbol", "symbol", "taxonomy_code", "known_at"),
+        Index(
+            "ix_industry_membership_industry",
+            "taxonomy_code",
+            "taxonomy_version",
+            "industry_code",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    industry_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    source: Mapped[str] = mapped_column(String(80), nullable=False)
+    source_reference: Mapped[str] = mapped_column(String(240), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lineage_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class DataSyncRunRecord(Base):
     __tablename__ = "data_sync_runs"
 
@@ -309,6 +382,157 @@ class ValuationObservationRecord(TimestampMixin, Base):
     unit: Mapped[str] = mapped_column(String(24))
     provider: Mapped[str] = mapped_column(String(40))
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PeerBenchmarkRunRecord(Base):
+    __tablename__ = "peer_benchmark_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_peer_benchmark_run_idempotency"),
+        Index("ix_peer_benchmark_run_symbol_started", "symbol", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    taxonomy_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    peer_universe_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    comparison_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PeerBenchmarkSnapshotRecord(Base):
+    __tablename__ = "peer_benchmark_snapshots"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_peer_benchmark_snapshot_idempotency"),
+        Index("ix_peer_benchmark_snapshot_industry", "industry_id", "knowledge_cutoff"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    industry_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("industries.id", ondelete="RESTRICT"), nullable=False
+    )
+    taxonomy_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    peer_universe_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    benchmark_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    producer_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PeerBenchmarkMetricResultRecord(Base):
+    __tablename__ = "peer_benchmark_metric_results"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "metric_code", name="uq_peer_benchmark_metric"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("peer_benchmark_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    metric_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    metric_kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    fiscal_period: Mapped[str | None] = mapped_column(String(12))
+    period_end: Mapped[date | None] = mapped_column(Date)
+    basis: Mapped[str | None] = mapped_column(String(24))
+    unit: Mapped[str | None] = mapped_column(String(24))
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    sample_size: Mapped[int] = mapped_column(default=0, nullable=False)
+    median: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    p25: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    p75: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    excluded_invalid_value_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(120))
+
+
+class PeerBenchmarkInputRecord(Base):
+    __tablename__ = "peer_benchmark_inputs"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN metric_point_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN valuation_observation_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="ck_peer_benchmark_input_one_reference",
+        ),
+        Index("ix_peer_benchmark_inputs_result", "metric_result_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    metric_result_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("peer_benchmark_metric_results.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(String(16), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    ordinal: Mapped[int] = mapped_column(nullable=False, default=0)
+    metric_point_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("fundamental_metric_points.id", ondelete="RESTRICT"),
+    )
+    valuation_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("valuation_observations.id", ondelete="RESTRICT"),
+    )
+
+
+class CompanyPeerMetricPositionRecord(Base):
+    __tablename__ = "company_peer_metric_positions"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "benchmark_metric_result_id",
+            name="uq_company_peer_metric_position",
+        ),
+        Index("ix_company_peer_position_symbol", "symbol", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    benchmark_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("peer_benchmark_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    benchmark_metric_result_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("peer_benchmark_metric_results.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    metric_point_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("fundamental_metric_points.id", ondelete="RESTRICT"),
+    )
+    valuation_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("valuation_observations.id", ondelete="RESTRICT"),
+    )
+    metric_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    metric_kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    company_value: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    numeric_percentile: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    numeric_rank_desc: Mapped[int | None]
+    sample_size: Mapped[int] = mapped_column(default=0, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class FundamentalMetricPointRecord(Base):

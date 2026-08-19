@@ -21,6 +21,12 @@ export type ResearchSnapshotDocument =
 export type ResearchObservation = components["schemas"]["ResearchObservation"];
 export type ObservationList = components["schemas"]["ObservationList"];
 export type AIResearchEnvelope = components["schemas"]["AIResearchEnvelope"];
+export type PeerComparisonEnvelope =
+  components["schemas"]["PeerComparisonEnvelope"];
+export type PeerMetricComparisonResponse =
+  components["schemas"]["PeerMetricComparisonResponse"];
+export type PeerUniverseResponse =
+  components["schemas"]["PeerUniverseResponse"];
 export type AIResearchOutputDocument =
   components["schemas"]["AIResearchOutputDocument"];
 export type StockHealthResearchV1 =
@@ -168,6 +174,19 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getAIResearch(symbol: string) {
       return request<AIResearchEnvelope>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/ai-research`,
+      );
+    },
+    getPeers(symbol: string) {
+      return request<PeerUniverseResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/peers`,
+      );
+    },
+    getPeerComparisons(symbol: string, dimension?: string) {
+      const query = new URLSearchParams();
+      if (dimension) query.set("dimension", dimension);
+      const suffix = query.size ? `?${query}` : "";
+      return request<PeerComparisonEnvelope>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/peer-comparisons${suffix}`,
       );
     },
     getWatchlists() {

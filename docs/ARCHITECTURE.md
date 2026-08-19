@@ -73,10 +73,15 @@ attempted at most once, calls have bounded timeouts, and only a fully schema/cit
 result is persisted. An expired 30-minute lease may be reclaimed; a failed run requires explicit
 retry. API routes remain read-only and cannot trigger generation.
 
+Peer benchmark jobs use the Phase 6 application service. They resolve the deterministic industry
+universe first, then select already materialized metric points or valuation observations, calculate
+median/quartile/percentile/rank, and persist immutable benchmark snapshots. GET routes read stored
+results only; the frontend never calculates peer statistics.
+
 ## Shared versus user data
 
 Shared: stocks, bars, financial reports, valuation observations, deterministic metrics, events,
-evidence and public research snapshots.
+evidence, public research snapshots, industry classifications and peer benchmark research.
 
 User-owned: users, sessions, watchlists/items, alerts, preferences, chats, subscriptions and usage.
 Every user-owned record and query carries `user_id`. Phase 5 implements email/password sessions and
@@ -95,6 +100,8 @@ public account lifecycle remain deferred.
 - `evidence_engine`: current typed evidence references; future disclosure-document retrieval.
 - `ai_research`: snapshot-only context, prompt, validation, orchestration, immutable outputs and
   API read model.
+- `peer_research`: industry taxonomy, peer universe resolution, benchmark statistics, peer evidence
+  and read-only API models.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See

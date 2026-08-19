@@ -22,3 +22,16 @@ a conservative availability boundary, but does not claim backtest-grade point-in
 Sync-run records retain provider identity, request window, counts, timing, status, and a redacted
 exception class. Mock data may be used in isolated tests, but never as evidence of a successful
 external-data acceptance run.
+
+## Phase 6 industry classification
+
+Phase 6 introduces a development taxonomy named `akshare_dev_industry / phase6-dev-v1` by importing
+the existing Phase 1 `stocks.industry_code` field into versioned industry tables when that field is
+available. If the local development database has no industry field populated, the importer may add a
+small `phase6_dev_seed` for explicit acceptance symbols such as `600519.SH` and `300750.SZ`. This
+preserves source lineage and lets the peer benchmark engine run end-to-end, but it remains a
+development and technical-validation source only.
+
+Commercial display, redistribution, attribution and stability for this industry field are
+`TBD / requires legal review`. A production taxonomy must be replaced by one confirmed official or
+licensed source, with the exact source reference, version, ingestion date and reuse terms recorded.

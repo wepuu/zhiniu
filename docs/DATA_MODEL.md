@@ -17,6 +17,10 @@ ResearchObservation 1--* ResearchObservationInput
 Stock 1--* ResearchBuildRun
 ResearchSnapshot 1--* AIResearchRun 1--0..1 AIResearchOutput
 AIResearchRun 1--* LLMCall
+Stock 1--* IndustryMembership *--1 Industry
+Industry 1--* PeerBenchmarkSnapshot 1--* PeerBenchmarkMetricResult
+PeerBenchmarkMetricResult 1--* PeerBenchmarkInput
+Stock 1--* CompanyPeerMetricPosition
 ```
 
 Shared market and financial facts are stored once globally. User-owned identity, session and
@@ -95,3 +99,15 @@ user-specific AI feature must use separate user-owned records and enforce `user_
 Phase 5 entitlements are deterministic internal-beta limits only: five watchlist groups and thirty
 total watchlist memberships per user. Paid plans, account deletion, email verification and password
 reset are deferred.
+
+## Implemented Phase 6 tables
+
+- `industry_taxonomies`, `industries`, `industry_memberships`: versioned industry classification
+  with source lineage and `known_at` support.
+- `peer_benchmark_runs`: queryable idempotent build status.
+- `peer_benchmark_snapshots`: immutable industry-level benchmark identity.
+- `peer_benchmark_metric_results`: median, quartiles, status and invalid-value metadata by metric.
+- `peer_benchmark_inputs`: references to the exact metric points or valuation observations used.
+- `company_peer_metric_positions`: target-company values, numeric percentile and numeric rank.
+
+Peer research is global shared research and does not carry `user_id`.

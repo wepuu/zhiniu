@@ -252,23 +252,73 @@ const aiResearch = {
   },
 };
 
+const peerComparisons = {
+  status: "ready",
+  symbol: "600519",
+  canonical_symbol: "600519.SH",
+  industry: {
+    taxonomy_code: "akshare_dev_industry",
+    taxonomy_version: "phase6-dev-v1",
+    industry_code: "baijiu",
+    industry_name: "白酒",
+    source: "stock_master",
+    source_reference: "stocks.industry_code",
+    commercial_use_status: "TBD / requires legal review",
+    redistribution_status: "TBD / requires legal review",
+  },
+  peer_universe_fingerprint: "peer-fingerprint",
+  knowledge_cutoff: "2026-08-16T00:00:00Z",
+  items: [
+    {
+      metric_code: "roe",
+      metric_kind: "fundamental",
+      dimension: "profitability",
+      status: "available",
+      reason: null,
+      company_value: "18.20",
+      unit: "percent",
+      period_end: "2025-12-31",
+      fiscal_period: "FY",
+      basis: "fy",
+      peer_median: "10.70",
+      peer_p25: "7.80",
+      peer_p75: "16.50",
+      numeric_percentile: "82.00",
+      numeric_rank_desc: 2,
+      sample_size: 8,
+      evidence: {
+        benchmark_snapshot_id: "00000000-0000-4000-8000-000000000040",
+        company_source_kind: "fundamental",
+        company_source_id: "00000000-0000-4000-8000-000000000041",
+        peer_input_count: 8,
+        peer_source_ids: [],
+        excluded_invalid_value_count: 0,
+        knowledge_cutoff: "2026-08-16T00:00:00Z",
+      },
+    },
+  ],
+  total: 1,
+};
+
 function successfulFetch(input: RequestInfo | URL) {
   const url = String(input);
   const body = url.includes("daily-bars")
     ? emptyBars
-    : url.includes("ai-research")
-      ? aiResearch
-      : url.includes("research/observations/")
-        ? observation
-        : url.includes("research/snapshot")
-          ? snapshot
-          : url.includes("research/fundamentals")
-            ? fundamentals
-            : url.includes("financials/periods")
-              ? periods
-              : url.includes("valuations")
-                ? valuations
-                : stock;
+    : url.includes("peer-comparisons")
+      ? peerComparisons
+      : url.includes("ai-research")
+        ? aiResearch
+        : url.includes("research/observations/")
+          ? observation
+          : url.includes("research/snapshot")
+            ? snapshot
+            : url.includes("research/fundamentals")
+              ? fundamentals
+              : url.includes("financials/periods")
+                ? periods
+                : url.includes("valuations")
+                  ? valuations
+                  : stock;
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status: 200,
@@ -377,6 +427,21 @@ describe("StockDetail states and responsive compositions", () => {
     expect(
       await screen.findByRole("dialog", { name: "变化证据详情" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders peer position in both responsive research compositions", async () => {
+    vi.stubGlobal("fetch", vi.fn(successfulFetch));
+    render(
+      <Providers>
+        <StockDetail symbol="600519" />
+      </Providers>,
+    );
+    const peerTabs = await screen.findAllByRole("tab", { name: "同行位置" });
+    fireEvent.click(peerTabs[0]);
+    fireEvent.click(peerTabs[1]);
+    expect(screen.getAllByText("同行位置")).toHaveLength(4);
+    expect(screen.getAllByText("82.0% 数值分位")).toHaveLength(2);
+    expect(screen.getAllByText("同行样本 8")).toHaveLength(2);
   });
 
   it("shows unsupported AI state without a generation action", async () => {
