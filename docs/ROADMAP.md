@@ -27,7 +27,7 @@ Evidence-bound structured stock-health interpretation, deterministic context sel
 citations, LiteLLM SDK routing, automatic failover, immutable outputs, call audit, and separately
 composed desktop/mobile AI research states. LLMs never calculate or restate financial numbers.
 
-## Phase 5 - Multi-user Watchlist & Auth (current)
+## Phase 5 - Multi-user Watchlist & Auth
 
 Email/password sessions, HttpOnly cookie authentication, ownership enforcement, persisted watchlist
 groups, minimal internal-beta quotas, session listing/revocation, and desktop/mobile watchlist UX.
@@ -41,10 +41,12 @@ benchmark snapshots, company peer metric positions, peer evidence, read-only pee
 desktop/mobile peer-position cards. Personalized feeds, event radar, bank/financial templates,
 report-specific AI interpretation and stock-picking workflows remain deferred.
 
-## Phase 7 - Event Engine
+## Phase 7 - Corporate Disclosure & Event Radar (current)
 
-Announcement/news ingestion, canonical event taxonomy, clustering, change detection, materiality
-rules, and source-conflict handling.
+Disclosure metadata ingestion, deterministic four-family taxonomy, staged structured facts,
+immutable event versions, point-in-time radar snapshots, neutral attention rules, evidence APIs and
+separately verified desktop/mobile event-radar flows. News, source-conflict fusion and expanded event
+families remain deferred.
 
 ## Phase 8 - Notification
 

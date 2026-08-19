@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 4 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 7 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -13,6 +13,7 @@ Next.js web -> FastAPI modular monolith -> PostgreSQL
                     +-> Redis <-> Celery workers
                     +-> provider adapters -> external vendors
                     +-> LiteLLM SDK gateway -> configured model providers
+                    +-> disclosure/event engine -> point-in-time radar snapshots
 ```
 
 ## Frontend
@@ -96,8 +97,11 @@ public account lifecycle remain deferred.
 - `research`: historical metric series, deterministic change rules, evidence and snapshot service.
 - `research_engine`: future expansion boundary for richer structured orchestration.
 - `change_engine`: implemented inside `research` until an extracted package is justified.
-- `event_engine`: future announcement/news canonicalization.
-- `evidence_engine`: current typed evidence references; future disclosure-document retrieval.
+- `corporate_events`: disclosure ingestion, deterministic taxonomy, typed immutable event versions,
+  evidence links and point-in-time radar snapshots.
+- `event_engine`: reserved extraction boundary; implementation stays in `corporate_events` until
+  measured reuse or scale justifies a package.
+- `evidence_engine`: typed research evidence references and retained disclosure-document links.
 - `ai_research`: snapshot-only context, prompt, validation, orchestration, immutable outputs and
   API read model.
 - `peer_research`: industry taxonomy, peer universe resolution, benchmark statistics, peer evidence
@@ -106,3 +110,10 @@ public account lifecycle remain deferred.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See
 `OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.
+
+## Corporate disclosure and event radar
+
+Corporate events are an API application module, not a frontend calculation. External data crosses
+the Provider -> Normalizer -> Canonical Model -> Repository boundary. Disclosures, staged source
+facts, immutable event versions and point-in-time radar snapshots remain separate persistence
+layers. Radar attention is deterministic and versioned; the frontend only renders API results.

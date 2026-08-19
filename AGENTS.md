@@ -30,6 +30,10 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 24. Peer numerical position must not be presented as investment quality, recommendation or ranking.
 25. Financial issuer templates must not be mixed in the same peer universe.
 26. Industry classifications must retain source, version and lineage.
+27. A disclosure document is evidence, not automatically a corporate event.
+28. Structured corporate-event facts must remain staged until matched to a retained disclosure.
+29. Event attention belongs to a versioned radar snapshot, not the immutable event record.
+30. Event processing must preserve publication, knowledge, effective and ingestion time semantics.
 
 ## Standard commands
 

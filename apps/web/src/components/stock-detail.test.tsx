@@ -300,25 +300,65 @@ const peerComparisons = {
   total: 1,
 };
 
+const eventRadar = {
+  status: "ready",
+  freshness: "current",
+  source_health: "healthy",
+  coverage_status: "partial",
+  symbol: "600519",
+  canonical_symbol: "600519.SH",
+  snapshot_id: "00000000-0000-4000-8000-000000000050",
+  knowledge_cutoff: "2026-08-16T00:00:00Z",
+  generated_at: "2026-08-16T01:00:00Z",
+  upcoming_items: [],
+  recent_items: [
+    {
+      section: "recent",
+      attention_level: "notice",
+      attention_rule_id: "follow-up-required",
+      attention_rule_version: "event-attention-v1",
+      attention_reason: "事件可能存在后续进展，建议持续核对公告",
+      event: {
+        id: "00000000-0000-4000-8000-000000000051",
+        symbol: "600519",
+        canonical_symbol: "600519.SH",
+        event_family: "share_pledge",
+        event_type: "pledge_created",
+        title: "关于控股股东股份质押的公告",
+        event_thread_key: "event-thread",
+        identity_basis: "source_document+family+effective_date",
+        source_published_at: "2026-08-15T00:00:00Z",
+        known_at: "2026-08-16T00:00:00Z",
+        extraction_status: "partial",
+        typed_payload: { kind: "share_pledge" },
+        field_lineage: {},
+        sources: [],
+      },
+    },
+  ],
+};
+
 function successfulFetch(input: RequestInfo | URL) {
   const url = String(input);
   const body = url.includes("daily-bars")
     ? emptyBars
-    : url.includes("peer-comparisons")
-      ? peerComparisons
-      : url.includes("ai-research")
-        ? aiResearch
-        : url.includes("research/observations/")
-          ? observation
-          : url.includes("research/snapshot")
-            ? snapshot
-            : url.includes("research/fundamentals")
-              ? fundamentals
-              : url.includes("financials/periods")
-                ? periods
-                : url.includes("valuations")
-                  ? valuations
-                  : stock;
+    : url.includes("event-radar")
+      ? eventRadar
+      : url.includes("peer-comparisons")
+        ? peerComparisons
+        : url.includes("ai-research")
+          ? aiResearch
+          : url.includes("research/observations/")
+            ? observation
+            : url.includes("research/snapshot")
+              ? snapshot
+              : url.includes("research/fundamentals")
+                ? fundamentals
+                : url.includes("financials/periods")
+                  ? periods
+                  : url.includes("valuations")
+                    ? valuations
+                    : stock;
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status: 200,
@@ -442,6 +482,22 @@ describe("StockDetail states and responsive compositions", () => {
     expect(screen.getAllByText("同行位置")).toHaveLength(4);
     expect(screen.getAllByText("82.0% 数值分位")).toHaveLength(2);
     expect(screen.getAllByText("同行样本 8")).toHaveLength(2);
+  });
+
+  it("renders event radar independently in desktop and mobile research", async () => {
+    vi.stubGlobal("fetch", vi.fn(successfulFetch));
+    render(
+      <Providers>
+        <StockDetail symbol="600519" />
+      </Providers>,
+    );
+    const eventTabs = await screen.findAllByRole("tab", { name: "事件雷达" });
+    fireEvent.click(eventTabs[0]);
+    fireEvent.click(eventTabs[1]);
+    expect(screen.getAllByRole("heading", { name: "事件雷达" })).toHaveLength(
+      2,
+    );
+    expect(screen.getAllByText("关于控股股东股份质押的公告")).toHaveLength(2);
   });
 
   it("shows unsupported AI state without a generation action", async () => {

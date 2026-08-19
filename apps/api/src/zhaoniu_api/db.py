@@ -115,9 +115,7 @@ class StockDailyBarRecord(TimestampMixin, Base):
 
 class IndustryTaxonomyRecord(TimestampMixin, Base):
     __tablename__ = "industry_taxonomies"
-    __table_args__ = (
-        UniqueConstraint("code", "version", name="uq_industry_taxonomy_identity"),
-    )
+    __table_args__ = (UniqueConstraint("code", "version", name="uq_industry_taxonomy_identity"),)
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -834,6 +832,194 @@ class LLMCallRecord(Base):
     finish_reason: Mapped[str | None] = mapped_column(String(80))
     error_code: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DisclosureDocumentRecord(Base):
+    __tablename__ = "disclosure_documents"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_owner", "source_document_id", name="uq_disclosure_source_identity"
+        ),
+        Index("ix_disclosure_symbol_published", "symbol", "source_published_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    source_owner: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_document_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    source_published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_published_precision: Mapped[str] = mapped_column(String(16), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class DisclosureClassificationRecord(Base):
+    __tablename__ = "disclosure_classifications"
+    __table_args__ = (
+        UniqueConstraint("document_id", "classifier_version", name="uq_disclosure_classification"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    document_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("disclosure_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_family: Mapped[str | None] = mapped_column(String(40))
+    event_type: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    classifier_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    matched_rule: Mapped[str | None] = mapped_column(String(120))
+    classified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CorporateEventSourceFactRecord(Base):
+    __tablename__ = "corporate_event_source_facts"
+    __table_args__ = (
+        UniqueConstraint("source_owner", "source_fact_id", name="uq_corporate_event_source_fact"),
+        Index("ix_corporate_event_fact_symbol_family", "symbol", "event_family"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    source_owner: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_fact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    event_family: Mapped[str] = mapped_column(String(40), nullable=False)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    source_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    matched_document_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("disclosure_documents.id", ondelete="SET NULL")
+    )
+    match_status: Mapped[str] = mapped_column(String(24), nullable=False)
+
+
+class CorporateEventBuildRunRecord(Base):
+    __tablename__ = "corporate_event_build_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_corporate_event_build_run"),
+        Index("ix_corporate_event_build_run_symbol", "symbol", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    run_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    source_health: Mapped[str] = mapped_column(String(24), nullable=False, default="unknown")
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    written_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CorporateEventRecord(Base):
+    __tablename__ = "corporate_events"
+    __table_args__ = (
+        UniqueConstraint("event_version_fingerprint", name="uq_corporate_event_version"),
+        Index("ix_corporate_event_symbol_known", "symbol", "known_at"),
+        Index("ix_corporate_event_thread", "event_thread_key", "known_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    event_family: Mapped[str] = mapped_column(String(40), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    event_thread_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_version_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    identity_basis: Mapped[str] = mapped_column(String(120), nullable=False)
+    previous_event_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("corporate_events.id", ondelete="RESTRICT")
+    )
+    source_published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_published_precision: Mapped[str] = mapped_column(String(16), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    event_effective_from: Mapped[date | None] = mapped_column(Date)
+    event_effective_to: Mapped[date | None] = mapped_column(Date)
+    event_time_precision: Mapped[str | None] = mapped_column(String(16))
+    extraction_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    typed_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    field_lineage: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CorporateEventInputRecord(Base):
+    __tablename__ = "corporate_event_inputs"
+    __table_args__ = (
+        UniqueConstraint("event_id", "document_id", name="uq_corporate_event_input_document"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    event_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("corporate_events.id", ondelete="CASCADE"), nullable=False
+    )
+    document_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("disclosure_documents.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_fact_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("corporate_event_source_facts.id", ondelete="RESTRICT")
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+class EventRadarSnapshotRecord(Base):
+    __tablename__ = "event_radar_snapshots"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_event_radar_snapshot"),
+        Index("ix_event_radar_snapshot_symbol_cutoff", "symbol", "knowledge_cutoff"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_health: Mapped[str] = mapped_column(String(24), nullable=False)
+    coverage_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EventRadarSnapshotItemRecord(Base):
+    __tablename__ = "event_radar_snapshot_items"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "event_id", name="uq_event_radar_snapshot_item"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("event_radar_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("corporate_events.id", ondelete="RESTRICT"), nullable=False
+    )
+    section: Mapped[str] = mapped_column(String(24), nullable=False)
+    attention_level: Mapped[str] = mapped_column(String(24), nullable=False)
+    attention_rule_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    attention_rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    attention_reason: Mapped[str] = mapped_column(String(240), nullable=False)
+    ordinal: Mapped[int] = mapped_column(nullable=False)
 
 
 class PlanRecord(Base):

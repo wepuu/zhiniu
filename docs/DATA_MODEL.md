@@ -1,4 +1,4 @@
-# Phase 4 Data Model
+# Phase 7 Data Model
 
 ## Entity relationships
 
@@ -111,3 +111,14 @@ reset are deferred.
 - `company_peer_metric_positions`: target-company values, numeric percentile and numeric rank.
 
 Peer research is global shared research and does not carry `user_id`.
+
+## Phase 7 disclosure and event tables
+
+- `disclosure_documents` retains source identity, URL and publication/knowledge/ingestion times.
+- `disclosure_classifications` stores versioned deterministic classification outcomes.
+- `corporate_event_source_facts` stages structured facts until evidence matching succeeds.
+- `corporate_events` stores immutable typed event versions and thread lineage.
+- `corporate_event_inputs` links each published event to its disclosure and optional source fact.
+- `corporate_event_build_runs` records idempotent sync/build outcomes.
+- `event_radar_snapshots` and `event_radar_snapshot_items` preserve point-in-time selection and
+  versioned attention decisions.

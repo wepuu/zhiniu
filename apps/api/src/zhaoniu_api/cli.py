@@ -7,11 +7,13 @@ from datetime import date, datetime
 from zhaoniu_api.ai_research.models import AIResearchBuildResult
 from zhaoniu_api.composition import (
     build_ai_research_service,
+    build_corporate_event_service,
     build_fundamental_service,
     build_market_data_service,
     build_peer_research_service,
     build_research_service,
 )
+from zhaoniu_api.corporate_events.models import EventBuildResult
 from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.market_data.service import SyncResult
@@ -62,6 +64,17 @@ def _parser() -> argparse.ArgumentParser:
     peer_research = subcommands.add_parser("build-peer-research")
     peer_research.add_argument("symbol")
     peer_research.add_argument("--as-of", type=datetime.fromisoformat)
+    disclosures = subcommands.add_parser("sync-disclosures")
+    disclosures.add_argument("symbol")
+    disclosures.add_argument("--start", type=_date)
+    disclosures.add_argument("--end", type=_date)
+    corporate_events = subcommands.add_parser("build-corporate-events")
+    corporate_events.add_argument("symbol")
+    event_radar = subcommands.add_parser("build-event-radar")
+    event_radar.add_argument("symbol")
+    event_radar.add_argument("--as-of", type=datetime.fromisoformat)
+    event_research = subcommands.add_parser("build-event-research")
+    event_research.add_argument("symbol")
     return parser
 
 
@@ -75,6 +88,7 @@ async def _run(args: argparse.Namespace) -> None:
                 | AIResearchBuildResult
                 | IndustrySyncResult
                 | PeerBuildResult
+                | EventBuildResult
             )
             if args.command == "sync-stock-master":
                 result = await build_market_data_service(session).sync_stock_master(
@@ -109,6 +123,22 @@ async def _run(args: argparse.Namespace) -> None:
             elif args.command == "build-peer-research":
                 result = await build_peer_research_service(session).build_peer_research(
                     args.symbol, as_of=args.as_of
+                )
+            elif args.command == "sync-disclosures":
+                result = await build_corporate_event_service(session).sync_disclosures(
+                    args.symbol, start=args.start, end=args.end
+                )
+            elif args.command == "build-corporate-events":
+                result = await build_corporate_event_service(session).build_corporate_events(
+                    args.symbol
+                )
+            elif args.command == "build-event-radar":
+                result = await build_corporate_event_service(session).build_event_radar(
+                    args.symbol, as_of=args.as_of
+                )
+            elif args.command == "build-event-research":
+                result = await build_corporate_event_service(session).build_event_research(
+                    args.symbol
                 )
             else:
                 result = await build_fundamental_service(session).compute_snapshot(

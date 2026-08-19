@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     auth_session_days: int = Field(default=30, ge=1, le=90)
     auth_password_min_length: int = Field(default=15, ge=15, le=128)
     market_data_provider: Literal["akshare"] = "akshare"
+    disclosure_provider: Literal["akshare"] = "akshare"
     llm_enabled: bool = False
     llm_model_chain: str = ""
     llm_max_attempts: int = Field(default=4, ge=1, le=4)

@@ -396,6 +396,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Events */
+        get: operations["list_events_api_v1_stocks__symbol__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event */
+        get: operations["get_event_api_v1_stocks__symbol__events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/event-radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event Radar */
+        get: operations["get_event_radar_api_v1_stocks__symbol__event_radar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -569,6 +620,70 @@ export interface components {
             /** Evidence Refs */
             evidence_refs: string[];
         };
+        /** CorporateEventListResponse */
+        CorporateEventListResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Items */
+            items: components["schemas"]["CorporateEventResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** CorporateEventResponse */
+        CorporateEventResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            event_family: components["schemas"]["EventFamily"];
+            event_type: components["schemas"]["EventType"];
+            /** Title */
+            title: string;
+            /** Event Thread Key */
+            event_thread_key: string;
+            /** Identity Basis */
+            identity_basis: string;
+            /** Previous Event Id */
+            previous_event_id?: string | null;
+            /**
+             * Source Published At
+             * Format: date-time
+             */
+            source_published_at: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Event Effective From */
+            event_effective_from?: string | null;
+            /** Event Effective To */
+            event_effective_to?: string | null;
+            /** Event Time Precision */
+            event_time_precision?: string | null;
+            /**
+             * Extraction Status
+             * @enum {string}
+             */
+            extraction_status: "complete" | "partial" | "invalid";
+            /** Typed Payload */
+            typed_payload: {
+                [key: string]: unknown;
+            };
+            /** Field Lineage */
+            field_lineage: {
+                [key: string]: unknown;
+            };
+            /** Sources */
+            sources?: components["schemas"]["EventSourceResponse"][];
+        };
         /**
          * CoverageStatus
          * @enum {string}
@@ -634,6 +749,90 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /**
+         * EventFamily
+         * @enum {string}
+         */
+        EventFamily: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action";
+        /** EventRadarEnvelope */
+        EventRadarEnvelope: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "no_events" | "not_built" | "building" | "failed";
+            /** Freshness */
+            freshness?: ("current" | "stale") | null;
+            /** Source Health */
+            source_health?: ("healthy" | "degraded" | "unavailable") | null;
+            /**
+             * Coverage Status
+             * @enum {string}
+             */
+            coverage_status: "complete" | "partial" | "unknown";
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Knowledge Cutoff */
+            knowledge_cutoff?: string | null;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Recent Items */
+            recent_items?: components["schemas"]["EventRadarItemResponse"][];
+            /** Upcoming Items */
+            upcoming_items?: components["schemas"]["EventRadarItemResponse"][];
+        };
+        /** EventRadarItemResponse */
+        EventRadarItemResponse: {
+            event: components["schemas"]["CorporateEventResponse"];
+            /**
+             * Section
+             * @enum {string}
+             */
+            section: "recent" | "upcoming";
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "info" | "notice" | "important";
+            /** Attention Rule Id */
+            attention_rule_id: string;
+            /** Attention Rule Version */
+            attention_rule_version: string;
+            /** Attention Reason */
+            attention_reason: string;
+        };
+        /** EventSourceResponse */
+        EventSourceResponse: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Source Owner */
+            source_owner: string;
+            /** Source Document Id */
+            source_document_id: string;
+            /** Title */
+            title: string;
+            /** Source Url */
+            source_url: string;
+            /**
+             * Source Published At
+             * Format: date-time
+             */
+            source_published_at: string;
+            /** Source Published Precision */
+            source_published_precision: string;
+        };
+        /**
+         * EventType
+         * @enum {string}
+         */
+        EventType: "repurchase_plan" | "repurchase_progress" | "repurchase_completed" | "repurchase_adjusted" | "repurchase_cancelled" | "pledge_created" | "pledge_released" | "pledge_changed" | "unlock_scheduled" | "unlock_completed" | "regulatory_inquiry" | "investigation_opened" | "warning_letter" | "administrative_penalty" | "disciplinary_action" | "regulatory_measure";
         /** EvidenceIndexEntry */
         EvidenceIndexEntry: {
             /** Evidence Id */
@@ -2126,6 +2325,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WatchlistMembershipResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_events_api_v1_stocks__symbol__events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorporateEventListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_api_v1_stocks__symbol__events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorporateEventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_radar_api_v1_stocks__symbol__event_radar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventRadarEnvelope"];
                 };
             };
             /** @description Validation Error */

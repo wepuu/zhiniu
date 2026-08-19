@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.routes import router
 
 
@@ -18,6 +19,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    app.include_router(corporate_event_router)
     return app
 
 

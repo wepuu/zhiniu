@@ -4,6 +4,10 @@ from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
 from zhaoniu_api.config import get_settings
+from zhaoniu_api.corporate_events.normalizer import AKShareDisclosureNormalizer
+from zhaoniu_api.corporate_events.provider import AKShareDisclosureProvider
+from zhaoniu_api.corporate_events.service import CorporateEventService
+from zhaoniu_api.corporate_events.sql_repository import SQLAlchemyCorporateEventRepository
 from zhaoniu_api.fundamentals.akshare_provider import AKShareFinancialProvider
 from zhaoniu_api.fundamentals.normalizer import AKShareFinancialNormalizer
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
@@ -71,4 +75,13 @@ def build_ai_research_service(session: AsyncSession) -> AIResearchService:
             per_model_timeout_seconds=settings.llm_per_model_timeout_seconds,
             run_deadline_seconds=settings.llm_run_deadline_seconds,
         ),
+    )
+
+
+def build_corporate_event_service(session: AsyncSession) -> CorporateEventService:
+    return CorporateEventService(
+        provider=AKShareDisclosureProvider(),
+        normalizer=AKShareDisclosureNormalizer(),
+        stocks=SQLAlchemyStockRepository(session),
+        events=SQLAlchemyCorporateEventRepository(session),
     )

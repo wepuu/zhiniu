@@ -35,3 +35,10 @@ development and technical-validation source only.
 Commercial display, redistribution, attribution and stability for this industry field are
 `TBD / requires legal review`. A production taxonomy must be replaced by one confirmed official or
 licensed source, with the exact source reference, version, ingestion date and reuse terms recorded.
+
+## Corporate disclosures
+
+AKShare is approved only as a Phase 7 development/evaluation adapter. Each stored record identifies
+the actual upstream owner (CNInfo, Eastmoney or Sina). Commercial use, redistribution, attribution,
+availability and stability remain `TBD / requires legal review`. Unmatched structured facts stay
+staged and must not be exposed as source-backed public events.

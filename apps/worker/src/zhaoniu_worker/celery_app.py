@@ -3,6 +3,7 @@ import os
 from datetime import date, datetime
 
 from celery import Celery  # type: ignore[import-untyped]
+from zhaoniu_api.corporate_events.errors import DisclosureProviderTransientError
 
 celery_app = Celery(
     "zhaoniu",
@@ -167,3 +168,61 @@ async def _generate_ai_stock_health(symbol: str, retry_failed: bool) -> dict[str
 def generate_ai_stock_health(symbol: str, retry_failed: bool = False) -> dict[str, object]:
     """Generate shared evidence-bound AI research with an application-level attempt budget."""
     return asyncio.run(_generate_ai_stock_health(symbol, retry_failed))
+
+
+async def _event_task(command: str, symbol: str, **kwargs: object) -> dict[str, object]:
+    from zhaoniu_api.composition import build_corporate_event_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        service = build_corporate_event_service(session)
+        if command == "sync":
+            result = await service.sync_disclosures(
+                symbol,
+                start=date.fromisoformat(str(kwargs["start"])) if kwargs.get("start") else None,
+                end=date.fromisoformat(str(kwargs["end"])) if kwargs.get("end") else None,
+            )
+        elif command == "events":
+            result = await service.build_corporate_events(symbol)
+        elif command == "radar":
+            result = await service.build_event_radar(
+                symbol,
+                as_of=datetime.fromisoformat(str(kwargs["as_of"])) if kwargs.get("as_of") else None,
+            )
+        else:
+            result = await service.build_event_research(symbol)
+        return {
+            "status": result.status,
+            "symbol": result.symbol,
+            "received_count": result.received_count,
+            "written_count": result.written_count,
+            "idempotency_key": result.idempotency_key,
+        }
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    name="disclosure.sync",
+    autoretry_for=(DisclosureProviderTransientError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def sync_disclosures(
+    symbol: str, start: str | None = None, end: str | None = None
+) -> dict[str, object]:
+    return asyncio.run(_event_task("sync", symbol, start=start, end=end))
+
+
+@celery_app.task(name="corporate_events.build")  # type: ignore[untyped-decorator]
+def build_corporate_events(symbol: str) -> dict[str, object]:
+    return asyncio.run(_event_task("events", symbol))
+
+
+@celery_app.task(name="event_radar.build")  # type: ignore[untyped-decorator]
+def build_event_radar(symbol: str, as_of: str | None = None) -> dict[str, object]:
+    return asyncio.run(_event_task("radar", symbol, as_of=as_of))
+
+
+@celery_app.task(name="event_research.build")  # type: ignore[untyped-decorator]
+def build_event_research(symbol: str) -> dict[str, object]:
+    return asyncio.run(_event_task("research", symbol))

@@ -1350,6 +1350,154 @@
           }
         }
       }
+    },
+    "/api/v1/stocks/{symbol}/events": {
+      "get": {
+        "tags": [
+          "corporate-events"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_api_v1_stocks__symbol__events_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorporateEventListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/events/{event_id}": {
+      "get": {
+        "tags": [
+          "corporate-events"
+        ],
+        "summary": "Get Event",
+        "operationId": "get_event_api_v1_stocks__symbol__events__event_id__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorporateEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/event-radar": {
+      "get": {
+        "tags": [
+          "corporate-events"
+        ],
+        "summary": "Get Event Radar",
+        "operationId": "get_event_radar_api_v1_stocks__symbol__event_radar_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRadarEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1928,6 +2076,174 @@
         ],
         "title": "CitedText"
       },
+      "CorporateEventListResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateEventResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "items",
+          "total"
+        ],
+        "title": "CorporateEventListResponse"
+      },
+      "CorporateEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "event_family": {
+            "$ref": "#/components/schemas/EventFamily"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "event_thread_key": {
+            "type": "string",
+            "title": "Event Thread Key"
+          },
+          "identity_basis": {
+            "type": "string",
+            "title": "Identity Basis"
+          },
+          "previous_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Event Id"
+          },
+          "source_published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Source Published At"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "event_effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Effective From"
+          },
+          "event_effective_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Effective To"
+          },
+          "event_time_precision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Time Precision"
+          },
+          "extraction_status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "invalid"
+            ],
+            "title": "Extraction Status"
+          },
+          "typed_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Typed Payload"
+          },
+          "field_lineage": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Field Lineage"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/EventSourceResponse"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "canonical_symbol",
+          "event_family",
+          "event_type",
+          "title",
+          "event_thread_key",
+          "identity_basis",
+          "source_published_at",
+          "known_at",
+          "extraction_status",
+          "typed_payload",
+          "field_lineage"
+        ],
+        "title": "CorporateEventResponse"
+      },
       "CoverageStatus": {
         "type": "string",
         "enum": [
@@ -2102,6 +2418,253 @@
           "limits"
         ],
         "title": "EntitlementsResponse"
+      },
+      "EventFamily": {
+        "type": "string",
+        "enum": [
+          "share_repurchase",
+          "share_pledge",
+          "share_unlock",
+          "regulatory_action"
+        ],
+        "title": "EventFamily"
+      },
+      "EventRadarEnvelope": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "no_events",
+              "not_built",
+              "building",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "stale"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "source_health": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "healthy",
+                  "degraded",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Health"
+          },
+          "coverage_status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "unknown"
+            ],
+            "title": "Coverage Status"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "recent_items": {
+            "items": {
+              "$ref": "#/components/schemas/EventRadarItemResponse"
+            },
+            "type": "array",
+            "title": "Recent Items"
+          },
+          "upcoming_items": {
+            "items": {
+              "$ref": "#/components/schemas/EventRadarItemResponse"
+            },
+            "type": "array",
+            "title": "Upcoming Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "coverage_status",
+          "symbol",
+          "canonical_symbol"
+        ],
+        "title": "EventRadarEnvelope"
+      },
+      "EventRadarItemResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/CorporateEventResponse"
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "upcoming"
+            ],
+            "title": "Section"
+          },
+          "attention_level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Attention Level"
+          },
+          "attention_rule_id": {
+            "type": "string",
+            "title": "Attention Rule Id"
+          },
+          "attention_rule_version": {
+            "type": "string",
+            "title": "Attention Rule Version"
+          },
+          "attention_reason": {
+            "type": "string",
+            "title": "Attention Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event",
+          "section",
+          "attention_level",
+          "attention_rule_id",
+          "attention_rule_version",
+          "attention_reason"
+        ],
+        "title": "EventRadarItemResponse"
+      },
+      "EventSourceResponse": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "source_owner": {
+            "type": "string",
+            "title": "Source Owner"
+          },
+          "source_document_id": {
+            "type": "string",
+            "title": "Source Document Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "source_published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Source Published At"
+          },
+          "source_published_precision": {
+            "type": "string",
+            "title": "Source Published Precision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document_id",
+          "source_owner",
+          "source_document_id",
+          "title",
+          "source_url",
+          "source_published_at",
+          "source_published_precision"
+        ],
+        "title": "EventSourceResponse"
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "repurchase_plan",
+          "repurchase_progress",
+          "repurchase_completed",
+          "repurchase_adjusted",
+          "repurchase_cancelled",
+          "pledge_created",
+          "pledge_released",
+          "pledge_changed",
+          "unlock_scheduled",
+          "unlock_completed",
+          "regulatory_inquiry",
+          "investigation_opened",
+          "warning_letter",
+          "administrative_penalty",
+          "disciplinary_action",
+          "regulatory_measure"
+        ],
+        "title": "EventType"
       },
       "EvidenceIndexEntry": {
         "properties": {

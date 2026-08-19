@@ -8,11 +8,13 @@ from zhaoniu_api.ai_research.service import AIResearchService
 from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.composition import (
     build_ai_research_service,
+    build_corporate_event_service,
     build_fundamental_service,
     build_peer_research_service,
     build_research_service,
 )
 from zhaoniu_api.config import Settings, get_settings
+from zhaoniu_api.corporate_events.service import CorporateEventService
 from zhaoniu_api.database import get_session
 from zhaoniu_api.domain.models import UserAccount
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
@@ -94,6 +96,12 @@ def get_peer_research_service(
     return build_peer_research_service(session)
 
 
+def get_corporate_event_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CorporateEventService:
+    return build_corporate_event_service(session)
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 CurrentUser = Annotated[UserAccount, Depends(get_current_user)]
 AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
@@ -103,6 +111,7 @@ WatchlistRepo = Annotated[WatchlistRepository, Depends(get_watchlist_repository)
 FundamentalService = Annotated[FundamentalResearchService, Depends(get_fundamental_service)]
 ResearchService = Annotated[DeterministicResearchService, Depends(get_research_service)]
 AIResearchServiceDependency = Annotated[AIResearchService, Depends(get_ai_research_service)]
-PeerResearchServiceDependency = Annotated[
-    PeerResearchService, Depends(get_peer_research_service)
+PeerResearchServiceDependency = Annotated[PeerResearchService, Depends(get_peer_research_service)]
+CorporateEventServiceDependency = Annotated[
+    CorporateEventService, Depends(get_corporate_event_service)
 ]

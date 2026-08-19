@@ -4,6 +4,7 @@ import {
   createZhaoniuClient,
   type AIResearchEnvelope,
   type DailyBarResponse,
+  type EventRadarEnvelope,
   type FinancialPeriodListResponse,
   type FundamentalMetricResponse,
   type FundamentalResearchResponse,
@@ -43,10 +44,12 @@ import {
 } from "@/lib/market-data";
 import { assertPeerComparisons } from "@/lib/peer-research";
 import { assertResearchSnapshot } from "@/lib/research";
+import { assertEventRadar } from "@/lib/event-radar";
 
 import { StockChart } from "./stock-chart";
 import { AIResearchPanel } from "./ai-research-panel";
 import { PeerResearchPanel } from "./peer-research-panel";
+import { EventRadarPanel } from "./event-radar-panel";
 import { ResearchChanges } from "./research-changes";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
@@ -88,6 +91,10 @@ function ResearchWorkspace({
   aiPending,
   aiError,
   retryAI,
+  eventRadar,
+  eventPending,
+  eventError,
+  retryEvents,
   compact = false,
 }: {
   symbol: string;
@@ -97,19 +104,26 @@ function ResearchWorkspace({
   aiPending: boolean;
   aiError: boolean;
   retryAI: () => void;
+  eventRadar?: EventRadarEnvelope;
+  eventPending: boolean;
+  eventError: boolean;
+  retryEvents: () => void;
   compact?: boolean;
 }) {
-  const [view, setView] = useState<"changes" | "peers" | "ai">("changes");
+  const [view, setView] = useState<"changes" | "peers" | "events" | "ai">(
+    "changes",
+  );
   return (
     <div>
       <div
-        className="border-ink/10 bg-paper mb-4 inline-flex rounded-xl border p-1"
+        className="border-ink/10 bg-paper mb-4 flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1 [scrollbar-width:none] sm:inline-flex [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label="研究内容"
       >
         {[
           ["changes", "关键变化"],
           ["peers", "同行位置"],
+          ["events", "事件雷达"],
           ["ai", "AI 解读"],
         ].map(([code, label]) => (
           <button
@@ -117,8 +131,10 @@ function ResearchWorkspace({
             type="button"
             role="tab"
             aria-selected={view === code}
-            onClick={() => setView(code as "changes" | "peers" | "ai")}
-            className={`min-h-9 rounded-lg px-4 text-sm transition ${view === code ? "bg-ink text-white" : "text-slate hover:text-ink"}`}
+            onClick={() =>
+              setView(code as "changes" | "peers" | "events" | "ai")
+            }
+            className={`min-h-9 shrink-0 rounded-lg px-4 text-sm transition ${view === code ? "bg-ink text-white" : "text-slate hover:text-ink"}`}
           >
             {label}
           </button>
@@ -133,6 +149,14 @@ function ResearchWorkspace({
       )}
       {view === "peers" && (
         <PeerResearchPanel envelope={peerComparison} compact={compact} />
+      )}
+      {view === "events" && (
+        <EventRadarPanel
+          envelope={eventRadar}
+          pending={eventPending}
+          error={eventError}
+          onRetry={retryEvents}
+        />
       )}
       {view === "ai" && ai && (
         <AIResearchPanel symbol={symbol} envelope={ai} compact={compact} />
@@ -680,6 +704,10 @@ function DesktopStock({
   aiPending,
   aiError,
   retryAI,
+  eventRadar,
+  eventPending,
+  eventError,
+  retryEvents,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -691,6 +719,10 @@ function DesktopStock({
   aiPending: boolean;
   aiError: boolean;
   retryAI: () => void;
+  eventRadar?: EventRadarEnvelope;
+  eventPending: boolean;
+  eventError: boolean;
+  retryEvents: () => void;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -730,6 +762,10 @@ function DesktopStock({
             aiPending={aiPending}
             aiError={aiError}
             retryAI={retryAI}
+            eventRadar={eventRadar}
+            eventPending={eventPending}
+            eventError={eventError}
+            retryEvents={retryEvents}
           />
         )}
         {tab === "market" && (
@@ -777,6 +813,10 @@ function MobileStock({
   aiPending,
   aiError,
   retryAI,
+  eventRadar,
+  eventPending,
+  eventError,
+  retryEvents,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -788,6 +828,10 @@ function MobileStock({
   aiPending: boolean;
   aiError: boolean;
   retryAI: () => void;
+  eventRadar?: EventRadarEnvelope;
+  eventPending: boolean;
+  eventError: boolean;
+  retryEvents: () => void;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -828,6 +872,10 @@ function MobileStock({
             aiPending={aiPending}
             aiError={aiError}
             retryAI={retryAI}
+            eventRadar={eventRadar}
+            eventPending={eventPending}
+            eventError={eventError}
+            retryEvents={retryEvents}
             compact
           />
         )}
@@ -904,6 +952,11 @@ export function StockDetail({ symbol }: { symbol: string }) {
     queryFn: async () => assertAIResearch(await api.getAIResearch(symbol)),
     retry: 1,
   });
+  const eventRadar = useQuery({
+    queryKey: ["stock", symbol, "event-radar"],
+    queryFn: async () => assertEventRadar(await api.getEventRadar(symbol)),
+    retry: 1,
+  });
 
   if (market.isPending) {
     return (
@@ -949,6 +1002,10 @@ export function StockDetail({ symbol }: { symbol: string }) {
     aiPending: ai.isPending,
     aiError: ai.isError,
     retryAI: () => void ai.refetch(),
+    eventRadar: eventRadar.data,
+    eventPending: eventRadar.isPending,
+    eventError: eventRadar.isError,
+    retryEvents: () => void eventRadar.refetch(),
   };
   return (
     <>

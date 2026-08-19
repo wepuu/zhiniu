@@ -39,6 +39,13 @@ export type SessionListResponse = components["schemas"]["SessionListResponse"];
 export type WatchlistResponse = components["schemas"]["WatchlistResponse"];
 export type WatchlistMembershipResponse =
   components["schemas"]["WatchlistMembershipResponse"];
+export type CorporateEventResponse =
+  components["schemas"]["CorporateEventResponse"];
+export type CorporateEventListResponse =
+  components["schemas"]["CorporateEventListResponse"];
+export type EventRadarEnvelope = components["schemas"]["EventRadarEnvelope"];
+export type EventRadarItemResponse =
+  components["schemas"]["EventRadarItemResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -187,6 +194,22 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       const suffix = query.size ? `?${query}` : "";
       return request<PeerComparisonEnvelope>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/peer-comparisons${suffix}`,
+      );
+    },
+    getEvents(symbol: string, limit = 100) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      return request<CorporateEventListResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/events?${query}`,
+      );
+    },
+    getEvent(symbol: string, eventId: string) {
+      return request<CorporateEventResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/events/${encodeURIComponent(eventId)}`,
+      );
+    },
+    getEventRadar(symbol: string) {
+      return request<EventRadarEnvelope>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/event-radar`,
       );
     },
     getWatchlists() {
