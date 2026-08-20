@@ -23,9 +23,7 @@ import { formatEvidenceValue } from "@/lib/research";
 
 import { Card } from "./ui/card";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 const dimensionCopy: Record<ResearchObservation["dimension"], string> = {
   growth: "成长",

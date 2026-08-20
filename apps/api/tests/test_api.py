@@ -3,7 +3,9 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi.testclient import TestClient
+from zhaoniu_api.access_control.models import EffectiveEntitlements
 from zhaoniu_api.dependencies import (
+    get_access_control_service,
     get_current_user_id,
     get_daily_bar_repository,
     get_stock_repository,
@@ -39,12 +41,22 @@ bars = InMemoryDailyBarRepository(
     ]
 )
 watchlists = InMemoryWatchlistRepository()
+
+
+class FakeAccessControlService:
+    async def effective_entitlements(self, user_id: UUID) -> EffectiveEntitlements:
+        return EffectiveEntitlements(
+            access_status="enabled",
+            features={"natural_language_screening": True},
+            limits={"watchlist_groups": 5, "watchlist_memberships_total": 30},
+        )
+
+
 app.dependency_overrides[get_stock_repository] = lambda: stocks
 app.dependency_overrides[get_daily_bar_repository] = lambda: bars
 app.dependency_overrides[get_watchlist_repository] = lambda: watchlists
-app.dependency_overrides[get_current_user_id] = lambda: UUID(
-    "00000000-0000-4000-8000-000000000001"
-)
+app.dependency_overrides[get_access_control_service] = FakeAccessControlService
+app.dependency_overrides[get_current_user_id] = lambda: UUID("00000000-0000-4000-8000-000000000001")
 app.dependency_overrides[require_csrf] = lambda: None
 client = TestClient(app)
 

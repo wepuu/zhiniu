@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
@@ -40,6 +41,10 @@ def build_market_data_service(session: AsyncSession) -> MarketDataSyncService:
         bars=SQLAlchemyDailyBarRepository(session),
         runs=SQLAlchemySyncRunRepository(session),
     )
+
+
+def build_access_control_service(session: AsyncSession) -> AccessControlService:
+    return AccessControlService(session, get_settings())
 
 
 def build_fundamental_service(session: AsyncSession) -> FundamentalResearchService:
@@ -98,7 +103,7 @@ def build_research_feed_service(session: AsyncSession) -> ResearchFeedService:
 
 
 def build_screening_service(session: AsyncSession) -> ScreeningService:
-    return ScreeningService(session)
+    return ScreeningService(session, AccessControlService(session, get_settings()))
 
 
 def build_natural_language_screening_service(
@@ -116,4 +121,5 @@ def build_natural_language_screening_service(
             per_model_timeout_seconds=settings.screen_parser_per_model_timeout_seconds,
             run_deadline_seconds=settings.screen_parser_run_deadline_seconds,
         ),
+        AccessControlService(session, settings),
     )

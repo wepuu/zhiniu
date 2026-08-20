@@ -26,9 +26,7 @@ import { formatEvidenceValue } from "@/lib/research";
 import { EvidenceSheet } from "./research-changes";
 import { Card } from "./ui/card";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 const dimensionCopy = {
   growth: "成长",

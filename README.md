@@ -3,10 +3,10 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 1-8，并正在交付 Phase 9：在真实行情、财务、研究快照、同行、
-事件雷达、账户、自选股与个性化研究流之上，新增确定性股票筛选快照、版本化 DSL、
-证据可回溯结果和桌面/移动发现工作区。AKShare 仍仅用于开发和技术评估；自然语言筛选、
-荐股、支付、邮箱验证、密码找回、账户删除和公开生产合规仍未生产化。
+当前仓库已完成 Phase 1-10，并正在交付 Phase 11：在确定性筛选和自然语言研究工作区
+之上，新增邀请注册、版本化功能权限、客服发放的高级功能激活码和桌面/移动访问状态。
+项目不包含支付、订单、公开价格或结算流程。AKShare 仍仅用于开发和技术评估；荐股、
+邮箱验证、密码找回、账户删除和公开生产合规仍未生产化。
 
 ## Repository map
 
@@ -64,6 +64,9 @@ uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519
 uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519 --retry-failed
 uv run python -m zhaoniu_api.cli build-screening-snapshot
 uv run python -m zhaoniu_api.cli validate-screen --query-file screen.json
+uv run python -m zhaoniu_api.cli generate-registration-invites --count 10 --expires-in-days 7 --name internal-beta
+uv run python -m zhaoniu_api.cli issue-access-code --user-email user@example.com --term month --expires-in-days 7
+uv run python -m zhaoniu_api.cli inspect-user-access --user-email user@example.com
 ```
 
 AI is disabled by default. Before enabling it, explicitly configure `LLM_ENABLED=true`,
@@ -103,6 +106,8 @@ POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
 GET /api/v1/me
+GET /api/v1/me/access
+POST /api/v1/me/access/activate
 GET /api/v1/me/sessions
 DELETE /api/v1/me/sessions/{session_id}
 GET /api/v1/stocks/search?q=茅台

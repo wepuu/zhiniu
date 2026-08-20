@@ -2,8 +2,9 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
+from zhaoniu_api.access_control.models import EffectiveEntitlements
 from zhaoniu_api.auth.service import AuthenticatedSession, AuthenticationError
-from zhaoniu_api.dependencies import get_auth_service
+from zhaoniu_api.dependencies import get_access_control_service, get_auth_service
 from zhaoniu_api.domain.models import UserAccount, UserSession
 from zhaoniu_api.main import create_app
 
@@ -36,6 +37,7 @@ class FakeAuthService:
         *,
         email: str,
         password: str,
+        invitation_code: str,
         user_agent: str | None,
         ip_address: str | None,
     ) -> AuthenticatedSession:
@@ -79,15 +81,35 @@ class FakeAuthService:
         return session_id == self.session.id
 
 
+class FakeAccessControlService:
+    async def effective_entitlements(self, user_id: UUID) -> EffectiveEntitlements:
+        return EffectiveEntitlements(
+            access_status="enabled",
+            features={"natural_language_screening": True},
+            limits={
+                "watchlist_groups": 5,
+                "watchlist_memberships_total": 30,
+                "saved_screens": 10,
+                "screen_parses_daily": 30,
+                "concurrent_screen_parses": 1,
+            },
+        )
+
+
 def test_auth_routes_issue_cookie_and_read_current_user() -> None:
     app = create_app()
     fake = FakeAuthService()
     app.dependency_overrides[get_auth_service] = lambda: fake
+    app.dependency_overrides[get_access_control_service] = lambda: FakeAccessControlService()
     client = TestClient(app)
 
     created = client.post(
         "/api/v1/auth/register",
-        json={"email": "analyst@example.com", "password": "long-password-123"},
+        json={
+            "email": "analyst@example.com",
+            "password": "long-password-123",
+            "invitation_code": "INV-TEST-CODE",
+        },
     )
     assert created.status_code == 201
     assert created.json()["user"]["email"] == "analyst@example.com"

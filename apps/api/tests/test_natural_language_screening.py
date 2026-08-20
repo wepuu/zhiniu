@@ -24,6 +24,7 @@ def _service() -> NaturalLanguageScreeningService:
             model_chain=("deepseek/test",),
             hmac_secret="test-secret-with-enough-entropy",
         ),
+        SimpleNamespace(),  # type: ignore[arg-type]
     )
 
 

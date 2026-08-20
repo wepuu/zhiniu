@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from zhaoniu_api.ai_research.models import AIResearchBuildResult
 from zhaoniu_api.composition import (
+    build_access_control_service,
     build_ai_research_service,
     build_corporate_event_service,
     build_fundamental_service,
@@ -18,6 +19,7 @@ from zhaoniu_api.composition import (
     build_research_service,
     build_screening_service,
 )
+from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.models import EventBuildResult
 from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.db import User
@@ -93,6 +95,16 @@ def _parser() -> argparse.ArgumentParser:
     execute_screen = subcommands.add_parser("execute-screen")
     execute_screen.add_argument("--query-file", type=Path, required=True)
     execute_screen.add_argument("--user-email", required=True)
+    invites = subcommands.add_parser("generate-registration-invites")
+    invites.add_argument("--count", type=int, default=1)
+    invites.add_argument("--expires-in-days", type=int, default=14)
+    invites.add_argument("--name")
+    access_code = subcommands.add_parser("issue-access-code")
+    access_code.add_argument("--user-email", required=True)
+    access_code.add_argument("--term", choices=("month", "year"), required=True)
+    access_code.add_argument("--expires-in-days", type=int, default=7)
+    inspect_access = subcommands.add_parser("inspect-user-access")
+    inspect_access.add_argument("--user-email", required=True)
     return parser
 
 
@@ -179,6 +191,29 @@ async def _run(args: argparse.Namespace) -> None:
                 screening = build_screening_service(session)
                 claimed = await screening.create_execution(user_id, query)
                 result = await screening.execute(claimed.id)
+            elif args.command == "generate-registration-invites":
+                access = build_access_control_service(session)
+                result = await access.generate_registration_invites(
+                    count=args.count,
+                    expires_in_days=args.expires_in_days,
+                    operator=get_settings().access_operator_id,
+                    name=args.name,
+                )
+            elif args.command == "issue-access-code":
+                access = build_access_control_service(session)
+                result = await access.issue_access_code(
+                    user_email=args.user_email,
+                    term_kind=args.term,
+                    expires_in_days=args.expires_in_days,
+                    operator=get_settings().access_operator_id,
+                )
+            elif args.command == "inspect-user-access":
+                user_id = await session.scalar(
+                    select(User.id).where(User.email == args.user_email.strip().lower())
+                )
+                if user_id is None:
+                    raise ValueError("user_not_found")
+                result = await build_access_control_service(session).access_envelope(user_id)
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of

@@ -758,6 +758,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Access */
+        get: operations["get_access_api_v1_me_access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Entitlements */
+        get: operations["get_entitlements_api_v1_me_entitlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/access/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Access */
+        post: operations["activate_access_api_v1_me_access_activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -855,6 +906,65 @@ export interface components {
          * @enum {string}
          */
         AIResearchStatus: "ready" | "not_built" | "building" | "failed" | "disabled" | "unsupported";
+        /** AccessActivationRequest */
+        AccessActivationRequest: {
+            /** Activation Code */
+            activation_code: string;
+        };
+        /** AccessActivationResponse */
+        AccessActivationResponse: {
+            /**
+             * Access Status
+             * @enum {string}
+             */
+            access_status: "basic" | "enabled" | "expired";
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Features */
+            features: {
+                [key: string]: boolean;
+            };
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            /** Activation Available */
+            activation_available: boolean;
+            /** Support Contact Url */
+            support_contact_url?: string | null;
+            /**
+             * Redemption Id
+             * Format: uuid
+             */
+            redemption_id: string;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+        };
+        /** AccessEnvelope */
+        AccessEnvelope: {
+            /**
+             * Access Status
+             * @enum {string}
+             */
+            access_status: "basic" | "enabled" | "expired";
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Features */
+            features: {
+                [key: string]: boolean;
+            };
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            /** Activation Available */
+            activation_available: boolean;
+            /** Support Contact Url */
+            support_contact_url?: string | null;
+        };
         /** AddWatchlistItemRequest */
         AddWatchlistItemRequest: {
             /** Symbol */
@@ -1120,10 +1230,34 @@ export interface components {
              */
             collected_at: string;
         };
+        /** EffectiveEntitlements */
+        EffectiveEntitlements: {
+            /**
+             * Access Status
+             * @enum {string}
+             */
+            access_status: "basic" | "enabled" | "expired";
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Features */
+            features: {
+                [key: string]: boolean;
+            };
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+        };
         /** EntitlementsResponse */
         EntitlementsResponse: {
-            /** Plan */
-            plan: string;
+            /** Access Status */
+            access_status: string;
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Features */
+            features: {
+                [key: string]: boolean;
+            };
             /** Limits */
             limits: {
                 [key: string]: number;
@@ -1868,6 +2002,15 @@ export interface components {
             sample_size: number;
             /** Stocks */
             stocks?: components["schemas"]["PeerStockResponse"][];
+        };
+        /** RegistrationRequest */
+        RegistrationRequest: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+            /** Invitation Code */
+            invitation_code: string;
         };
         /** ResearchCoverage */
         ResearchCoverage: {
@@ -2656,7 +2799,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AuthRequest"];
+                "application/json": components["schemas"]["RegistrationRequest"];
             };
         };
         responses: {
@@ -4218,6 +4361,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenResultListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_access_api_v1_me_access_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entitlements_api_v1_me_entitlements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveEntitlements"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_access_api_v1_me_access_activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessActivationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessActivationResponse"];
                 };
             };
             /** @description Validation Error */

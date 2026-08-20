@@ -281,6 +281,10 @@ class AuthRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class RegistrationRequest(AuthRequest):
+    invitation_code: str = Field(min_length=8, max_length=80)
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: str
@@ -294,7 +298,9 @@ class UserResponse(BaseModel):
 
 
 class EntitlementsResponse(BaseModel):
-    plan: str
+    access_status: str
+    valid_until: datetime | None = None
+    features: dict[str, bool]
     limits: dict[str, int]
 
 

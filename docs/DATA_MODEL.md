@@ -170,3 +170,21 @@ watchlist membership at query time; only alert settings and deliveries are user-
 
 Saved screens are mutable user workspace records. Executions and results remain point-in-time
 records tied to an immutable screening snapshot.
+
+## Phase 11 invitation and access tables
+
+- `plans` and `plan_versions`: stable internal catalog identities plus immutable feature/limit
+  documents. Users and grants reference a version rather than mutable catalog state.
+- `users.base_plan_version_id`: the account baseline. Existing accounts are migrated to
+  `legacy_beta`; invitation-created accounts use `basic`.
+- `registration_invite_batches` and `registration_invite_codes`: operator batch audit and
+  single-use invitation state. Only domain-separated HMAC digests and display prefixes are stored.
+- `activation_code_batches` and `activation_codes`: operator-issued, expiring, user-bound access
+  codes. Plaintext values exist only at generation time.
+- `activation_redemptions`: immutable idempotency and audit link between one code, one user and one
+  resulting access grant.
+- `subscriptions`: retained as the internal access-grant table. It records the immutable plan
+  version, validity interval, source and revocation state; it is not a payment or order record.
+
+Access is evaluated from the base plan plus active grants at request time. Expiry does not mutate
+historical rows, and the frontend is never the authorization boundary.

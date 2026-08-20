@@ -122,7 +122,8 @@ async def create_natural_language_parse(
     try:
         response = await service.create_run(user_id, payload.text)
     except ValueError as exc:
-        raise HTTPException(status_code=429, detail=str(exc)) from exc
+        http_status = 403 if str(exc) == "advanced_access_required" else 429
+        raise HTTPException(status_code=http_status, detail=str(exc)) from exc
     if response.status == "pending":
         try:
             dispatcher.enqueue_parse(response.id, payload.text.strip())

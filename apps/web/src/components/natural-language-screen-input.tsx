@@ -18,9 +18,7 @@ import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 export function NaturalLanguageScreenInput({
   onApply,

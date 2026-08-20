@@ -15,6 +15,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.litellm_gateway import provider_name
 from zhaoniu_api.db import LLMCallRecord, NaturalLanguageScreenParseRunRecord
 from zhaoniu_api.ports.providers import LLMGateway, LLMGatewayError
@@ -102,11 +103,13 @@ class NaturalLanguageScreeningService:
         session: AsyncSession,
         gateway: LLMGateway,
         options: NaturalLanguageParserOptions,
+        access_control: AccessControlService,
     ) -> None:
         self._session = session
         self._gateway = gateway
         self._options = options
-        self._screening = ScreeningService(session)
+        self._access_control = access_control
+        self._screening = ScreeningService(session, access_control)
 
     def input_hash(self, text: str) -> str:
         return hmac.new(
@@ -118,6 +121,9 @@ class NaturalLanguageScreeningService:
     async def create_run(self, user_id: UUID, text: str) -> NaturalLanguageParseResponse:
         normalized = text.strip()
         now = datetime.now(UTC)
+        entitlements = await self._access_control.effective_entitlements(user_id, now=now)
+        if not entitlements.features.get("natural_language_screening", False):
+            raise ValueError("advanced_access_required")
         catalog = await self._screening.catalog()
         route_hash = _hash(
             [MODEL_ROUTE_VERSION, self._options.enabled, list(self._options.active_models)]
@@ -144,7 +150,7 @@ class NaturalLanguageScreeningService:
             )
             or 0
         )
-        if daily_count >= 30:
+        if daily_count >= entitlements.limits["screen_parses_daily"]:
             raise ValueError("screen_parse_daily_limit_reached")
         active_count = int(
             await self._session.scalar(
@@ -158,7 +164,7 @@ class NaturalLanguageScreeningService:
             )
             or 0
         )
-        if active_count >= 1:
+        if active_count >= entitlements.limits["concurrent_screen_parses"]:
             raise ValueError("screen_parse_concurrency_limit_reached")
         policy_rejected = bool(POLICY_PATTERNS.search(normalized))
         enabled = self._options.enabled and bool(self._options.active_models)

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from zhaoniu_api.access_control.routes import router as access_control_router
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.research_feed.routes import router as research_feed_router
@@ -10,6 +11,7 @@ from zhaoniu_api.screening.routes import router as screening_router
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    settings.validate_runtime_security()
     app = FastAPI(
         title="Zhaoniu API",
         version="0.1.0",
@@ -26,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(corporate_event_router)
     app.include_router(research_feed_router)
     app.include_router(screening_router)
+    app.include_router(access_control_router)
 
     @app.middleware("http")
     async def private_cache_control(request, call_next):  # type: ignore[no-untyped-def]

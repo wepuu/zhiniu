@@ -21,9 +21,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
 import { Card } from "@/components/ui/card";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 export default function WatchlistPage() {
   const queryClient = useQueryClient();

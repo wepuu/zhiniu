@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     auth_session_days: int = Field(default=30, ge=1, le=90)
     auth_password_min_length: int = Field(default=15, ge=15, le=128)
+    registration_invite_hmac_secret: str = "development-invite-secret-change-me"
+    access_activation_hmac_secret: str = "development-activation-secret-change-me"
+    access_activation_enabled: bool = False
+    support_contact_url: str = ""
+    access_operator_id: str = "local-cli"
+    commercialization_status: Literal["review_required", "approved", "blocked"] = "review_required"
     market_data_provider: Literal["akshare"] = "akshare"
     disclosure_provider: Literal["akshare"] = "akshare"
     llm_enabled: bool = False
@@ -50,6 +56,27 @@ class Settings(BaseSettings):
         return tuple(
             item.strip().rstrip("/") for item in self.allowed_origins.split(",") if item.strip()
         )
+
+    def validate_runtime_security(self) -> None:
+        if self.app_env != "production":
+            return
+        if not self.auth_cookie_secure:
+            raise ValueError("production_auth_cookie_must_be_secure")
+        if "*" in self.origin_allowlist:
+            raise ValueError("production_allowed_origins_must_be_explicit")
+        unsafe_secrets = {
+            "development-invite-secret-change-me",
+            "development-activation-secret-change-me",
+        }
+        if (
+            self.registration_invite_hmac_secret in unsafe_secrets
+            or self.access_activation_hmac_secret in unsafe_secrets
+            or len(self.registration_invite_hmac_secret) < 32
+            or len(self.access_activation_hmac_secret) < 32
+        ):
+            raise ValueError("production_access_code_secrets_are_unsafe")
+        if self.access_activation_enabled and self.commercialization_status != "approved":
+            raise ValueError("production_access_activation_requires_approval")
 
 
 @lru_cache

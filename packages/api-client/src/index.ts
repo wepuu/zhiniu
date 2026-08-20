@@ -35,6 +35,9 @@ export type EvidenceIndexEntry = components["schemas"]["EvidenceIndexEntry"];
 export type CitedText = components["schemas"]["CitedText"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
 export type MeResponse = components["schemas"]["MeResponse"];
+export type AccessEnvelope = components["schemas"]["AccessEnvelope"];
+export type AccessActivationResponse =
+  components["schemas"]["AccessActivationResponse"];
 export type SessionListResponse = components["schemas"]["SessionListResponse"];
 export type WatchlistResponse = components["schemas"]["WatchlistResponse"];
 export type WatchlistMembershipResponse =
@@ -97,7 +100,9 @@ export interface ZhaoniuClientOptions {
 }
 
 export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
-  const baseUrl = (options.baseUrl ?? "http://localhost:8000")
+  const defaultBaseUrl =
+    typeof window === "undefined" ? "http://127.0.0.1:8000" : "";
+  const baseUrl = (options.baseUrl ?? defaultBaseUrl)
     .replace(/\/$/, "")
     .replace(/\/api\/v1$/, "");
   const fetcher =
@@ -148,10 +153,11 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
   }
 
   return {
-    register(email: string, password: string) {
+    register(email: string, password: string, invitationCode: string) {
       return jsonRequest<AuthResponse>("/api/v1/auth/register", "POST", {
         email,
         password,
+        invitation_code: invitationCode,
       });
     },
     login(email: string, password: string) {
@@ -165,6 +171,16 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     },
     getMe() {
       return request<MeResponse>("/api/v1/me");
+    },
+    getAccess() {
+      return request<AccessEnvelope>("/api/v1/me/access");
+    },
+    activateAccess(activationCode: string) {
+      return jsonRequest<AccessActivationResponse>(
+        "/api/v1/me/access/activate",
+        "POST",
+        { activation_code: activationCode },
+      );
     },
     getSessions() {
       return request<SessionListResponse>("/api/v1/me/sessions");

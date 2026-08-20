@@ -30,9 +30,7 @@ import { NaturalLanguageScreenInput } from "@/components/natural-language-screen
 import { ResearchSectionTabs } from "@/components/research-section-tabs";
 import { Card } from "@/components/ui/card";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 type Operator = "gt" | "gte" | "lt" | "lte" | "between";
 type MetricDraft = {

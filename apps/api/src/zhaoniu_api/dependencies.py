@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.service import AIResearchService
 from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.composition import (
@@ -39,6 +40,13 @@ def get_auth_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthService:
     return AuthService(session, settings)
+
+
+def get_access_control_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AccessControlService:
+    return AccessControlService(session, settings)
 
 
 async def get_current_user_id(
@@ -153,6 +161,9 @@ async def require_csrf(
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 CurrentUser = Annotated[UserAccount, Depends(get_current_user)]
 AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
+AccessControlServiceDependency = Annotated[
+    AccessControlService, Depends(get_access_control_service)
+]
 StockRepo = Annotated[StockRepository, Depends(get_stock_repository)]
 DailyBarRepo = Annotated[DailyBarRepository, Depends(get_daily_bar_repository)]
 WatchlistRepo = Annotated[WatchlistRepository, Depends(get_watchlist_repository)]

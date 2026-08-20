@@ -13,6 +13,7 @@ from sqlalchemy import and_, delete, distinct, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.db import (
     CompanyPeerMetricPositionRecord,
     CorporateEventRecord,
@@ -177,8 +178,11 @@ def _decode_cursor(value: str) -> int:
 
 
 class ScreeningService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self, session: AsyncSession, access_control: AccessControlService | None = None
+    ) -> None:
         self._session = session
+        self._access_control = access_control
 
     async def catalog(self) -> ScreenCatalogResponse:
         metrics = []
@@ -842,7 +846,10 @@ class ScreeningService:
             )
             or 0
         )
-        if count >= 10:
+        if self._access_control is None:
+            raise RuntimeError("access_control_service_required")
+        entitlements = await self._access_control.effective_entitlements(user_id)
+        if count >= entitlements.limits["saved_screens"]:
             raise ValueError("saved_screen_limit_reached")
         if payload.source_parse_run_id is not None:
             parse_run = await self._session.scalar(

@@ -38,7 +38,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AuthRequest"
+                "$ref": "#/components/schemas/RegistrationRequest"
               }
             }
           },
@@ -2764,6 +2764,163 @@
           }
         }
       }
+    },
+    "/api/v1/me/access": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Get Access",
+        "operationId": "get_access_api_v1_me_access_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/entitlements": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Get Entitlements",
+        "operationId": "get_entitlements_api_v1_me_entitlements_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveEntitlements"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/access/activate": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Activate Access",
+        "operationId": "activate_access_api_v1_me_access_activate_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessActivationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessActivationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2999,6 +3156,157 @@
           "unsupported"
         ],
         "title": "AIResearchStatus"
+      },
+      "AccessActivationRequest": {
+        "properties": {
+          "activation_code": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 8,
+            "title": "Activation Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activation_code"
+        ],
+        "title": "AccessActivationRequest"
+      },
+      "AccessActivationResponse": {
+        "properties": {
+          "access_status": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "enabled",
+              "expired"
+            ],
+            "title": "Access Status"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Features"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          },
+          "activation_available": {
+            "type": "boolean",
+            "title": "Activation Available"
+          },
+          "support_contact_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Contact Url"
+          },
+          "redemption_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Redemption Id"
+          },
+          "reused": {
+            "type": "boolean",
+            "title": "Reused",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_status",
+          "features",
+          "limits",
+          "activation_available",
+          "redemption_id"
+        ],
+        "title": "AccessActivationResponse"
+      },
+      "AccessEnvelope": {
+        "properties": {
+          "access_status": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "enabled",
+              "expired"
+            ],
+            "title": "Access Status"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Features"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          },
+          "activation_available": {
+            "type": "boolean",
+            "title": "Activation Available"
+          },
+          "support_contact_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Contact Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_status",
+          "features",
+          "limits",
+          "activation_available"
+        ],
+        "title": "AccessEnvelope"
       },
       "AddWatchlistItemRequest": {
         "properties": {
@@ -3833,11 +4141,35 @@
         ],
         "title": "DailyBarResponse"
       },
-      "EntitlementsResponse": {
+      "EffectiveEntitlements": {
         "properties": {
-          "plan": {
+          "access_status": {
             "type": "string",
-            "title": "Plan"
+            "enum": [
+              "basic",
+              "enabled",
+              "expired"
+            ],
+            "title": "Access Status"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Features"
           },
           "limits": {
             "additionalProperties": {
@@ -3849,7 +4181,49 @@
         },
         "type": "object",
         "required": [
-          "plan",
+          "access_status",
+          "features",
+          "limits"
+        ],
+        "title": "EffectiveEntitlements"
+      },
+      "EntitlementsResponse": {
+        "properties": {
+          "access_status": {
+            "type": "string",
+            "title": "Access Status"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Features"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_status",
+          "features",
           "limits"
         ],
         "title": "EntitlementsResponse"
@@ -6021,6 +6395,36 @@
           "status"
         ],
         "title": "PeerUniverseResponse"
+      },
+      "RegistrationRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          },
+          "invitation_code": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 8,
+            "title": "Invitation Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "invitation_code"
+        ],
+        "title": "RegistrationRequest"
       },
       "ResearchCoverage": {
         "properties": {

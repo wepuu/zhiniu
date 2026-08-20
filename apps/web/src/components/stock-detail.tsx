@@ -54,9 +54,7 @@ import { ResearchChanges } from "./research-changes";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
 
-const api = createZhaoniuClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
+const api = createZhaoniuClient();
 
 type WorkspaceTab = "changes" | "market" | "financials" | "valuation";
 

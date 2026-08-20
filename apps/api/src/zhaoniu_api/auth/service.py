@@ -9,8 +9,12 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from zhaoniu_api.access_control.codes import code_hmac
+from zhaoniu_api.access_control.service import BASIC_PLAN_VERSION_ID
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
+    RegistrationInviteBatchRecord,
+    RegistrationInviteRecord,
     User,
     UserResearchAlertSettingsRecord,
     UserSessionRecord,
@@ -19,14 +23,6 @@ from zhaoniu_api.db import (
 from zhaoniu_api.domain.models import UserAccount, UserSession
 
 DEFAULT_WATCHLIST_NAME = "核心观察"
-FREE_ENTITLEMENT_PLAN = "internal_beta"
-FREE_ENTITLEMENT_LIMITS = {
-    "watchlist_groups": 5,
-    "watchlist_memberships_total": 30,
-    "saved_screens": 10,
-    "screen_parses_daily": 30,
-    "concurrent_screen_parses": 1,
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,15 +52,45 @@ class AuthService:
         *,
         email: str,
         password: str,
+        invitation_code: str,
         user_agent: str | None,
         ip_address: str | None,
     ) -> AuthenticatedSession:
         normalized_email = normalize_email(email)
         validate_password(password, min_length=self._settings.auth_password_min_length)
         now = datetime.now(UTC)
+        try:
+            invite_digest = code_hmac(
+                invitation_code,
+                "INV",
+                self._settings.registration_invite_hmac_secret,
+            )
+        except ValueError as error:
+            raise AuthenticationError("invalid_or_unavailable_invitation") from error
+        invite = await self._session.scalar(
+            select(RegistrationInviteRecord)
+            .where(RegistrationInviteRecord.code_hmac == invite_digest)
+            .with_for_update()
+        )
+        batch = (
+            await self._session.get(RegistrationInviteBatchRecord, invite.batch_id)
+            if invite is not None
+            else None
+        )
+        if (
+            invite is None
+            or batch is None
+            or invite.consumed_at is not None
+            or invite.revoked_at is not None
+            or batch.revoked_at is not None
+            or invite.expires_at <= now
+            or batch.expires_at <= now
+        ):
+            raise AuthenticationError("invalid_or_unavailable_invitation")
         user = User(
             email=normalized_email,
             password_hash=self._password_hash.hash(password),
+            base_plan_version_id=BASIC_PLAN_VERSION_ID,
             status="active",
             last_login_at=now,
         )
@@ -74,6 +100,8 @@ class AuthService:
             WatchlistRecord(user_id=user.id, name=DEFAULT_WATCHLIST_NAME, is_default=True)
         )
         self._session.add(UserResearchAlertSettingsRecord(user_id=user.id))
+        invite.consumed_by_user_id = user.id
+        invite.consumed_at = now
         try:
             auth = await self._create_session_record(user, user_agent, ip_address, now)
             await self._session.commit()

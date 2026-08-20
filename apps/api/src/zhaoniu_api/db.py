@@ -44,6 +44,7 @@ class User(TimestampMixin, Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(320))
     password_hash: Mapped[str] = mapped_column(Text)
+    base_plan_version_id: Mapped[UUID] = mapped_column(ForeignKey("plan_versions.id"))
     status: Mapped[str] = mapped_column(String(32), default="active")
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -1454,12 +1455,161 @@ class PlanRecord(Base):
     entitlements: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
 
+class PlanVersionRecord(Base):
+    __tablename__ = "plan_versions"
+    __table_args__ = (
+        UniqueConstraint("plan_code", "version", name="uq_plan_versions_code_version"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code"), nullable=False)
+    version: Mapped[str] = mapped_column(String(40), nullable=False)
+    features: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    limits: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class SubscriptionRecord(TimestampMixin, Base):
     __tablename__ = "subscriptions"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_subscriptions_user"),
+        CheckConstraint(
+            "current_period_end > current_period_start", name="ck_subscriptions_period"
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code"))
+    plan_version_id: Mapped[UUID] = mapped_column(ForeignKey("plan_versions.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(32))
+    current_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    activation_source: Mapped[str] = mapped_column(
+        String(32), default="activation_code", nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RegistrationInviteBatchRecord(Base):
+    __tablename__ = "registration_invite_batches"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_registration_invite_batch_quantity"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by_operator: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RegistrationInviteRecord(Base):
+    __tablename__ = "registration_invites"
+    __table_args__ = (
+        UniqueConstraint("code_hmac", name="uq_registration_invites_code_hmac"),
+        Index("ix_registration_invites_prefix", "code_prefix"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("registration_invite_batches.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    code_hmac: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_prefix: Mapped[str] = mapped_column(String(24), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AccessActivationBatchRecord(Base):
+    __tablename__ = "access_activation_batches"
+    __table_args__ = (
+        CheckConstraint("term_kind IN ('month', 'year')", name="ck_access_batch_term"),
+        CheckConstraint("quantity > 0", name="ck_access_batch_quantity"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    plan_version_id: Mapped[UUID] = mapped_column(ForeignKey("plan_versions.id"), nullable=False)
+    term_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by_operator: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AccessActivationCodeRecord(Base):
+    __tablename__ = "access_activation_codes"
+    __table_args__ = (
+        UniqueConstraint("code_hmac", name="uq_access_activation_codes_code_hmac"),
+        Index("ix_access_activation_codes_prefix", "code_prefix"),
+        Index("ix_access_activation_codes_user", "assigned_user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("access_activation_batches.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    code_hmac: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_prefix: Mapped[str] = mapped_column(String(24), nullable=False)
+    assigned_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    redeemed_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AccessActivationRedemptionRecord(Base):
+    __tablename__ = "access_activation_redemptions"
+    __table_args__ = (
+        UniqueConstraint("activation_code_id", name="uq_access_redemptions_code"),
+        CheckConstraint("term_kind IN ('month', 'year')", name="ck_access_redemption_term"),
+        CheckConstraint("new_period_end > new_period_start", name="ck_access_redemption_period"),
+        Index("ix_access_activation_redemptions_user", "user_id", "redeemed_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    activation_code_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("access_activation_codes.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    plan_version_id: Mapped[UUID] = mapped_column(ForeignKey("plan_versions.id"), nullable=False)
+    term_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    previous_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    new_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    new_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    redeemed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

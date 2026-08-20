@@ -61,7 +61,7 @@ Versioned allow-listed query DSL, immutable point-in-time screening snapshots, u
 idempotent executions, evidence-linked results, background tasks and separately composed
 desktop/mobile discovery workflows.
 
-## Phase 10 - Natural Language Research Screening & Saved Research (current)
+## Phase 10 - Natural Language Research Screening & Saved Research
 
 Policy-gated natural-language-to-DSL candidate parsing, deterministic grounding and explicit
 confirmation, truthful per-query coverage, user-owned saved screens, rerunnable provenance and
@@ -69,10 +69,12 @@ desktop/mobile research workspaces. OR/NOT groups, shared screen templates, aler
 screens, company comparison, report export and broader professional workspace expansion remain
 deferred.
 
-## Phase 11 - Commercialization
+## Phase 11 - Invitation Access & Advanced Feature Activation (current)
 
-Plan catalog, entitlement service, subscriptions, payment integration, admin, observability, privacy,
-licensed data, and production deployment hardening.
+Invitation-only registration, immutable plan versions, backend-resolved feature access,
+operator-issued user-bound activation codes, calendar validity, production approval gates and
+desktop/mobile account-access states. Payment, checkout, public pricing, orders, refunds, webhooks,
+email verification, password recovery and a general administration console remain deferred.
 
 ## Phase 12 - Factor / Backtest
 
