@@ -10,7 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.config import Settings
-from zhaoniu_api.db import User, UserSessionRecord, WatchlistRecord
+from zhaoniu_api.db import (
+    User,
+    UserResearchAlertSettingsRecord,
+    UserSessionRecord,
+    WatchlistRecord,
+)
 from zhaoniu_api.domain.models import UserAccount, UserSession
 
 DEFAULT_WATCHLIST_NAME = "核心观察"
@@ -26,6 +31,7 @@ class AuthenticatedSession:
     user: UserAccount
     session: UserSession
     token: str
+    csrf_token: str
 
 
 class AuthenticationError(ValueError):
@@ -64,6 +70,7 @@ class AuthService:
         self._session.add(
             WatchlistRecord(user_id=user.id, name=DEFAULT_WATCHLIST_NAME, is_default=True)
         )
+        self._session.add(UserResearchAlertSettingsRecord(user_id=user.id))
         try:
             auth = await self._create_session_record(user, user_agent, ip_address, now)
             await self._session.commit()
@@ -131,6 +138,18 @@ class AuthService:
         )
         await self._session.commit()
 
+    async def validate_csrf(self, token: str | None, csrf_token: str | None) -> bool:
+        if not token or not csrf_token:
+            return False
+        expected = await self._session.scalar(
+            select(UserSessionRecord.csrf_token_hash).where(
+                UserSessionRecord.token_hash == hash_token(token),
+                UserSessionRecord.revoked_at.is_(None),
+                UserSessionRecord.expires_at > datetime.now(UTC),
+            )
+        )
+        return expected is not None and expected == hash_token(csrf_token)
+
     async def list_sessions(self, user_id: UUID, current_token: str | None) -> list[UserSession]:
         current_hash = hash_token(current_token) if current_token else None
         rows = (
@@ -176,9 +195,11 @@ class AuthService:
         now: datetime,
     ) -> AuthenticatedSession:
         token = token_urlsafe(48)
+        csrf_token = token_urlsafe(32)
         record = UserSessionRecord(
             user_id=user.id,
             token_hash=hash_token(token),
+            csrf_token_hash=hash_token(csrf_token),
             user_agent=(user_agent or "")[:240] or None,
             ip_address=(ip_address or "")[:80] or None,
             last_used_at=now,
@@ -190,6 +211,7 @@ class AuthService:
             user=user_to_domain(user),
             session=session_to_domain(record, is_current=True),
             token=token,
+            csrf_token=csrf_token,
         )
 
 

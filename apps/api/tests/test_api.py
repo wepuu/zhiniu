@@ -8,6 +8,7 @@ from zhaoniu_api.dependencies import (
     get_daily_bar_repository,
     get_stock_repository,
     get_watchlist_repository,
+    require_csrf,
 )
 from zhaoniu_api.domain.models import AdjustType, DailyBar
 from zhaoniu_api.infrastructure.mock_repositories import (
@@ -44,6 +45,7 @@ app.dependency_overrides[get_watchlist_repository] = lambda: watchlists
 app.dependency_overrides[get_current_user_id] = lambda: UUID(
     "00000000-0000-4000-8000-000000000001"
 )
+app.dependency_overrides[require_csrf] = lambda: None
 client = TestClient(app)
 
 

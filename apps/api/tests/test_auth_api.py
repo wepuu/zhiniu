@@ -39,7 +39,12 @@ class FakeAuthService:
         user_agent: str | None,
         ip_address: str | None,
     ) -> AuthenticatedSession:
-        return AuthenticatedSession(user=self.user, session=self.session, token="valid-token")
+        return AuthenticatedSession(
+            user=self.user,
+            session=self.session,
+            token="valid-token",
+            csrf_token="valid-csrf-token",
+        )
 
     async def login(
         self,
@@ -51,13 +56,21 @@ class FakeAuthService:
     ) -> AuthenticatedSession:
         if password != "correct-password-123":
             raise AuthenticationError("invalid_credentials")
-        return AuthenticatedSession(user=self.user, session=self.session, token="valid-token")
+        return AuthenticatedSession(
+            user=self.user,
+            session=self.session,
+            token="valid-token",
+            csrf_token="valid-csrf-token",
+        )
 
     async def authenticate(self, token: str | None) -> UserAccount | None:
         return self.user if token == "valid-token" else None
 
     async def logout(self, token: str | None) -> None:
         self.logged_out = token == "valid-token"
+
+    async def validate_csrf(self, token: str | None, csrf_token: str | None) -> bool:
+        return token == "valid-token" and csrf_token == "valid-csrf-token"
 
     async def list_sessions(self, user_id: UUID, current_token: str | None) -> list[UserSession]:
         return [self.session]
@@ -88,7 +101,14 @@ def test_auth_routes_issue_cookie_and_read_current_user() -> None:
     assert sessions.status_code == 200
     assert sessions.json()["total"] == 1
 
-    logout = client.post("/api/v1/auth/logout", cookies={"zhaoniu_session": "valid-token"})
+    logout = client.post(
+        "/api/v1/auth/logout",
+        cookies={
+            "zhaoniu_session": "valid-token",
+            "zhaoniu_csrf": "valid-csrf-token",
+        },
+        headers={"X-CSRF-Token": "valid-csrf-token"},
+    )
     assert logout.status_code == 204
     assert fake.logged_out is True
 

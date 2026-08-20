@@ -46,6 +46,17 @@ export type CorporateEventListResponse =
 export type EventRadarEnvelope = components["schemas"]["EventRadarEnvelope"];
 export type EventRadarItemResponse =
   components["schemas"]["EventRadarItemResponse"];
+export type ResearchFeedResponse =
+  components["schemas"]["ResearchFeedResponse"];
+export type FeedSignalResponse = components["schemas"]["FeedSignalResponse"];
+export type WatchlistCoverageResponse =
+  components["schemas"]["WatchlistCoverageResponse"];
+export type AlertListResponse = components["schemas"]["AlertListResponse"];
+export type AlertSummaryResponse =
+  components["schemas"]["AlertSummaryResponse"];
+export type AlertSettingsResponse =
+  components["schemas"]["AlertSettingsResponse"];
+export type AlertSettingsUpdate = components["schemas"]["AlertSettingsUpdate"];
 
 export class ApiError extends Error {
   constructor(
@@ -71,12 +82,26 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     ((...arguments_: Parameters<typeof fetch>) => fetch(...arguments_));
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const csrfToken =
+      typeof document === "undefined"
+        ? undefined
+        : document.cookie
+            .split("; ")
+            .find((entry) => entry.startsWith("zhaoniu_csrf="))
+            ?.split("=")
+            .slice(1)
+            .join("=");
+    const method = (init.method ?? "GET").toUpperCase();
+    const mutation = !["GET", "HEAD", "OPTIONS"].includes(method);
     const response = await fetcher(`${baseUrl}${path}`, {
       ...init,
       credentials: "include",
       headers: {
         Accept: "application/json",
         ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...(mutation && csrfToken
+          ? { "X-CSRF-Token": decodeURIComponent(csrfToken) }
+          : {}),
         ...init.headers,
       },
     });
@@ -236,6 +261,57 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getWatchlistMembership(symbol: string) {
       return request<WatchlistMembershipResponse>(
         `/api/v1/watchlists/membership/${encodeURIComponent(symbol)}`,
+      );
+    },
+    getResearchFeed(
+      options: {
+        cursor?: string;
+        limit?: number;
+        sourceKind?: "fundamental" | "peer" | "corporate_event";
+        minimumAttention?: "info" | "notice" | "important";
+      } = {},
+    ) {
+      const query = new URLSearchParams({ limit: String(options.limit ?? 40) });
+      if (options.cursor) query.set("cursor", options.cursor);
+      if (options.sourceKind) query.set("source_kind", options.sourceKind);
+      if (options.minimumAttention)
+        query.set("minimum_attention", options.minimumAttention);
+      return request<ResearchFeedResponse>(`/api/v1/me/research-feed?${query}`);
+    },
+    getResearchCoverage() {
+      return request<WatchlistCoverageResponse>("/api/v1/me/research-coverage");
+    },
+    getResearchAlerts(limit = 50) {
+      return request<AlertListResponse>(
+        `/api/v1/me/research-alerts?limit=${limit}`,
+      );
+    },
+    getResearchAlertSummary() {
+      return request<AlertSummaryResponse>(
+        "/api/v1/me/research-alerts/summary",
+      );
+    },
+    markResearchAlertRead(deliveryId: string) {
+      return request<void>(
+        `/api/v1/me/research-alerts/${encodeURIComponent(deliveryId)}/read`,
+        { method: "POST" },
+      );
+    },
+    markAllResearchAlertsRead() {
+      return request<void>("/api/v1/me/research-alerts/read-all", {
+        method: "POST",
+      });
+    },
+    getResearchAlertSettings() {
+      return request<AlertSettingsResponse>(
+        "/api/v1/me/research-alert-settings",
+      );
+    },
+    updateResearchAlertSettings(payload: AlertSettingsUpdate) {
+      return jsonRequest<AlertSettingsResponse>(
+        "/api/v1/me/research-alert-settings",
+        "PUT",
+        payload,
       );
     },
   };

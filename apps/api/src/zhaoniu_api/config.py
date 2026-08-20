@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://zhaoniu:zhaoniu@localhost:5432/zhaoniu"
     redis_url: str = "redis://localhost:6379/0"
     auth_cookie_name: str = "zhaoniu_session"
+    auth_csrf_cookie_name: str = "zhaoniu_csrf"
     auth_cookie_secure: bool = False
+    allowed_origins: str = "http://localhost:3000"
     auth_session_days: int = Field(default=30, ge=1, le=90)
     auth_password_min_length: int = Field(default=15, ge=15, le=128)
     market_data_provider: Literal["akshare"] = "akshare"
@@ -27,6 +29,12 @@ class Settings(BaseSettings):
     @property
     def llm_models(self) -> tuple[str, ...]:
         return tuple(item.strip() for item in self.llm_model_chain.split(",") if item.strip())
+
+    @property
+    def origin_allowlist(self) -> tuple[str, ...]:
+        return tuple(
+            item.strip().rstrip("/") for item in self.allowed_origins.split(",") if item.strip()
+        )
 
 
 @lru_cache

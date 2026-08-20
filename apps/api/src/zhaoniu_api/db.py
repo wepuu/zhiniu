@@ -60,6 +60,7 @@ class UserSessionRecord(Base):
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    csrf_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     user_agent: Mapped[str | None] = mapped_column(String(240), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -528,6 +529,38 @@ class CompanyPeerMetricPositionRecord(Base):
     numeric_rank_desc: Mapped[int | None]
     sample_size: Mapped[int] = mapped_column(default=0, nullable=False)
     reason: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PeerPositionObservationRecord(Base):
+    __tablename__ = "peer_position_observations"
+    __table_args__ = (
+        UniqueConstraint("content_fingerprint", name="uq_peer_position_observation_content"),
+        Index("ix_peer_position_observation_symbol_known", "symbol", "known_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    company_peer_metric_position_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("company_peer_metric_positions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    observation_family: Mapped[str] = mapped_column(String(120), nullable=False)
+    observation_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    attention_level: Mapped[str] = mapped_column(String(24), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[str] = mapped_column(String(500), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    rule_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(24), nullable=False)
+    observation_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    detail_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -1020,6 +1053,139 @@ class EventRadarSnapshotItemRecord(Base):
     attention_rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
     attention_reason: Mapped[str] = mapped_column(String(240), nullable=False)
     ordinal: Mapped[int] = mapped_column(nullable=False)
+
+
+class ResearchSignalRecord(Base):
+    __tablename__ = "research_signals"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN research_observation_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN peer_position_observation_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN corporate_event_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="ck_research_signal_one_source",
+        ),
+        UniqueConstraint("source_kind", "semantic_fingerprint", name="uq_research_signal_semantic"),
+        Index("ix_research_signal_symbol_known", "symbol", "known_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    research_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("research_observations.id", ondelete="RESTRICT")
+    )
+    peer_position_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("peer_position_observations.id", ondelete="RESTRICT"),
+    )
+    corporate_event_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("corporate_events.id", ondelete="RESTRICT")
+    )
+    signal_family: Mapped[str] = mapped_column(String(120), nullable=False)
+    signal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    attention_level: Mapped[str] = mapped_column(String(24), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    effective_on: Mapped[date | None] = mapped_column(Date)
+    dedup_group_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    semantic_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    projection_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    summary: Mapped[str] = mapped_column(String(800), nullable=False)
+    display_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ResearchSignalProjectionRunRecord(Base):
+    __tablename__ = "research_signal_projection_runs"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_kind",
+            "source_artifact_identity",
+            "projection_version",
+            name="uq_research_signal_projection_run",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_artifact_identity: Mapped[str] = mapped_column(String(160), nullable=False)
+    projection_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    projected_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserResearchAlertSettingsRecord(Base):
+    __tablename__ = "user_research_alert_settings"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    minimum_attention: Mapped[str] = mapped_column(String(24), default="important", nullable=False)
+    fundamental_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    peer_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    corporate_event_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    settings_version: Mapped[int] = mapped_column(default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class UserResearchAlertDeliveryRecord(Base):
+    __tablename__ = "user_research_alert_deliveries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "signal_id", name="uq_user_research_alert_delivery"),
+        Index("ix_user_research_alert_unread", "user_id", "read_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    signal_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("research_signals.id", ondelete="CASCADE"), nullable=False
+    )
+    delivery_reason: Mapped[str] = mapped_column(String(120), nullable=False)
+    settings_version: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ResearchAlertDispatchRunRecord(Base):
+    __tablename__ = "research_alert_dispatch_runs"
+    __table_args__ = (
+        UniqueConstraint("signal_id", "matcher_version", name="uq_research_alert_dispatch_run"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    signal_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("research_signals.id", ondelete="CASCADE"), nullable=False
+    )
+    matcher_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    matched_user_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    delivery_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PlanRecord(Base):

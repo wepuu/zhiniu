@@ -14,6 +14,7 @@ from zhaoniu_api.config import get_settings
 from zhaoniu_api.dependencies import (
     AIResearchServiceDependency,
     AuthServiceDependency,
+    CSRFSafe,
     CurrentUser,
     CurrentUserId,
     DailyBarRepo,
@@ -106,7 +107,7 @@ async def register(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=code,
         ) from error
-    set_session_cookie(response, session.token, auth.session_max_age_seconds)
+    set_session_cookies(response, session.token, session.csrf_token, auth.session_max_age_seconds)
     return AuthResponse(
         user=UserResponse.from_domain(session.user),
         entitlements=entitlements_response(),
@@ -132,7 +133,7 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_credentials",
         ) from error
-    set_session_cookie(response, session.token, auth.session_max_age_seconds)
+    set_session_cookies(response, session.token, session.csrf_token, auth.session_max_age_seconds)
     return AuthResponse(
         user=UserResponse.from_domain(session.user),
         entitlements=entitlements_response(),
@@ -143,6 +144,7 @@ async def login(
 async def logout(
     response: Response,
     auth: AuthServiceDependency,
+    _csrf: CSRFSafe,
     token: Annotated[str | None, Cookie(alias="zhaoniu_session")] = None,
 ) -> Response:
     await auth.logout(token)
@@ -174,6 +176,7 @@ async def list_sessions(
 )
 async def revoke_session(
     session_id: UUID,
+    _csrf: CSRFSafe,
     user_id: CurrentUserId,
     auth: AuthServiceDependency,
 ) -> Response:
@@ -484,7 +487,10 @@ async def list_watchlists(
     tags=["watchlists"],
 )
 async def create_watchlist(
-    payload: CreateWatchlistRequest, user_id: CurrentUserId, repository: WatchlistRepo
+    payload: CreateWatchlistRequest,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    repository: WatchlistRepo,
 ) -> WatchlistResponse:
     lists = await repository.list_for_user(user_id)
     if len(lists) >= _WATCHLIST_GROUP_LIMIT:
@@ -505,6 +511,7 @@ async def create_watchlist(
 async def add_watchlist_item(
     watchlist_id: UUID,
     payload: AddWatchlistItemRequest,
+    _csrf: CSRFSafe,
     user_id: CurrentUserId,
     stocks: StockRepo,
     repository: WatchlistRepo,
@@ -528,6 +535,7 @@ async def add_watchlist_item(
 async def remove_watchlist_item(
     watchlist_id: UUID,
     symbol: str,
+    _csrf: CSRFSafe,
     user_id: CurrentUserId,
     repository: WatchlistRepo,
 ) -> WatchlistResponse:
@@ -564,9 +572,7 @@ async def get_watchlist_membership(
         ) from error
     lists = await repository.list_for_user(user_id)
     watchlist_ids = [
-        item.id
-        for item in lists
-        if any(child.symbol == canonical for child in item.items)
+        item.id for item in lists if any(child.symbol == canonical for child in item.items)
     ]
     return WatchlistMembershipResponse(
         symbol=canonical,
@@ -575,7 +581,7 @@ async def get_watchlist_membership(
     )
 
 
-def set_session_cookie(response: Response, token: str, max_age: int) -> None:
+def set_session_cookies(response: Response, token: str, csrf_token: str, max_age: int) -> None:
     settings = get_settings()
     response.set_cookie(
         settings.auth_cookie_name,
@@ -586,11 +592,21 @@ def set_session_cookie(response: Response, token: str, max_age: int) -> None:
         samesite="lax",
         path="/",
     )
+    response.set_cookie(
+        settings.auth_csrf_cookie_name,
+        csrf_token,
+        max_age=max_age,
+        httponly=False,
+        secure=settings.auth_cookie_secure,
+        samesite="lax",
+        path="/",
+    )
 
 
 def clear_session_cookie(response: Response) -> None:
     settings = get_settings()
     response.delete_cookie(settings.auth_cookie_name, path="/")
+    response.delete_cookie(settings.auth_csrf_cookie_name, path="/")
 
 
 def entitlements_response() -> EntitlementsResponse:

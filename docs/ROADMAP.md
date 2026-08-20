@@ -41,17 +41,19 @@ benchmark snapshots, company peer metric positions, peer evidence, read-only pee
 desktop/mobile peer-position cards. Personalized feeds, event radar, bank/financial templates,
 report-specific AI interpretation and stock-picking workflows remain deferred.
 
-## Phase 7 - Corporate Disclosure & Event Radar (current)
+## Phase 7 - Corporate Disclosure & Event Radar
 
 Disclosure metadata ingestion, deterministic four-family taxonomy, staged structured facts,
 immutable event versions, point-in-time radar snapshots, neutral attention rules, evidence APIs and
 separately verified desktop/mobile event-radar flows. News, source-conflict fusion and expanded event
 families remain deferred.
 
-## Phase 8 - Notification
+## Phase 8 - Personalized Research Feed & In-App Research Alerts (current)
 
-User alert rules, digest jobs, in-product/email channels, quiet hours, delivery idempotency, retries,
-and preference enforcement.
+Global deterministic research-signal projection from Phase 3, 6 and 7 artifacts; watchlist-scoped
+14-day research feed with anchored cursor ordering; per-source coverage; CSRF-protected alert
+preferences; and idempotent in-app delivery only for signals known after watchlist membership.
+Email, digest schedules, quiet hours and push channels remain deferred.
 
 ## Phase 9 - Factor / Backtest
 

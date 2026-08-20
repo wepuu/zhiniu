@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.ai_research.service import AIResearchService
@@ -26,6 +26,7 @@ from zhaoniu_api.infrastructure.sql_repositories import (
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
 from zhaoniu_api.research.service import DeterministicResearchService
+from zhaoniu_api.research_feed.service import ResearchFeedService
 
 
 def get_auth_service(
@@ -102,6 +103,30 @@ def get_corporate_event_service(
     return build_corporate_event_service(session)
 
 
+def get_research_feed_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ResearchFeedService:
+    return ResearchFeedService(session, settings)
+
+
+async def require_csrf(
+    request: Request,
+    auth: Annotated[AuthService, Depends(get_auth_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    origin = request.headers.get("origin")
+    if origin is not None and origin.rstrip("/") not in settings.origin_allowlist:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="origin_not_allowed")
+    session_token = request.cookies.get(settings.auth_cookie_name)
+    cookie_token = request.cookies.get(settings.auth_csrf_cookie_name)
+    header_token = request.headers.get("x-csrf-token")
+    if not cookie_token or cookie_token != header_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="csrf_validation_failed")
+    if not await auth.validate_csrf(session_token, header_token):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="csrf_validation_failed")
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 CurrentUser = Annotated[UserAccount, Depends(get_current_user)]
 AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
@@ -115,3 +140,5 @@ PeerResearchServiceDependency = Annotated[PeerResearchService, Depends(get_peer_
 CorporateEventServiceDependency = Annotated[
     CorporateEventService, Depends(get_corporate_event_service)
 ]
+ResearchFeedServiceDependency = Annotated[ResearchFeedService, Depends(get_research_feed_service)]
+CSRFSafe = Annotated[None, Depends(require_csrf)]

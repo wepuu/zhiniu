@@ -1,8 +1,10 @@
 "use client";
 
+import { createZhaoniuClient } from "@zhaoniu/api-client";
+import { useQuery } from "@tanstack/react-query";
 import {
+  Bell,
   Bookmark,
-  FlaskConical,
   House,
   Search,
   Settings,
@@ -13,38 +15,24 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const navigation = [
-  { href: "/", label: "研究台", icon: House },
+  { href: "/", label: "自选研究", icon: House },
   { href: "/watchlist", label: "自选", icon: Bookmark },
-  { href: "/research", label: "研究", icon: FlaskConical },
+  { href: "/alerts", label: "提醒", icon: Bell },
   { href: "/settings", label: "设置", icon: Settings },
 ];
+const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
 function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname.startsWith(href);
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-export function Header() {
-  return (
-    <header className="border-ink/8 bg-mist/90 sticky top-0 z-20 flex h-16 items-center border-b px-4 backdrop-blur md:px-8">
-      <div className="flex w-full items-center gap-3">
-        <div className="md:hidden">
-          <Brand compact />
-        </div>
-        <button
-          className="border-ink/10 bg-paper text-slate hover:border-ink/20 hidden min-w-72 items-center gap-2 rounded-full border px-4 py-2 text-sm transition md:flex"
-          type="button"
-        >
-          <Search className="size-4" />
-          搜索股票、行业或研究记录
-          <kbd className="font-data ml-auto text-xs">Ctrl K</kbd>
-        </button>
-        <p className="text-slate ml-auto hidden text-xs sm:block">
-          研究工具，不构成投资建议
-        </p>
-      </div>
-    </header>
-  );
+function useAlertSummary() {
+  return useQuery({
+    queryKey: ["research-alert-summary"],
+    queryFn: () => api.getResearchAlertSummary(),
+    retry: false,
+    staleTime: 30_000,
+  });
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -56,7 +44,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <span>
           <span className="font-display block text-lg font-semibold leading-none">
-            找牛研究
+            知牛研究
           </span>
           <span className="font-data text-slate mt-1 block text-[9px] uppercase tracking-[0.2em]">
             Zhaoniu Research
@@ -67,8 +55,29 @@ function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
+export function Header() {
+  return (
+    <header className="border-ink/8 bg-mist/90 sticky top-0 z-20 flex h-16 items-center border-b px-4 backdrop-blur md:px-8">
+      <div className="flex w-full items-center gap-3">
+        <div className="md:hidden">
+          <Brand compact />
+        </div>
+        <div className="border-ink/10 bg-paper text-slate hidden min-w-72 items-center gap-2 rounded-full border px-4 py-2 text-sm md:flex">
+          <Search className="size-4" />
+          搜索股票、行业或研究记录
+          <kbd className="font-data ml-auto text-xs">Ctrl K</kbd>
+        </div>
+        <p className="text-slate ml-auto hidden text-xs sm:block">
+          研究工具，不构成投资建议
+        </p>
+      </div>
+    </header>
+  );
+}
+
 export function DesktopSidebar() {
   const pathname = usePathname();
+  const summary = useAlertSummary();
   return (
     <aside
       data-testid="desktop-sidebar"
@@ -87,6 +96,13 @@ export function DesktopSidebar() {
             >
               <Icon className="size-4" />
               {label}
+              {href === "/alerts" && !!summary.data?.unread_count && (
+                <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-[10px]">
+                  {summary.data.unread_count > 99
+                    ? "99+"
+                    : summary.data.unread_count}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -104,6 +120,7 @@ export function DesktopSidebar() {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const summary = useAlertSummary();
   return (
     <nav
       data-testid="mobile-navigation"
@@ -119,7 +136,12 @@ export function MobileBottomNav() {
             aria-current={active ? "page" : undefined}
             className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] ${active ? "bg-white/12" : "text-white/60"}`}
           >
-            <Icon className="size-4" />
+            <span className="relative">
+              <Icon className="size-4" />
+              {href === "/alerts" && !!summary.data?.unread_count && (
+                <i className="bg-risk absolute -right-1.5 -top-1.5 size-2 rounded-full" />
+              )}
+            </span>
             {label}
           </Link>
         );

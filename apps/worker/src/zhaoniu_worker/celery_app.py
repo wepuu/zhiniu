@@ -1,6 +1,7 @@
 import asyncio
 import os
 from datetime import date, datetime
+from uuid import UUID
 
 from celery import Celery  # type: ignore[import-untyped]
 from zhaoniu_api.corporate_events.errors import DisclosureProviderTransientError
@@ -226,3 +227,31 @@ def build_event_radar(symbol: str, as_of: str | None = None) -> dict[str, object
 @celery_app.task(name="event_research.build")  # type: ignore[untyped-decorator]
 def build_event_research(symbol: str) -> dict[str, object]:
     return asyncio.run(_event_task("research", symbol))
+
+
+async def _project_research_signals(symbol: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_research_feed_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_research_feed_service(session).project_symbol(symbol)
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="research_signals.project")  # type: ignore[untyped-decorator]
+def project_research_signals(symbol: str) -> dict[str, object]:
+    return asyncio.run(_project_research_signals(symbol))
+
+
+async def _dispatch_research_alert(signal_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_research_feed_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_research_feed_service(session).dispatch(UUID(signal_id))
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="research_alerts.dispatch")  # type: ignore[untyped-decorator]
+def dispatch_research_alert(signal_id: str) -> dict[str, object]:
+    return asyncio.run(_dispatch_research_alert(signal_id))

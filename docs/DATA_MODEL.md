@@ -100,6 +100,10 @@ Phase 5 entitlements are deterministic internal-beta limits only: five watchlist
 total watchlist memberships per user. Paid plans, account deletion, email verification and password
 reset are deferred.
 
+Phase 8 adds a SHA-256 CSRF token hash to `user_sessions`. The readable CSRF cookie carries a
+different opaque token from the HttpOnly session cookie; write requests must present the same CSRF
+value in `X-CSRF-Token` and pass Origin validation.
+
 ## Implemented Phase 6 tables
 
 - `industry_taxonomies`, `industries`, `industry_memberships`: versioned industry classification
@@ -109,6 +113,8 @@ reset are deferred.
 - `peer_benchmark_metric_results`: median, quartiles, status and invalid-value metadata by metric.
 - `peer_benchmark_inputs`: references to the exact metric points or valuation observations used.
 - `company_peer_metric_positions`: target-company values, numeric percentile and numeric rank.
+- `peer_position_observations`: deterministic, neutral descriptions of significant percentile-band
+  positions or changes. These are upstream research artifacts, not frontend calculations.
 
 Peer research is global shared research and does not carry `user_id`.
 
@@ -122,3 +128,15 @@ Peer research is global shared research and does not carry `user_id`.
 - `corporate_event_build_runs` records idempotent sync/build outcomes.
 - `event_radar_snapshots` and `event_radar_snapshot_items` preserve point-in-time selection and
   versioned attention decisions.
+
+## Phase 8 feed and alert tables
+
+- `research_signals`: global immutable projection with exactly one upstream source FK, `known_at`,
+  optional date-only `effective_on`, semantic dedup fingerprint and presentation payload.
+- `research_signal_projection_runs`: idempotent source-artifact/projection-version audit.
+- `user_research_alert_settings`: user-owned threshold and per-source switches.
+- `user_research_alert_deliveries`: user/signal unique in-app deliveries and read time.
+- `research_alert_dispatch_runs`: signal/matcher-version deduplication, lease and delivery counts.
+
+There is intentionally no `user_feed_items` table. The feed joins global signals to current
+watchlist membership at query time; only alert settings and deliveries are user-owned.

@@ -11,6 +11,7 @@ from zhaoniu_api.composition import (
     build_fundamental_service,
     build_market_data_service,
     build_peer_research_service,
+    build_research_feed_service,
     build_research_service,
 )
 from zhaoniu_api.corporate_events.models import EventBuildResult
@@ -75,6 +76,10 @@ def _parser() -> argparse.ArgumentParser:
     event_radar.add_argument("--as-of", type=datetime.fromisoformat)
     event_research = subcommands.add_parser("build-event-research")
     event_research.add_argument("symbol")
+    signal_projection = subcommands.add_parser("project-research-signals")
+    signal_projection.add_argument("symbol")
+    dispatch_alert = subcommands.add_parser("dispatch-research-alert")
+    dispatch_alert.add_argument("signal_id")
     return parser
 
 
@@ -89,6 +94,7 @@ async def _run(args: argparse.Namespace) -> None:
                 | IndustrySyncResult
                 | PeerBuildResult
                 | EventBuildResult
+                | object
             )
             if args.command == "sync-stock-master":
                 result = await build_market_data_service(session).sync_stock_master(
@@ -140,11 +146,18 @@ async def _run(args: argparse.Namespace) -> None:
                 result = await build_corporate_event_service(session).build_event_research(
                     args.symbol
                 )
+            elif args.command == "project-research-signals":
+                result = await build_research_feed_service(session).project_symbol(args.symbol)
+            elif args.command == "dispatch-research-alert":
+                from uuid import UUID
+
+                result = await build_research_feed_service(session).dispatch(UUID(args.signal_id))
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of
                 )
-            print(json.dumps(asdict(result), default=str, ensure_ascii=False))
+            payload = result.model_dump() if hasattr(result, "model_dump") else asdict(result)
+            print(json.dumps(payload, default=str, ensure_ascii=False))
     finally:
         await engine.dispose()
 

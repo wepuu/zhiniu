@@ -34,6 +34,10 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 28. Structured corporate-event facts must remain staged until matched to a retained disclosure.
 29. Event attention belongs to a versioned radar snapshot, not the immutable event record.
 30. Event processing must preserve publication, knowledge, effective and ingestion time semantics.
+31. Research signals are global projections with exactly one retained upstream artifact.
+32. Historical signals may appear in a feed but must never be backfilled as user alerts.
+33. Personalized feed cursors must freeze a query cutoff and use deterministic keyset ordering.
+34. Cookie-authenticated writes require CSRF validation and an allowed Origin.
 
 ## Standard commands
 

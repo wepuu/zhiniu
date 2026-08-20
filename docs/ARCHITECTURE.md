@@ -85,9 +85,9 @@ Shared: stocks, bars, financial reports, valuation observations, deterministic m
 evidence, public research snapshots, industry classifications and peer benchmark research.
 
 User-owned: users, sessions, watchlists/items, alerts, preferences, chats, subscriptions and usage.
-Every user-owned record and query carries `user_id`. Phase 5 implements email/password sessions and
-persisted watchlists for the internal beta; alerts, preferences, chats, paid subscriptions and full
-public account lifecycle remain deferred.
+Every user-owned record and query carries `user_id`. Phase 8 implements alert preferences and
+deliveries while keeping research signals global. Chats, paid subscriptions and the full public
+account lifecycle remain deferred.
 
 ## Module boundaries
 
@@ -106,7 +106,22 @@ public account lifecycle remain deferred.
   API read model.
 - `peer_research`: industry taxonomy, peer universe resolution, benchmark statistics, peer evidence
   and read-only API models.
+- `research_feed`: deterministic global signal projection, watchlist-scoped feed queries, coverage,
+  in-app alert matching and user-owned delivery state.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
+
+## Personalized research projection
+
+Phase 8 projects immutable Phase 3 observations, Phase 6 peer-position observations and retained
+Phase 7 corporate events into a single global `research_signals` stream. Exactly one source
+reference is required for every signal. Personalization happens at read and delivery time through
+watchlist membership; no per-user feed copies are stored. Feed cursors freeze a `query_cutoff` and
+sort by known time, attention and signal identity so pagination remains stable while new signals
+arrive. AI output is read-only enrichment and never triggers generation from a feed request.
+
+Alert dispatch is keyed by signal identity and matcher version. Membership must predate the
+signal's `known_at`; therefore historical projection is visible in the feed but never backfilled as
+an alert. Cookie-authenticated writes require a same-session CSRF token and an allowed Origin.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See
 `OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.

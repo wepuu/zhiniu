@@ -447,6 +447,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/research-feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Feed */
+        get: operations["get_research_feed_api_v1_me_research_feed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Coverage */
+        get: operations["get_research_coverage_api_v1_me_research_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Alerts */
+        get: operations["get_research_alerts_api_v1_me_research_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-alerts/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Alert Summary */
+        get: operations["get_research_alert_summary_api_v1_me_research_alerts_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-alerts/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark All Research Alerts Read */
+        post: operations["mark_all_research_alerts_read_api_v1_me_research_alerts_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-alerts/{delivery_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Research Alert Read */
+        post: operations["mark_research_alert_read_api_v1_me_research_alerts__delivery_id__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/research-alert-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Alert Settings */
+        get: operations["get_research_alert_settings_api_v1_me_research_alert_settings_get"];
+        /** Update Research Alert Settings */
+        put: operations["update_research_alert_settings_api_v1_me_research_alert_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -548,6 +668,75 @@ export interface components {
         AddWatchlistItemRequest: {
             /** Symbol */
             symbol: string;
+        };
+        /** AlertDeliveryResponse */
+        AlertDeliveryResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            signal: components["schemas"]["FeedSignalResponse"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Read At */
+            read_at?: string | null;
+        };
+        /** AlertListResponse */
+        AlertListResponse: {
+            /** Items */
+            items: components["schemas"]["AlertDeliveryResponse"][];
+            /** Unread Count */
+            unread_count: number;
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** AlertSettingsResponse */
+        AlertSettingsResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Minimum Attention
+             * @enum {string}
+             */
+            minimum_attention: "info" | "notice" | "important";
+            /** Fundamental Enabled */
+            fundamental_enabled: boolean;
+            /** Peer Enabled */
+            peer_enabled: boolean;
+            /** Corporate Event Enabled */
+            corporate_event_enabled: boolean;
+            /** Settings Version */
+            settings_version: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AlertSettingsUpdate */
+        AlertSettingsUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Minimum Attention
+             * @enum {string}
+             */
+            minimum_attention: "info" | "notice" | "important";
+            /** Fundamental Enabled */
+            fundamental_enabled: boolean;
+            /** Peer Enabled */
+            peer_enabled: boolean;
+            /** Corporate Event Enabled */
+            corporate_event_enabled: boolean;
+        };
+        /** AlertSummaryResponse */
+        AlertSummaryResponse: {
+            /** Unread Count */
+            unread_count: number;
         };
         /**
          * AttentionLevel
@@ -926,6 +1115,61 @@ export interface components {
              */
             known_at: string;
         };
+        /** FeedSection */
+        FeedSection: {
+            /** Items */
+            items: components["schemas"]["FeedSignalResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** FeedSignalResponse */
+        FeedSignalResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            /** Stock Name */
+            stock_name: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "fundamental" | "peer" | "corporate_event";
+            /** Signal Family */
+            signal_family: string;
+            /** Signal Type */
+            signal_type: string;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "info" | "notice" | "important";
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Effective On */
+            effective_on?: string | null;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Display Payload */
+            display_payload: {
+                [key: string]: unknown;
+            };
+            /** Evidence Path */
+            evidence_path: string;
+            /**
+             * Ai Status
+             * @enum {string}
+             */
+            ai_status: "ready" | "disabled" | "not_built";
+        };
         /** FinancialPeriodListResponse */
         FinancialPeriodListResponse: {
             /** Symbol */
@@ -1255,6 +1499,18 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** ResearchFeedResponse */
+        ResearchFeedResponse: {
+            /**
+             * Query Cutoff
+             * Format: date-time
+             */
+            query_cutoff: string;
+            today: components["schemas"]["FeedSection"];
+            recent: components["schemas"]["FeedSection"];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** ResearchObservation */
         ResearchObservation: {
             /**
@@ -1394,6 +1650,17 @@ export interface components {
             /** Is Current */
             is_current: boolean;
         };
+        /** SourceCoverage */
+        SourceCoverage: {
+            /** Fundamental */
+            fundamental: string;
+            /** Peer */
+            peer: string;
+            /** Corporate Event */
+            corporate_event: string;
+            /** Ai */
+            ai: string;
+        };
         /** StockHealthResearchV1 */
         StockHealthResearchV1: {
             /**
@@ -1520,6 +1787,21 @@ export interface components {
             unit: string;
             /** Provider */
             provider: string;
+        };
+        /** WatchlistCoverageItem */
+        WatchlistCoverageItem: {
+            /** Symbol */
+            symbol: string;
+            /** Stock Name */
+            stock_name: string;
+            coverage: components["schemas"]["SourceCoverage"];
+        };
+        /** WatchlistCoverageResponse */
+        WatchlistCoverageResponse: {
+            /** Items */
+            items: components["schemas"]["WatchlistCoverageItem"][];
+            /** Total */
+            total: number;
         };
         /** WatchlistItemResponse */
         WatchlistItemResponse: {
@@ -2421,6 +2703,263 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventRadarEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_feed_api_v1_me_research_feed_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                source_kind?: ("fundamental" | "peer" | "corporate_event") | null;
+                minimum_attention?: ("info" | "notice" | "important") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchFeedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_coverage_api_v1_me_research_coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistCoverageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_alerts_api_v1_me_research_alerts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_alert_summary_api_v1_me_research_alerts_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_all_research_alerts_read_api_v1_me_research_alerts_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_research_alert_read_api_v1_me_research_alerts__delivery_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_alert_settings_api_v1_me_research_alert_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertSettingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_research_alert_settings_api_v1_me_research_alert_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertSettingsResponse"];
                 };
             };
             /** @description Validation Error */

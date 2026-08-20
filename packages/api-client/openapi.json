@@ -1498,6 +1498,484 @@
           }
         }
       }
+    },
+    "/api/v1/me/research-feed": {
+      "get": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Get Research Feed",
+        "operationId": "get_research_feed_api_v1_me_research_feed_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 40,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "source_kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "fundamental",
+                    "peer",
+                    "corporate_event"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Kind"
+            }
+          },
+          {
+            "name": "minimum_attention",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "info",
+                    "notice",
+                    "important"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum Attention"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchFeedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-coverage": {
+      "get": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Get Research Coverage",
+        "operationId": "get_research_coverage_api_v1_me_research_coverage_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistCoverageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-alerts": {
+      "get": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Get Research Alerts",
+        "operationId": "get_research_alerts_api_v1_me_research_alerts_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-alerts/summary": {
+      "get": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Get Research Alert Summary",
+        "operationId": "get_research_alert_summary_api_v1_me_research_alerts_summary_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-alerts/read-all": {
+      "post": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Mark All Research Alerts Read",
+        "operationId": "mark_all_research_alerts_read_api_v1_me_research_alerts_read_all_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-alerts/{delivery_id}/read": {
+      "post": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Mark Research Alert Read",
+        "operationId": "mark_research_alert_read_api_v1_me_research_alerts__delivery_id__read_post",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Delivery Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/research-alert-settings": {
+      "get": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Get Research Alert Settings",
+        "operationId": "get_research_alert_settings_api_v1_me_research_alert_settings_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "personalized research"
+        ],
+        "summary": "Update Research Alert Settings",
+        "operationId": "update_research_alert_settings_api_v1_me_research_alert_settings_put",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1748,6 +2226,175 @@
           "symbol"
         ],
         "title": "AddWatchlistItemRequest"
+      },
+      "AlertDeliveryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/FeedSignalResponse"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "signal",
+          "created_at"
+        ],
+        "title": "AlertDeliveryResponse"
+      },
+      "AlertListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlertDeliveryResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "unread_count": {
+            "type": "integer",
+            "title": "Unread Count"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "unread_count"
+        ],
+        "title": "AlertListResponse"
+      },
+      "AlertSettingsResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "minimum_attention": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Minimum Attention"
+          },
+          "fundamental_enabled": {
+            "type": "boolean",
+            "title": "Fundamental Enabled"
+          },
+          "peer_enabled": {
+            "type": "boolean",
+            "title": "Peer Enabled"
+          },
+          "corporate_event_enabled": {
+            "type": "boolean",
+            "title": "Corporate Event Enabled"
+          },
+          "settings_version": {
+            "type": "integer",
+            "title": "Settings Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "minimum_attention",
+          "fundamental_enabled",
+          "peer_enabled",
+          "corporate_event_enabled",
+          "settings_version",
+          "updated_at"
+        ],
+        "title": "AlertSettingsResponse"
+      },
+      "AlertSettingsUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "minimum_attention": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Minimum Attention"
+          },
+          "fundamental_enabled": {
+            "type": "boolean",
+            "title": "Fundamental Enabled"
+          },
+          "peer_enabled": {
+            "type": "boolean",
+            "title": "Peer Enabled"
+          },
+          "corporate_event_enabled": {
+            "type": "boolean",
+            "title": "Corporate Event Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "minimum_attention",
+          "fundamental_enabled",
+          "peer_enabled",
+          "corporate_event_enabled"
+        ],
+        "title": "AlertSettingsUpdate"
+      },
+      "AlertSummaryResponse": {
+        "properties": {
+          "unread_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unread Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unread_count"
+        ],
+        "title": "AlertSummaryResponse"
       },
       "AttentionLevel": {
         "type": "string",
@@ -2870,6 +3517,130 @@
         ],
         "title": "EvidenceSource"
       },
+      "FeedSection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedSignalResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FeedSection"
+      },
+      "FeedSignalResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "stock_name": {
+            "type": "string",
+            "title": "Stock Name"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "fundamental",
+              "peer",
+              "corporate_event"
+            ],
+            "title": "Source Kind"
+          },
+          "signal_family": {
+            "type": "string",
+            "title": "Signal Family"
+          },
+          "signal_type": {
+            "type": "string",
+            "title": "Signal Type"
+          },
+          "attention_level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Attention Level"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "effective_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective On"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "display_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Display Payload"
+          },
+          "evidence_path": {
+            "type": "string",
+            "title": "Evidence Path"
+          },
+          "ai_status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "disabled",
+              "not_built"
+            ],
+            "title": "Ai Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "stock_name",
+          "source_kind",
+          "signal_family",
+          "signal_type",
+          "attention_level",
+          "known_at",
+          "title",
+          "summary",
+          "display_payload",
+          "evidence_path",
+          "ai_status"
+        ],
+        "title": "FeedSignalResponse"
+      },
       "FinancialPeriodListResponse": {
         "properties": {
           "symbol": {
@@ -3951,6 +4722,39 @@
         ],
         "title": "ResearchCoverage"
       },
+      "ResearchFeedResponse": {
+        "properties": {
+          "query_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Query Cutoff"
+          },
+          "today": {
+            "$ref": "#/components/schemas/FeedSection"
+          },
+          "recent": {
+            "$ref": "#/components/schemas/FeedSection"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query_cutoff",
+          "today",
+          "recent"
+        ],
+        "title": "ResearchFeedResponse"
+      },
       "ResearchObservation": {
         "properties": {
           "id": {
@@ -4277,6 +5081,34 @@
           "is_current"
         ],
         "title": "SessionResponse"
+      },
+      "SourceCoverage": {
+        "properties": {
+          "fundamental": {
+            "type": "string",
+            "title": "Fundamental"
+          },
+          "peer": {
+            "type": "string",
+            "title": "Peer"
+          },
+          "corporate_event": {
+            "type": "string",
+            "title": "Corporate Event"
+          },
+          "ai": {
+            "type": "string",
+            "title": "Ai"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fundamental",
+          "peer",
+          "corporate_event",
+          "ai"
+        ],
+        "title": "SourceCoverage"
       },
       "StockHealthResearchV1": {
         "properties": {
@@ -4682,6 +5514,49 @@
           "provider"
         ],
         "title": "ValuationObservationResponse"
+      },
+      "WatchlistCoverageItem": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "stock_name": {
+            "type": "string",
+            "title": "Stock Name"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/SourceCoverage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "stock_name",
+          "coverage"
+        ],
+        "title": "WatchlistCoverageItem"
+      },
+      "WatchlistCoverageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WatchlistCoverageItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "WatchlistCoverageResponse"
       },
       "WatchlistItemResponse": {
         "properties": {
