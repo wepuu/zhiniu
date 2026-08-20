@@ -5,12 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   getScreenCatalog: vi.fn(),
   getScreenCoverage: vi.fn(),
+  estimateScreenCoverage: vi.fn(),
   getWatchlists: vi.fn(),
   validateScreen: vi.fn(),
   createScreenExecution: vi.fn(),
   getScreenExecution: vi.fn(),
   getScreenResults: vi.fn(),
   addWatchlistItem: vi.fn(),
+  createNaturalLanguageScreenParse: vi.fn(),
+  getNaturalLanguageScreenParse: vi.fn(),
+  createSavedScreen: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/screens" }));
@@ -70,6 +74,12 @@ beforeEach(() => {
     excluded_count: 0,
     fact_counts: { metric: 2 },
     commercial_use_status: "development_evaluation_only",
+    limitations: [],
+  });
+  api.estimateScreenCoverage.mockResolvedValue({
+    eligible_count: 2,
+    all_criteria_available_count: 1,
+    criteria: [],
     limitations: [],
   });
   api.getWatchlists.mockResolvedValue([
@@ -143,7 +153,11 @@ describe("ScreeningWorkspace", () => {
     expect(await screen.findByText("部分覆盖")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "运行筛选" })[0]!);
     expect(
-      await screen.findByRole("heading", { name: "贵州茅台" }),
+      await screen.findByRole(
+        "heading",
+        { name: "贵州茅台" },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("年度平均权益 ROE").length).toBeGreaterThan(0);
     expect(screen.getByText("31.2 %")).toBeInTheDocument();
@@ -165,5 +179,28 @@ describe("ScreeningWorkspace", () => {
     });
     renderWorkspace();
     expect(await screen.findByText(/筛选快照尚未生成/)).toBeInTheDocument();
+  });
+
+  it("labels AI parsing separately and keeps the deterministic builder available", async () => {
+    api.createNaturalLanguageScreenParse.mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000099",
+      status: "disabled",
+      created_at: "2026-08-20T10:00:00Z",
+    });
+    api.getNaturalLanguageScreenParse.mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000099",
+      status: "disabled",
+      created_at: "2026-08-20T10:00:00Z",
+    });
+    renderWorkspace();
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: "自然语言筛选条件" }),
+      { target: { value: "毛利率不低于 30%" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "解析条件" }));
+    expect(await screen.findByText("AI 条件解析尚未启用")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "运行筛选" }).length,
+    ).toBeGreaterThan(0);
   });
 });

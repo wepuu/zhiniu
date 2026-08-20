@@ -3,7 +3,12 @@ import os
 from datetime import date, datetime
 from uuid import UUID
 
+# Every Celery task below owns a short-lived asyncio.run() event loop. Keep database
+# connections out of a cross-task pool because asyncpg connections are loop-bound.
+os.environ["ZHAONIU_DISABLE_DB_POOL"] = "1"
+
 from celery import Celery  # type: ignore[import-untyped]
+from redis import Redis
 from zhaoniu_api.corporate_events.errors import DisclosureProviderTransientError
 
 celery_app = Celery(
@@ -285,3 +290,27 @@ async def _execute_screen(execution_id: str) -> dict[str, object]:
 @celery_app.task(name="screening.execute")  # type: ignore[untyped-decorator]
 def execute_screen(execution_id: str) -> dict[str, object]:
     return asyncio.run(_execute_screen(execution_id))
+
+
+async def _parse_natural_language_screen(run_id: str, text: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_natural_language_screening_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_natural_language_screening_service(session).parse(UUID(run_id), text)
+        return {
+            "id": str(result.id),
+            "status": result.status,
+            "semantic_status": result.semantic_status,
+            "error_code": result.error_code,
+        }
+
+
+@celery_app.task(name="screening.parse_natural_language")  # type: ignore[untyped-decorator]
+def parse_natural_language_screen(run_id: str) -> dict[str, object]:
+    key = f"screen-parse-input:{run_id}"
+    with Redis.from_url(
+        os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True
+    ) as client:
+        text = client.getdel(key)
+    return asyncio.run(_parse_natural_language_screen(run_id, text or ""))

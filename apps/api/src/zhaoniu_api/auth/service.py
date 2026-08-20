@@ -23,6 +23,9 @@ FREE_ENTITLEMENT_PLAN = "internal_beta"
 FREE_ENTITLEMENT_LIMITS = {
     "watchlist_groups": 5,
     "watchlist_memberships_total": 30,
+    "saved_screens": 10,
+    "screen_parses_daily": 30,
+    "concurrent_screen_parses": 1,
 }
 
 

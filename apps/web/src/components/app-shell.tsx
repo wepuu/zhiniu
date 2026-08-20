@@ -24,7 +24,9 @@ const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
 function isActive(pathname: string, href: string) {
   return href === "/"
-    ? pathname === "/" || pathname.startsWith("/screens")
+    ? pathname === "/" ||
+        pathname.startsWith("/screens") ||
+        pathname.startsWith("/saved-screens")
     : pathname.startsWith(href);
 }
 

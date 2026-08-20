@@ -167,4 +167,3 @@ def universe_status(universe: PeerUniverse) -> PeerComparisonStatus:
     if len(universe.peer_symbols) < MINIMUM_VALID_SAMPLE_SIZE:
         return PeerComparisonStatus.INSUFFICIENT_PEERS
     return PeerComparisonStatus.AVAILABLE
-

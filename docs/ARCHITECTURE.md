@@ -109,7 +109,8 @@ account lifecycle remain deferred.
 - `research_feed`: deterministic global signal projection, watchlist-scoped feed queries, coverage,
   in-app alert matching and user-owned delivery state.
 - `screening`: versioned query validation, immutable market-wide screening snapshots,
-  deterministic evidence-linked execution and user-scoped result retrieval.
+  deterministic evidence-linked execution, natural-language candidate parsing and user-scoped
+  saved-screen/result retrieval.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 ## Personalized research projection
@@ -133,6 +134,13 @@ DSL is validated against server-owned catalogs before a Celery execution evaluat
 Executions and results carry `user_id`; equivalent execution work is deduplicated. Missing or
 incomplete coverage cannot satisfy a condition, especially a negative event condition. The web
 client renders matched conditions and evidence links but performs no screening calculation.
+
+Phase 10 keeps natural-language parsing outside the deterministic evaluator. Private text is
+transported through a short-lived Redis key to a Celery task, then discarded. The LLM gateway may
+only return a candidate `ScreenQuery`; policy, schema, source-span, numeric/unit, catalog and query
+hash checks are deterministic. Saved screens persist only validated canonical DSL and provenance.
+Catalog and coverage reads remain public-cacheable; parse, saved-screen and execution routes use
+`private, no-store` responses and are always scoped by `user_id`.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See
 `OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.

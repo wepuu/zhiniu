@@ -9,7 +9,8 @@ from hashlib import sha256
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, distinct, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.db import (
@@ -20,8 +21,11 @@ from zhaoniu_api.db import (
     FundamentalMetricPointRecord,
     IndustryMembershipRecord,
     IndustryRecord,
+    NaturalLanguageScreenParseRunRecord,
     PeerBenchmarkSnapshotRecord,
+    SavedScreenRecord,
     ScreenExecutionRecord,
+    ScreenExecutionRequestRecord,
     ScreeningSnapshotFactRecord,
     ScreeningSnapshotMemberRecord,
     ScreeningSnapshotRecord,
@@ -42,8 +46,15 @@ from zhaoniu_api.screening.models import (
     IndustryCriterion,
     MetricCriterion,
     PeerCriterion,
+    SavedScreenCreate,
+    SavedScreenListResponse,
+    SavedScreenResponse,
+    SavedScreenUpdate,
     ScreenCatalogResponse,
+    ScreenCoverageEstimateResponse,
     ScreenCoverageResponse,
+    ScreenCriterionCoverage,
+    ScreenExecutionListResponse,
     ScreenExecutionResponse,
     ScreenIndustryCatalogItem,
     ScreeningBuildResult,
@@ -57,6 +68,7 @@ from zhaoniu_api.screening.models import (
 )
 
 DSL_VERSION = "screen-query-v1"
+CATALOG_VERSION = "screen-catalog-v2"
 ENGINE_VERSION = "screen-engine-v1"
 SELECTOR_VERSION = "screen-selector-v1"
 EVENT_RADAR_VERSION = "event-radar-v1"
@@ -122,6 +134,25 @@ def _canonical(query: ScreenQuery) -> dict[str, Any]:
     return query.model_dump(mode="json", exclude_none=True)
 
 
+def _criteria_contract_hash() -> str:
+    return _hash(
+        {
+            "dsl_version": DSL_VERSION,
+            "metric_codes": METRIC_CODES,
+            "valuation_codes": VALUATION_CODES,
+            "annual_metric_codes": ANNUAL_METRIC_CODES,
+            "peer_metric_codes": PEER_METRIC_CODES,
+            "event_families": EVENT_FAMILIES,
+            "operators": ("gt", "gte", "lt", "lte", "between"),
+            "max_filters": 8,
+            "conjunction": "and",
+        }
+    )
+
+
+CRITERIA_CONTRACT_HASH = _criteria_contract_hash()
+
+
 def _compare(value: Decimal, operator: str, lower: Decimal, upper: Decimal | None) -> bool:
     if operator == "gt":
         return value > lower
@@ -181,19 +212,32 @@ class ScreeningService:
                 .order_by(IndustryRecord.name, IndustryRecord.code)
             )
         ).all()
+        industries = [
+            ScreenIndustryCatalogItem(
+                taxonomy_code=row[0],
+                taxonomy_version=row[1],
+                industry_code=row[2],
+                industry_name=row[3],
+            )
+            for row in rows
+        ]
+        catalog_hash = _hash(
+            {
+                "version": CATALOG_VERSION,
+                "metrics": [item.model_dump(mode="json") for item in metrics],
+                "peer_metric_codes": PEER_METRIC_CODES,
+                "industries": [item.model_dump(mode="json") for item in industries],
+                "event_families": EVENT_FAMILIES,
+            }
+        )
         return ScreenCatalogResponse(
             dsl_version=DSL_VERSION,
+            catalog_version=CATALOG_VERSION,
+            catalog_hash=catalog_hash,
+            criteria_contract_hash=CRITERIA_CONTRACT_HASH,
             metrics=metrics,
             peer_metric_codes=list(PEER_METRIC_CODES),
-            industries=[
-                ScreenIndustryCatalogItem(
-                    taxonomy_code=row[0],
-                    taxonomy_version=row[1],
-                    industry_code=row[2],
-                    industry_name=row[3],
-                )
-                for row in rows
-            ],
+            industries=industries,
             event_families=list(EVENT_FAMILIES),
             limitations=[
                 "仅覆盖已构建且可追溯的数据，不代表全市场完整覆盖。",
@@ -593,13 +637,27 @@ class ScreeningService:
 
         self._session.add_all(facts)
         counts: dict[str, int] = defaultdict(int)
+        status_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        criterion_available_counts: dict[str, int] = defaultdict(int)
         for fact in facts:
-            counts[fact.source_kind] += 1
+            status_counts[fact.source_kind][fact.status] += 1
+            if fact.status == "available":
+                counts[fact.source_kind] += 1
+                criterion_available_counts[fact.criterion_key] += 1
+        catalog = await self.catalog()
         snapshot.coverage_manifest = {
             "universe_count": len(stocks),
             "eligible_count": len(eligible_symbols),
             "excluded_count": len(stocks) - len(eligible_symbols),
             "fact_counts": dict(sorted(counts.items())),
+            "fact_status_counts": {
+                source: dict(sorted(statuses.items()))
+                for source, statuses in sorted(status_counts.items())
+            },
+            "criterion_available_counts": dict(sorted(criterion_available_counts.items())),
+            "catalog_version": catalog.catalog_version,
+            "catalog_hash": catalog.catalog_hash,
+            "criteria_contract_hash": catalog.criteria_contract_hash,
         }
         snapshot.status = "ready"
         await self._session.commit()
@@ -632,7 +690,9 @@ class ScreeningService:
             )
         manifest = snapshot.coverage_manifest
         eligible = int(manifest.get("eligible_count", 0))
-        facts = cast(dict[str, int], manifest.get("fact_counts", {}))
+        facts, fact_status_counts, criterion_available_counts = await self._coverage_profile(
+            snapshot
+        )
         core_fact_count = facts.get("metric", 0) + facts.get("valuation", 0)
         expected_core_fact_count = eligible * (len(METRIC_CODES) + len(VALUATION_CODES))
         status: Literal["ready", "partial_coverage"] = (
@@ -648,6 +708,8 @@ class ScreeningService:
             eligible_count=eligible,
             excluded_count=int(manifest.get("excluded_count", 0)),
             fact_counts=facts,
+            fact_status_counts=fact_status_counts,
+            criterion_available_counts=criterion_available_counts,
             taxonomy_code=snapshot.taxonomy_code,
             taxonomy_version=snapshot.taxonomy_version,
             limitations=[
@@ -656,13 +718,312 @@ class ScreeningService:
             ],
         )
 
-    async def create_execution(self, user_id: UUID, query: ScreenQuery) -> ScreenExecutionResponse:
+    async def _coverage_profile(
+        self, snapshot: ScreeningSnapshotRecord
+    ) -> tuple[dict[str, int], dict[str, dict[str, int]], dict[str, int]]:
+        manifest = snapshot.coverage_manifest
+        if "fact_status_counts" in manifest and "criterion_available_counts" in manifest:
+            return (
+                cast(dict[str, int], manifest.get("fact_counts", {})),
+                cast(dict[str, dict[str, int]], manifest["fact_status_counts"]),
+                cast(dict[str, int], manifest["criterion_available_counts"]),
+            )
+        rows = (
+            await self._session.execute(
+                select(
+                    ScreeningSnapshotFactRecord.source_kind,
+                    ScreeningSnapshotFactRecord.status,
+                    ScreeningSnapshotFactRecord.criterion_key,
+                    func.count(),
+                )
+                .where(ScreeningSnapshotFactRecord.snapshot_id == snapshot.id)
+                .group_by(
+                    ScreeningSnapshotFactRecord.source_kind,
+                    ScreeningSnapshotFactRecord.status,
+                    ScreeningSnapshotFactRecord.criterion_key,
+                )
+            )
+        ).all()
+        available_by_source: dict[str, int] = defaultdict(int)
+        by_status: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        by_criterion: dict[str, int] = defaultdict(int)
+        for source, status, criterion_key, count in rows:
+            by_status[source][status] += count
+            if status == "available":
+                available_by_source[source] += count
+                by_criterion[criterion_key] += count
+        return (
+            dict(sorted(available_by_source.items())),
+            {key: dict(sorted(value.items())) for key, value in sorted(by_status.items())},
+            dict(sorted(by_criterion.items())),
+        )
+
+    async def estimate_coverage(self, query: ScreenQuery) -> ScreenCoverageEstimateResponse:
+        validation = self.validate(query)
+        if not validation.valid:
+            raise ValueError("invalid_screen_query")
+        snapshot = await self._latest_snapshot()
+        if snapshot is None:
+            return ScreenCoverageEstimateResponse(limitations=["尚未构建可查询的筛选数据快照。"])
+        eligible = int(snapshot.coverage_manifest.get("eligible_count", 0))
+        _, _, available = await self._coverage_profile(snapshot)
+        criteria: list[ScreenCriterionCoverage] = []
+        keys: list[str] = []
+        for criterion in query.filters:
+            if isinstance(criterion, MetricCriterion):
+                key = f"metric:{criterion.metric_code}"
+                label = DISPLAY_NAMES[criterion.metric_code]
+            elif isinstance(criterion, PeerCriterion):
+                key = f"peer:{criterion.metric_code}"
+                label = f"{DISPLAY_NAMES[criterion.metric_code]}同行分位"
+            elif isinstance(criterion, IndustryCriterion):
+                key, label = "industry", "行业分类"
+            else:
+                key = f"event:{criterion.event_family}"
+                label = "公司事件覆盖"
+            keys.append(key)
+            count = min(eligible, int(available.get(key, 0)))
+            ratio = Decimal(count) / Decimal(eligible) if eligible else Decimal(0)
+            criteria.append(
+                ScreenCriterionCoverage(
+                    criterion_key=key,
+                    label=label,
+                    eligible_count=eligible,
+                    available_count=count,
+                    coverage_ratio=ratio,
+                    status="available"
+                    if count == eligible and eligible
+                    else "partial"
+                    if count
+                    else "unavailable",
+                )
+            )
+        all_available = 0
+        if keys:
+            all_available = int(
+                await self._session.scalar(
+                    select(func.count()).select_from(
+                        select(ScreeningSnapshotFactRecord.symbol)
+                        .where(
+                            ScreeningSnapshotFactRecord.snapshot_id == snapshot.id,
+                            ScreeningSnapshotFactRecord.status == "available",
+                            ScreeningSnapshotFactRecord.criterion_key.in_(keys),
+                        )
+                        .group_by(ScreeningSnapshotFactRecord.symbol)
+                        .having(
+                            func.count(distinct(ScreeningSnapshotFactRecord.criterion_key))
+                            == len(set(keys))
+                        )
+                        .subquery()
+                    )
+                )
+                or 0
+            )
+        return ScreenCoverageEstimateResponse(
+            snapshot_id=snapshot.id,
+            knowledge_cutoff=snapshot.knowledge_cutoff,
+            eligible_count=eligible,
+            criteria=criteria,
+            all_criteria_available_count=all_available,
+            limitations=["覆盖度仅表示条件所需事实可用，不代表一定满足阈值。"],
+        )
+
+    async def create_saved_screen(
+        self, user_id: UUID, payload: SavedScreenCreate
+    ) -> SavedScreenResponse:
+        validation = self.validate(payload.query)
+        if not validation.valid or validation.query_hash is None:
+            raise ValueError("invalid_screen_query")
+        count = int(
+            await self._session.scalar(
+                select(func.count())
+                .select_from(SavedScreenRecord)
+                .where(SavedScreenRecord.user_id == user_id)
+            )
+            or 0
+        )
+        if count >= 10:
+            raise ValueError("saved_screen_limit_reached")
+        if payload.source_parse_run_id is not None:
+            parse_run = await self._session.scalar(
+                select(NaturalLanguageScreenParseRunRecord).where(
+                    NaturalLanguageScreenParseRunRecord.id == payload.source_parse_run_id,
+                    NaturalLanguageScreenParseRunRecord.user_id == user_id,
+                    NaturalLanguageScreenParseRunRecord.status == "succeeded",
+                    NaturalLanguageScreenParseRunRecord.semantic_status == "ready",
+                )
+            )
+            if parse_run is None:
+                raise LookupError("source_parse_run_not_ready")
+        catalog = await self.catalog()
+        name = payload.name.strip()
+        row = SavedScreenRecord(
+            id=uuid4(),
+            user_id=user_id,
+            name=name,
+            normalized_name=name.casefold(),
+            description=payload.description.strip() if payload.description else None,
+            canonical_query=_canonical(payload.query),
+            query_hash=validation.query_hash,
+            dsl_version=DSL_VERSION,
+            catalog_version=catalog.catalog_version,
+            catalog_hash=catalog.catalog_hash,
+            criteria_contract_hash=catalog.criteria_contract_hash,
+            source_kind="natural_language" if payload.source_parse_run_id else "builder",
+            source_parse_run_id=payload.source_parse_run_id,
+            original_text=payload.original_text.strip() if payload.original_text else None,
+        )
+        self._session.add(row)
+        try:
+            await self._session.commit()
+        except IntegrityError as error:
+            await self._session.rollback()
+            raise ValueError("saved_screen_name_exists") from error
+        return self._saved_response(row, catalog)
+
+    async def list_saved_screens(self, user_id: UUID) -> SavedScreenListResponse:
+        rows = (
+            await self._session.scalars(
+                select(SavedScreenRecord)
+                .where(SavedScreenRecord.user_id == user_id)
+                .order_by(SavedScreenRecord.updated_at.desc(), SavedScreenRecord.id)
+            )
+        ).all()
+        catalog = await self.catalog()
+        return SavedScreenListResponse(
+            items=[self._saved_response(row, catalog) for row in rows], total=len(rows)
+        )
+
+    async def get_saved_screen(
+        self, user_id: UUID, saved_screen_id: UUID
+    ) -> SavedScreenResponse | None:
+        row = await self._session.scalar(
+            select(SavedScreenRecord).where(
+                SavedScreenRecord.id == saved_screen_id, SavedScreenRecord.user_id == user_id
+            )
+        )
+        return self._saved_response(row, await self.catalog()) if row else None
+
+    async def update_saved_screen(
+        self, user_id: UUID, saved_screen_id: UUID, payload: SavedScreenUpdate
+    ) -> SavedScreenResponse | None:
+        row = await self._session.scalar(
+            select(SavedScreenRecord).where(
+                SavedScreenRecord.id == saved_screen_id, SavedScreenRecord.user_id == user_id
+            )
+        )
+        if row is None:
+            return None
+        catalog = await self.catalog()
+        if payload.name is not None:
+            row.name = payload.name.strip()
+            row.normalized_name = row.name.casefold()
+        if "description" in payload.model_fields_set:
+            row.description = payload.description.strip() if payload.description else None
+        if payload.query is not None:
+            validation = self.validate(payload.query)
+            if not validation.valid or validation.query_hash is None:
+                raise ValueError("invalid_screen_query")
+            row.canonical_query = _canonical(payload.query)
+            row.query_hash = validation.query_hash
+            row.dsl_version = DSL_VERSION
+            row.catalog_version = catalog.catalog_version
+            row.catalog_hash = catalog.catalog_hash
+            row.criteria_contract_hash = catalog.criteria_contract_hash
+        try:
+            await self._session.commit()
+        except IntegrityError as error:
+            await self._session.rollback()
+            raise ValueError("saved_screen_name_exists") from error
+        return self._saved_response(row, catalog)
+
+    async def delete_saved_screen(self, user_id: UUID, saved_screen_id: UUID) -> bool:
+        deleted = await self._session.scalar(
+            delete(SavedScreenRecord)
+            .where(SavedScreenRecord.id == saved_screen_id, SavedScreenRecord.user_id == user_id)
+            .returning(SavedScreenRecord.id)
+        )
+        await self._session.commit()
+        return deleted is not None
+
+    def _saved_response(
+        self, row: SavedScreenRecord, catalog: ScreenCatalogResponse
+    ) -> SavedScreenResponse:
+        query: ScreenQuery | None = None
+        validation: ScreenValidationResponse | None = None
+        try:
+            query = ScreenQuery.model_validate(row.canonical_query)
+            validation = self.validate(query)
+        except ValueError:
+            pass
+        if query is None or validation is None or not validation.valid:
+            compatibility: Literal["compatible", "reconfirmation_required", "unsupported"] = (
+                "unsupported"
+            )
+            reason = "saved_query_no_longer_supported"
+            query = ScreenQuery.model_validate(row.canonical_query)
+        elif (
+            row.catalog_hash != catalog.catalog_hash
+            or row.criteria_contract_hash != catalog.criteria_contract_hash
+        ):
+            compatibility = "reconfirmation_required"
+            reason = "screening_catalog_changed"
+        else:
+            compatibility = "compatible"
+            reason = None
+        return SavedScreenResponse(
+            id=row.id,
+            name=row.name,
+            description=row.description,
+            query=query,
+            query_hash=row.query_hash,
+            source_kind=cast(Any, row.source_kind),
+            original_text=row.original_text,
+            compatibility=compatibility,
+            compatibility_reason=reason,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    async def create_execution(
+        self,
+        user_id: UUID,
+        query: ScreenQuery,
+        *,
+        saved_screen_id: UUID | None = None,
+        confirmed_parse_run_id: UUID | None = None,
+    ) -> ScreenExecutionResponse:
         validation = self.validate(query)
         if not validation.valid or validation.query_hash is None:
             raise ValueError("invalid_screen_query")
         snapshot = await self._latest_snapshot()
         if snapshot is None:
             raise LookupError("screening_snapshot_not_built")
+        if saved_screen_id is not None:
+            saved = await self._session.scalar(
+                select(SavedScreenRecord).where(
+                    SavedScreenRecord.id == saved_screen_id, SavedScreenRecord.user_id == user_id
+                )
+            )
+            if saved is None:
+                raise LookupError("saved_screen_not_found")
+        if confirmed_parse_run_id is not None:
+            parse_run = await self._session.scalar(
+                select(NaturalLanguageScreenParseRunRecord).where(
+                    NaturalLanguageScreenParseRunRecord.id == confirmed_parse_run_id,
+                    NaturalLanguageScreenParseRunRecord.user_id == user_id,
+                    NaturalLanguageScreenParseRunRecord.status == "succeeded",
+                    NaturalLanguageScreenParseRunRecord.semantic_status == "ready",
+                )
+            )
+            if parse_run is None:
+                raise LookupError("confirmed_parse_run_not_ready")
+            parsed_query = ScreenQuery.model_validate(
+                cast(dict[str, Any], parse_run.output_document)["query"]
+            )
+            parsed_validation = self.validate(parsed_query)
+            if parsed_validation.query_hash != validation.query_hash:
+                raise ValueError("confirmed_parse_query_mismatch")
         existing = await self._session.scalar(
             select(ScreenExecutionRecord).where(
                 ScreenExecutionRecord.user_id == user_id,
@@ -671,6 +1032,7 @@ class ScreeningService:
                 ScreenExecutionRecord.engine_version == ENGINE_VERSION,
             )
         )
+        reused = existing is not None
         if existing is None:
             existing = ScreenExecutionRecord(
                 id=uuid4(),
@@ -683,8 +1045,25 @@ class ScreeningService:
                 lease_expires_at=datetime.now(UTC) + timedelta(minutes=LEASE_MINUTES),
             )
             self._session.add(existing)
-            await self._session.commit()
-        return self._execution_response(existing, snapshot)
+            await self._session.flush()
+        request = ScreenExecutionRequestRecord(
+            id=uuid4(),
+            user_id=user_id,
+            execution_id=existing.id,
+            saved_screen_id=saved_screen_id,
+            confirmed_parse_run_id=confirmed_parse_run_id,
+            request_source=(
+                "saved_screen"
+                if saved_screen_id
+                else "natural_language"
+                if confirmed_parse_run_id
+                else "builder"
+            ),
+            reused_execution=reused,
+        )
+        self._session.add(request)
+        await self._session.commit()
+        return self._execution_response(existing, snapshot, request_id=request.id, reused=reused)
 
     async def get_execution(
         self, user_id: UUID, execution_id: UUID
@@ -702,8 +1081,29 @@ class ScreeningService:
             return None
         return self._execution_response(row, snapshot)
 
+    async def list_executions(self, user_id: UUID, limit: int = 20) -> ScreenExecutionListResponse:
+        rows = (
+            await self._session.scalars(
+                select(ScreenExecutionRecord)
+                .where(ScreenExecutionRecord.user_id == user_id)
+                .order_by(ScreenExecutionRecord.created_at.desc(), ScreenExecutionRecord.id)
+                .limit(limit)
+            )
+        ).all()
+        items: list[ScreenExecutionResponse] = []
+        for row in rows:
+            snapshot = await self._session.get(ScreeningSnapshotRecord, row.screening_snapshot_id)
+            if snapshot is not None:
+                items.append(self._execution_response(row, snapshot))
+        return ScreenExecutionListResponse(items=items, total=len(items))
+
     def _execution_response(
-        self, row: ScreenExecutionRecord, snapshot: ScreeningSnapshotRecord
+        self,
+        row: ScreenExecutionRecord,
+        snapshot: ScreeningSnapshotRecord,
+        *,
+        request_id: UUID | None = None,
+        reused: bool = False,
     ) -> ScreenExecutionResponse:
         return ScreenExecutionResponse(
             id=row.id,
@@ -719,6 +1119,8 @@ class ScreeningService:
             error_summary=row.error_summary,
             created_at=row.created_at,
             finished_at=row.finished_at,
+            request_id=request_id,
+            reused=reused,
         )
 
     async def execute(self, execution_id: UUID) -> ScreenExecutionResponse:
@@ -934,6 +1336,7 @@ class ScreeningService:
             self._session.add(
                 ScreenResultRecord(
                     id=uuid4(),
+                    user_id=execution.user_id,
                     execution_id=execution.id,
                     symbol=symbol,
                     ordinal=ordinal,
@@ -1093,6 +1496,7 @@ class ScreeningService:
                 .join(StockRecord, StockRecord.symbol == ScreenResultRecord.symbol)
                 .where(
                     ScreenResultRecord.execution_id == execution_id,
+                    ScreenResultRecord.user_id == user_id,
                     ScreenResultRecord.ordinal > start,
                 )
                 .order_by(ScreenResultRecord.ordinal)

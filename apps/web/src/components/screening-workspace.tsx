@@ -17,14 +17,16 @@ import {
   LogIn,
   Plus,
   RefreshCw,
+  Save,
   SlidersHorizontal,
   TriangleAlert,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { PageHeading } from "@/components/page-heading";
+import { NaturalLanguageScreenInput } from "@/components/natural-language-screen-input";
 import { ResearchSectionTabs } from "@/components/research-section-tabs";
 import { Card } from "@/components/ui/card";
 
@@ -156,6 +158,39 @@ function toScreenQuery(criteria: DraftCriterion[]): ScreenQuery {
   };
 }
 
+function fromScreenQuery(query: ScreenQuery): DraftCriterion[] {
+  return query.filters.map((criterion) => {
+    const id = crypto.randomUUID();
+    if (criterion.kind === "industry") {
+      return {
+        id,
+        kind: "industry" as const,
+        industryCode: criterion.industry_codes[0] ?? "",
+        taxonomyCode: criterion.taxonomy_code,
+        taxonomyVersion: criterion.taxonomy_version,
+      };
+    }
+    if (criterion.kind === "event") {
+      return {
+        id,
+        kind: "event" as const,
+        eventFamily: criterion.event_family,
+        mode: criterion.mode,
+        withinDays: String(criterion.within_days),
+      };
+    }
+    return {
+      id,
+      kind: criterion.kind,
+      metricCode: criterion.metric_code,
+      operator: criterion.operator,
+      value: String(criterion.value),
+      upperValue:
+        criterion.upper_value == null ? "" : String(criterion.upper_value),
+    };
+  });
+}
+
 function criterionReady(criterion: DraftCriterion) {
   if (criterion.kind === "industry") return Boolean(criterion.industryCode);
   if (criterion.kind === "event") return Number(criterion.withinDays) > 0;
@@ -173,6 +208,12 @@ export function ScreeningWorkspace() {
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
+  const [confirmedParseRunId, setConfirmedParseRunId] = useState<
+    string | undefined
+  >();
+  const [originalText, setOriginalText] = useState<string | undefined>();
+  const [saveName, setSaveName] = useState("");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const catalog = useQuery({
     queryKey: ["screen-catalog"],
@@ -211,11 +252,29 @@ export function ScreeningWorkspace() {
     mutationFn: (query: ScreenQuery) => api.validateScreen(query),
   });
   const createExecution = useMutation({
-    mutationFn: (query: ScreenQuery) => api.createScreenExecution(query),
+    mutationFn: (value: { query: ScreenQuery; confirmedParseRunId?: string }) =>
+      api.createScreenExecution(value.query, {
+        confirmedParseRunId: value.confirmedParseRunId,
+      }),
     onSuccess: (value) => {
       setExecutionId(value.id);
       setFiltersOpen(false);
     },
+  });
+  const saveScreen = useMutation({
+    mutationFn: () =>
+      api.createSavedScreen({
+        name: saveName.trim(),
+        query,
+        sourceParseRunId: confirmedParseRunId,
+        originalText,
+      }),
+    onSuccess: async () => {
+      setSaveMessage("筛选方案已保存，可在“已保存筛选”中继续使用。");
+      setSaveName("");
+      await queryClient.invalidateQueries({ queryKey: ["saved-screens"] });
+    },
+    onError: () => setSaveMessage("保存未完成，请检查名称是否重复后重试。"),
   });
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -236,21 +295,34 @@ export function ScreeningWorkspace() {
       ),
   });
 
-  const query = useMemo(() => toScreenQuery(criteria), [criteria]);
+  const query = toScreenQuery(criteria);
+  const coverageEstimate = useQuery({
+    queryKey: ["screen-coverage-estimate", query],
+    queryFn: () => api.estimateScreenCoverage(query),
+    enabled: Boolean(catalog.data) && criteria.every(criterionReady),
+    retry: false,
+  });
   const busy = validation.isPending || createExecution.isPending;
 
   async function runScreen() {
     setWatchlistMessage(null);
     const checked = await validation.mutateAsync(query);
     if (!checked.valid || !checked.canonical_query) return;
-    createExecution.mutate(checked.canonical_query);
+    createExecution.mutate({
+      query: checked.canonical_query,
+      confirmedParseRunId,
+    });
   }
 
   const builder = (
     <FilterBuilder
       catalog={catalog.data}
       criteria={criteria}
-      setCriteria={setCriteria}
+      setCriteria={(value) => {
+        setCriteria(value);
+        setConfirmedParseRunId(undefined);
+        setOriginalText(undefined);
+      }}
       busy={busy}
       validationIssues={validation.data?.issues ?? []}
       onRun={runScreen}
@@ -265,7 +337,58 @@ export function ScreeningWorkspace() {
         title="股票筛选"
         description="使用可解释、可回溯的确定性条件，在当前研究快照中查找符合条件的公司。"
       />
+      <NaturalLanguageScreenInput
+        onApply={(parsedQuery, parseRunId, parsedOriginalText) => {
+          setCriteria(fromScreenQuery(parsedQuery));
+          setConfirmedParseRunId(parseRunId);
+          setOriginalText(parsedOriginalText);
+          setExecutionId(null);
+          setSaveMessage("AI 候选条件已带入，请核对后运行确定性筛选。");
+        }}
+      />
       <CoverageBanner coverage={coverage.data} isPending={coverage.isPending} />
+      {coverageEstimate.data && (
+        <p className="text-slate mt-2 text-xs">
+          当前条件所需事实同时可用：
+          <span className="font-data text-ink ml-1 font-semibold">
+            {coverageEstimate.data.all_criteria_available_count}
+          </span>
+          /{coverageEstimate.data.eligible_count}{" "}
+          家；这表示可评估范围，不表示满足阈值。
+        </p>
+      )}
+      {execution.data?.status === "succeeded" && (
+        <div className="border-ink/10 bg-paper mt-4 flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center">
+          <label className="text-slate flex-1 text-xs">
+            保存本次研究条件
+            <input
+              value={saveName}
+              maxLength={80}
+              onChange={(event) => setSaveName(event.target.value)}
+              placeholder="例如：高毛利且近期无监管事项"
+              className="border-ink/10 text-ink mt-1 min-h-10 w-full rounded-lg border px-3 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!saveName.trim() || saveScreen.isPending}
+            onClick={() => saveScreen.mutate()}
+            className="bg-ink text-paper inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium disabled:opacity-50 sm:self-end"
+          >
+            {saveScreen.isPending ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            保存筛选
+          </button>
+        </div>
+      )}
+      {saveMessage && (
+        <p className="text-blue mt-2 text-xs" role="status">
+          {saveMessage}
+        </p>
+      )}
 
       <button
         type="button"

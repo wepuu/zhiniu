@@ -210,4 +210,3 @@ class PeerComparisonEnvelope(BaseModel):
     knowledge_cutoff: datetime | None = None
     items: list[PeerMetricComparisonResponse] = Field(default_factory=list)
     total: int = 0
-

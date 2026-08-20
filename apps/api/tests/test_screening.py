@@ -50,4 +50,3 @@ def test_between_comparison_is_inclusive_and_requires_both_bounds() -> None:
     assert _compare(Decimal("20"), "between", Decimal("10"), Decimal("20"))
     assert not _compare(Decimal("21"), "between", Decimal("10"), Decimal("20"))
     assert not _compare(Decimal("15"), "between", Decimal("10"), None)
-

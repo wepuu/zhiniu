@@ -601,6 +601,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screens/coverage/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate Screen Coverage */
+        post: operations["estimate_screen_coverage_api_v1_screens_coverage_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/screens/validate": {
         parameters: {
             query?: never;
@@ -625,7 +642,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Screen Executions */
+        get: operations["list_screen_executions_api_v1_screens_executions_get"];
         put?: never;
         /** Create Screen Execution */
         post: operations["create_screen_execution_api_v1_screens_executions_post"];
@@ -650,6 +668,77 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/natural-language/parses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Natural Language Parse */
+        post: operations["create_natural_language_parse_api_v1_screens_natural_language_parses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/natural-language/parses/{parse_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Natural Language Parse */
+        get: operations["get_natural_language_parse_api_v1_screens_natural_language_parses__parse_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Screens */
+        get: operations["list_saved_screens_api_v1_screens_saved_get"];
+        put?: never;
+        /** Create Saved Screen */
+        post: operations["create_saved_screen_api_v1_screens_saved_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/saved/{saved_screen_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Saved Screen */
+        get: operations["get_saved_screen_api_v1_screens_saved__saved_screen_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Saved Screen */
+        delete: operations["delete_saved_screen_api_v1_screens_saved__saved_screen_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Saved Screen */
+        patch: operations["update_saved_screen_api_v1_screens_saved__saved_screen_id__patch"];
         trace?: never;
     };
     "/api/v1/screens/executions/{execution_id}/results": {
@@ -1538,6 +1627,70 @@ export interface components {
          * @enum {string}
          */
         Movement: "up" | "down" | "crossed_up" | "crossed_down" | "neutral";
+        /** NaturalLanguageGrounding */
+        NaturalLanguageGrounding: {
+            /** Filter Index */
+            filter_index: number;
+            /** Source Text */
+            source_text: string;
+            /** Value Text */
+            value_text?: string | null;
+            /** Upper Value Text */
+            upper_value_text?: string | null;
+            /** Unit Text */
+            unit_text?: string | null;
+        };
+        /** NaturalLanguageParseCreate */
+        NaturalLanguageParseCreate: {
+            /** Text */
+            text: string;
+        };
+        /** NaturalLanguageParseResponse */
+        NaturalLanguageParseResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "succeeded" | "failed" | "disabled" | "rejected";
+            /** Semantic Status */
+            semantic_status?: ("ready" | "ambiguous" | "unsupported" | "policy_rejected") | null;
+            result?: components["schemas"]["NaturalLanguageScreenParseResultV1"] | null;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /** NaturalLanguageScreenParseResultV1 */
+        NaturalLanguageScreenParseResultV1: {
+            /**
+             * Schema Version
+             * @default natural-language-screen-parse-v1
+             * @constant
+             */
+            schema_version: "natural-language-screen-parse-v1";
+            /**
+             * Semantic Status
+             * @enum {string}
+             */
+            semantic_status: "ready" | "ambiguous" | "unsupported";
+            query?: components["schemas"]["ScreenQuery-Output"] | null;
+            /** Summary */
+            summary: string;
+            /** Clarification */
+            clarification?: string | null;
+            /** Grounding */
+            grounding?: components["schemas"]["NaturalLanguageGrounding"][];
+        };
         /**
          * ObservationDimension
          * @enum {string}
@@ -1840,10 +1993,82 @@ export interface components {
             status: "ready" | "not_built";
             snapshot?: components["schemas"]["ResearchSnapshotDocument"] | null;
         };
+        /** SavedScreenCreate */
+        SavedScreenCreate: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            query: components["schemas"]["ScreenQuery-Input"];
+            /** Source Parse Run Id */
+            source_parse_run_id?: string | null;
+            /** Original Text */
+            original_text?: string | null;
+        };
+        /** SavedScreenListResponse */
+        SavedScreenListResponse: {
+            /** Items */
+            items: components["schemas"]["SavedScreenResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** SavedScreenResponse */
+        SavedScreenResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            query: components["schemas"]["ScreenQuery-Output"];
+            /** Query Hash */
+            query_hash: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "builder" | "natural_language";
+            /** Original Text */
+            original_text?: string | null;
+            /**
+             * Compatibility
+             * @enum {string}
+             */
+            compatibility: "compatible" | "reconfirmation_required" | "unsupported";
+            /** Compatibility Reason */
+            compatibility_reason?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** SavedScreenUpdate */
+        SavedScreenUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            query?: components["schemas"]["ScreenQuery-Input"] | null;
+        };
         /** ScreenCatalogResponse */
         ScreenCatalogResponse: {
             /** Dsl Version */
             dsl_version: string;
+            /** Catalog Version */
+            catalog_version: string;
+            /** Catalog Hash */
+            catalog_hash: string;
+            /** Criteria Contract Hash */
+            criteria_contract_hash: string;
             /** Metrics */
             metrics: components["schemas"]["ScreenMetricCatalogItem"][];
             /** Peer Metric Codes */
@@ -1854,6 +2079,27 @@ export interface components {
             event_families: string[];
             /** Limitations */
             limitations: string[];
+        };
+        /** ScreenCoverageEstimateResponse */
+        ScreenCoverageEstimateResponse: {
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Knowledge Cutoff */
+            knowledge_cutoff?: string | null;
+            /**
+             * Eligible Count
+             * @default 0
+             */
+            eligible_count: number;
+            /** Criteria */
+            criteria?: components["schemas"]["ScreenCriterionCoverage"][];
+            /**
+             * All Criteria Available Count
+             * @default 0
+             */
+            all_criteria_available_count: number;
+            /** Limitations */
+            limitations?: string[];
         };
         /** ScreenCoverageResponse */
         ScreenCoverageResponse: {
@@ -1885,6 +2131,16 @@ export interface components {
             fact_counts?: {
                 [key: string]: number;
             };
+            /** Fact Status Counts */
+            fact_status_counts?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Criterion Available Counts */
+            criterion_available_counts?: {
+                [key: string]: number;
+            };
             /** Taxonomy Code */
             taxonomy_code?: string | null;
             /** Taxonomy Version */
@@ -1895,12 +2151,53 @@ export interface components {
              * @constant
              */
             commercial_use_status: "development_evaluation_only";
+            /**
+             * Data Use Stage
+             * @default development_evaluation
+             * @constant
+             */
+            data_use_stage: "development_evaluation";
+            /**
+             * Production Eligibility
+             * @default requires_legal_review
+             * @constant
+             */
+            production_eligibility: "requires_legal_review";
             /** Limitations */
             limitations?: string[];
+        };
+        /** ScreenCriterionCoverage */
+        ScreenCriterionCoverage: {
+            /** Criterion Key */
+            criterion_key: string;
+            /** Label */
+            label: string;
+            /** Eligible Count */
+            eligible_count: number;
+            /** Available Count */
+            available_count: number;
+            /** Coverage Ratio */
+            coverage_ratio: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "partial" | "unavailable";
         };
         /** ScreenExecutionCreate */
         ScreenExecutionCreate: {
             query: components["schemas"]["ScreenQuery-Input"];
+            /** Saved Screen Id */
+            saved_screen_id?: string | null;
+            /** Confirmed Parse Run Id */
+            confirmed_parse_run_id?: string | null;
+        };
+        /** ScreenExecutionListResponse */
+        ScreenExecutionListResponse: {
+            /** Items */
+            items: components["schemas"]["ScreenExecutionResponse"][];
+            /** Total */
+            total: number;
         };
         /** ScreenExecutionResponse */
         ScreenExecutionResponse: {
@@ -1945,6 +2242,13 @@ export interface components {
             created_at: string;
             /** Finished At */
             finished_at?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
         };
         /** ScreenIndustryCatalogItem */
         ScreenIndustryCatalogItem: {
@@ -3489,6 +3793,39 @@ export interface operations {
             };
         };
     };
+    estimate_screen_coverage_api_v1_screens_coverage_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenQuery-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenCoverageEstimateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     validate_screen_api_v1_screens_validate_post: {
         parameters: {
             query?: never;
@@ -3509,6 +3846,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenValidationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_screen_executions_api_v1_screens_executions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenExecutionListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3577,6 +3947,241 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenExecutionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_natural_language_parse_api_v1_screens_natural_language_parses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NaturalLanguageParseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NaturalLanguageParseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_natural_language_parse_api_v1_screens_natural_language_parses__parse_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parse_run_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NaturalLanguageParseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_screens_api_v1_screens_saved_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreenListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_saved_screen_api_v1_screens_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedScreenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_saved_screen_api_v1_screens_saved__saved_screen_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                saved_screen_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_screen_api_v1_screens_saved__saved_screen_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                saved_screen_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_saved_screen_api_v1_screens_saved__saved_screen_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                saved_screen_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedScreenUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedScreenResponse"];
                 };
             };
             /** @description Validation Error */

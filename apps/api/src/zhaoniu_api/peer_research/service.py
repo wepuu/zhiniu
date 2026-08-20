@@ -201,4 +201,3 @@ def _hash(payload: object) -> str:
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False).encode()
     ).hexdigest()
-

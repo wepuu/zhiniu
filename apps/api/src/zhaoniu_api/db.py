@@ -853,6 +853,14 @@ class LLMCallRecord(Base):
     ai_run_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("ai_research_runs.id", ondelete="CASCADE"), index=True
     )
+    parse_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("natural_language_screen_parse_runs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     attempt_index: Mapped[int | None]
     task_type: Mapped[str] = mapped_column(String(80), index=True)
     provider: Mapped[str] = mapped_column(String(40))
@@ -1275,6 +1283,100 @@ class ScreenExecutionRecord(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class NaturalLanguageScreenParseRunRecord(Base):
+    __tablename__ = "natural_language_screen_parse_runs"
+    __table_args__ = (
+        UniqueConstraint("user_id", "input_hash", "parser_route_hash", name="uq_nl_parse_run"),
+        Index("ix_nl_parse_user_created", "user_id", "created_at"),
+        Index("ix_nl_parse_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_length: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    semantic_status: Mapped[str | None] = mapped_column(String(32))
+    parser_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    catalog_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    catalog_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    criteria_contract_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    parser_route_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_attempt: Mapped[int] = mapped_column(default=0, nullable=False)
+    output_document: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_summary: Mapped[str | None] = mapped_column(String(300))
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SavedScreenRecord(Base):
+    __tablename__ = "saved_screens"
+    __table_args__ = (
+        UniqueConstraint("user_id", "normalized_name", name="uq_saved_screen_user_name"),
+        Index("ix_saved_screen_user_updated", "user_id", "updated_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(240))
+    canonical_query: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    query_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    dsl_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    catalog_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    catalog_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    criteria_contract_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    source_parse_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("natural_language_screen_parse_runs.id", ondelete="SET NULL"),
+    )
+    original_text: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ScreenExecutionRequestRecord(Base):
+    __tablename__ = "screen_execution_requests"
+    __table_args__ = (Index("ix_screen_execution_request_user_created", "user_id", "created_at"),)
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    execution_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("screen_executions.id", ondelete="CASCADE"), nullable=False
+    )
+    saved_screen_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("saved_screens.id", ondelete="SET NULL")
+    )
+    confirmed_parse_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("natural_language_screen_parse_runs.id", ondelete="SET NULL"),
+    )
+    request_source: Mapped[str] = mapped_column(String(24), nullable=False)
+    reused_execution: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ScreenResultRecord(Base):
     __tablename__ = "screen_results"
     __table_args__ = (
@@ -1285,6 +1387,9 @@ class ScreenResultRecord(Base):
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     execution_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("screen_executions.id", ondelete="CASCADE"), nullable=False
     )

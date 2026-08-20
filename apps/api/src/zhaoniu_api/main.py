@@ -30,9 +30,18 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def private_cache_control(request, call_next):  # type: ignore[no-untyped-def]
         response = await call_next(request)
-        if request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists", "/api/v1/screens")):
+        public_screen_paths = {
+            "/api/v1/screens/catalog",
+            "/api/v1/screens/coverage",
+            "/api/v1/screens/coverage/estimate",
+            "/api/v1/screens/validate",
+        }
+        private_screen = request.url.path.startswith("/api/v1/screens") and (
+            request.url.path not in public_screen_paths
+        )
+        if request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists")) or private_screen:
             response.headers["Cache-Control"] = "private, no-store"
-            response.headers["Vary"] = "Cookie"
+            response.headers["Vary"] = "Cookie, Origin"
         return response
 
     return app

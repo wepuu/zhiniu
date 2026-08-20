@@ -42,11 +42,26 @@ industry, peer and event codes must be discovered from `GET /api/v1/screens/cata
 ```text
 GET  /api/v1/screens/catalog
 GET  /api/v1/screens/coverage
+POST /api/v1/screens/coverage/estimate
 POST /api/v1/screens/validate
+POST /api/v1/screens/natural-language/parse
+GET  /api/v1/screens/natural-language/parse/{id}
+GET  /api/v1/screens/saved
+POST /api/v1/screens/saved
+GET  /api/v1/screens/saved/{id}
+PATCH /api/v1/screens/saved/{id}
+DELETE /api/v1/screens/saved/{id}
 POST /api/v1/screens/executions
+GET  /api/v1/screens/executions
 GET  /api/v1/screens/executions/{id}
 GET  /api/v1/screens/executions/{id}/results
 ```
 
 Validation is public and side-effect free. Execution and result reads require a session; creation is
 also protected by CSRF and allowed-Origin checks. Results use an opaque deterministic cursor.
+Coverage estimates report how many eligible symbols have all facts required by the current query;
+they are not estimates of how many companies will match the thresholds.
+
+Natural-language parsing is an authenticated, quota-limited candidate-authoring workflow. The
+client must display the candidate for explicit confirmation. The parser cannot add codes, numbers,
+units, or date windows that cannot be grounded in the user's source text and current catalog.

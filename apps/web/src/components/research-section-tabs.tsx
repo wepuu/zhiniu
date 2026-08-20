@@ -1,12 +1,13 @@
 "use client";
 
-import { Binoculars, Newspaper } from "lucide-react";
+import { Binoculars, BookmarkCheck, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/", label: "自选研究", icon: Newspaper },
   { href: "/screens", label: "股票筛选", icon: Binoculars },
+  { href: "/saved-screens", label: "已保存筛选", icon: BookmarkCheck },
 ] as const;
 
 export function ResearchSectionTabs() {

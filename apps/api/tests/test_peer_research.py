@@ -95,4 +95,3 @@ def test_peer_comparison_api_returns_explicit_status() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "not_built"
     app.dependency_overrides.clear()
-

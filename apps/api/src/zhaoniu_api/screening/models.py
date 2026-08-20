@@ -93,6 +93,8 @@ class ScreenExecutionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: ScreenQuery
+    saved_screen_id: UUID | None = None
+    confirmed_parse_run_id: UUID | None = None
 
 
 class ScreenMetricCatalogItem(BaseModel):
@@ -120,6 +122,9 @@ class ScreenCatalogResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dsl_version: str
+    catalog_version: str
+    catalog_hash: str
+    criteria_contract_hash: str
     metrics: list[ScreenMetricCatalogItem]
     peer_metric_codes: list[str]
     industries: list[ScreenIndustryCatalogItem]
@@ -154,9 +159,35 @@ class ScreenCoverageResponse(BaseModel):
     eligible_count: int = 0
     excluded_count: int = 0
     fact_counts: dict[str, int] = Field(default_factory=dict)
+    fact_status_counts: dict[str, dict[str, int]] = Field(default_factory=dict)
+    criterion_available_counts: dict[str, int] = Field(default_factory=dict)
     taxonomy_code: str | None = None
     taxonomy_version: str | None = None
     commercial_use_status: Literal["development_evaluation_only"] = "development_evaluation_only"
+    data_use_stage: Literal["development_evaluation"] = "development_evaluation"
+    production_eligibility: Literal["requires_legal_review"] = "requires_legal_review"
+    limitations: list[str] = Field(default_factory=list)
+
+
+class ScreenCriterionCoverage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    criterion_key: str
+    label: str
+    eligible_count: int
+    available_count: int
+    coverage_ratio: Decimal
+    status: Literal["available", "partial", "unavailable"]
+
+
+class ScreenCoverageEstimateResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot_id: UUID | None = None
+    knowledge_cutoff: datetime | None = None
+    eligible_count: int = 0
+    criteria: list[ScreenCriterionCoverage] = Field(default_factory=list)
+    all_criteria_available_count: int = 0
     limitations: list[str] = Field(default_factory=list)
 
 
@@ -176,6 +207,95 @@ class ScreenExecutionResponse(BaseModel):
     error_summary: str | None = None
     created_at: datetime
     finished_at: datetime | None = None
+    request_id: UUID | None = None
+    reused: bool = False
+
+
+class NaturalLanguageParseCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=2, max_length=500)
+
+
+class NaturalLanguageGrounding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filter_index: int = Field(ge=0, le=7)
+    source_text: str = Field(min_length=1, max_length=80)
+    value_text: str | None = Field(default=None, max_length=40)
+    upper_value_text: str | None = Field(default=None, max_length=40)
+    unit_text: str | None = Field(default=None, max_length=24)
+
+
+class NaturalLanguageScreenParseResultV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["natural-language-screen-parse-v1"] = "natural-language-screen-parse-v1"
+    semantic_status: Literal["ready", "ambiguous", "unsupported"]
+    query: ScreenQuery | None = None
+    summary: str = Field(min_length=1, max_length=240)
+    clarification: str | None = Field(default=None, max_length=240)
+    grounding: list[NaturalLanguageGrounding] = Field(default_factory=list, max_length=8)
+
+
+class NaturalLanguageParseResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    status: Literal["pending", "running", "succeeded", "failed", "disabled", "rejected"]
+    semantic_status: Literal["ready", "ambiguous", "unsupported", "policy_rejected"] | None = None
+    result: NaturalLanguageScreenParseResultV1 | None = None
+    error_code: str | None = None
+    created_at: datetime
+    finished_at: datetime | None = None
+
+
+class SavedScreenCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=240)
+    query: ScreenQuery
+    source_parse_run_id: UUID | None = None
+    original_text: str | None = Field(default=None, min_length=2, max_length=500)
+
+
+class SavedScreenUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=240)
+    query: ScreenQuery | None = None
+
+
+class SavedScreenResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    name: str
+    description: str | None = None
+    query: ScreenQuery
+    query_hash: str
+    source_kind: Literal["builder", "natural_language"]
+    original_text: str | None = None
+    compatibility: Literal["compatible", "reconfirmation_required", "unsupported"]
+    compatibility_reason: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SavedScreenListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[SavedScreenResponse]
+    total: int
+
+
+class ScreenExecutionListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[ScreenExecutionResponse]
+    total: int
 
 
 class ScreenMatchedCondition(BaseModel):

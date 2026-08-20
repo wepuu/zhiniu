@@ -153,5 +153,20 @@ watchlist membership at query time; only alert settings and deliveries are user-
 - `screen_results`: user-owned execution result ordering, matched-condition manifest and evidence
   reference manifest. Source numerical values remain in their canonical upstream tables.
 
-Screen definitions are not persisted in Phase 9. The immutable execution stores the submitted
-canonical query. Saved and shared screens are a later user-workspace capability.
+## Phase 10 natural-language screening workspace tables
+
+- `natural_language_screen_parse_runs`: user-owned parser status, input HMAC, prompt/schema/route
+  provenance, validated candidate DSL and bounded grounding spans. Raw input and raw model output
+  are never persisted.
+- `saved_screens`: user-owned name, optional description, validated canonical DSL, query hash and
+  catalog/criteria-contract provenance. The original natural-language text is stored only when the
+  user explicitly saves it.
+- `screen_execution_requests`: user-owned audit link from a saved screen or confirmed parser run to
+  an execution. It preserves request provenance without duplicating deterministic results.
+- `screen_results.user_id`: backfilled ownership boundary that makes result-row scoping explicit in
+  addition to the parent execution relationship.
+- `llm_calls.parse_run_id` and `llm_calls.user_id`: bounded parser-call audit references; no prompt,
+  raw response, API key, or reasoning trace is stored.
+
+Saved screens are mutable user workspace records. Executions and results remain point-in-time
+records tied to an immutable screening snapshot.

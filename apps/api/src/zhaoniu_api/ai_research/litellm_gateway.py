@@ -57,7 +57,7 @@ class LiteLLMGateway:
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
-                        "name": "stock_health_research",
+                        "name": re.sub(r"[^a-zA-Z0-9_-]", "_", task_type)[:64],
                         "strict": True,
                         "schema": response_schema,
                     },
@@ -83,9 +83,7 @@ class LiteLLMGateway:
             hidden = getattr(response, "_hidden_params", {}) or {}
             raw_cost = hidden.get("response_cost") if isinstance(hidden, dict) else None
             cost_microunits = (
-                max(0, round(float(raw_cost) * 1_000_000))
-                if raw_cost is not None
-                else None
+                max(0, round(float(raw_cost) * 1_000_000)) if raw_cost is not None else None
             )
             provider = provider_name(model)
             return LLMStructuredResponse(

@@ -10,6 +10,7 @@ from zhaoniu_api.composition import (
     build_ai_research_service,
     build_corporate_event_service,
     build_fundamental_service,
+    build_natural_language_screening_service,
     build_peer_research_service,
     build_research_service,
     build_screening_service,
@@ -29,6 +30,7 @@ from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, 
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research_feed.service import ResearchFeedService
 from zhaoniu_api.screening.dispatch import ScreeningDispatcher
+from zhaoniu_api.screening.natural_language import NaturalLanguageScreeningService
 from zhaoniu_api.screening.service import ScreeningService
 
 
@@ -125,6 +127,12 @@ def get_screening_dispatcher(
     return ScreeningDispatcher(settings)
 
 
+def get_natural_language_screening_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> NaturalLanguageScreeningService:
+    return build_natural_language_screening_service(session)
+
+
 async def require_csrf(
     request: Request,
     auth: Annotated[AuthService, Depends(get_auth_service)],
@@ -157,7 +165,8 @@ CorporateEventServiceDependency = Annotated[
 ]
 ResearchFeedServiceDependency = Annotated[ResearchFeedService, Depends(get_research_feed_service)]
 ScreeningServiceDependency = Annotated[ScreeningService, Depends(get_screening_service)]
-ScreeningDispatcherDependency = Annotated[
-    ScreeningDispatcher, Depends(get_screening_dispatcher)
+ScreeningDispatcherDependency = Annotated[ScreeningDispatcher, Depends(get_screening_dispatcher)]
+NaturalLanguageScreeningServiceDependency = Annotated[
+    NaturalLanguageScreeningService, Depends(get_natural_language_screening_service)
 ]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

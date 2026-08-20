@@ -25,6 +25,10 @@ from zhaoniu_api.peer_research.sql_repository import SQLAlchemyPeerResearchRepos
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research.sql_repository import SQLAlchemyResearchRepository
 from zhaoniu_api.research_feed.service import ResearchFeedService
+from zhaoniu_api.screening.natural_language import (
+    NaturalLanguageParserOptions,
+    NaturalLanguageScreeningService,
+)
 from zhaoniu_api.screening.service import ScreeningService
 
 
@@ -95,3 +99,21 @@ def build_research_feed_service(session: AsyncSession) -> ResearchFeedService:
 
 def build_screening_service(session: AsyncSession) -> ScreeningService:
     return ScreeningService(session)
+
+
+def build_natural_language_screening_service(
+    session: AsyncSession,
+) -> NaturalLanguageScreeningService:
+    settings = get_settings()
+    return NaturalLanguageScreeningService(
+        session,
+        LiteLLMGateway(),
+        NaturalLanguageParserOptions(
+            enabled=settings.screen_parser_enabled,
+            model_chain=settings.screen_parser_models,
+            hmac_secret=settings.screen_parser_hmac_secret,
+            max_attempts=settings.screen_parser_max_attempts,
+            per_model_timeout_seconds=settings.screen_parser_per_model_timeout_seconds,
+            run_deadline_seconds=settings.screen_parser_run_deadline_seconds,
+        ),
+    )

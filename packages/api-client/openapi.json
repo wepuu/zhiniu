@@ -2019,6 +2019,47 @@
         }
       }
     },
+    "/api/v1/screens/coverage/estimate": {
+      "post": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Estimate Screen Coverage",
+        "operationId": "estimate_screen_coverage_api_v1_screens_coverage_estimate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenQuery-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenCoverageEstimateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/screens/validate": {
       "post": {
         "tags": [
@@ -2117,6 +2158,65 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "List Screen Executions",
+        "operationId": "list_screen_executions_api_v1_screens_executions_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenExecutionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/screens/executions/{execution_id}": {
@@ -2164,6 +2264,406 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/natural-language/parses": {
+      "post": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Create Natural Language Parse",
+        "operationId": "create_natural_language_parse_api_v1_screens_natural_language_parses_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaturalLanguageParseCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NaturalLanguageParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/natural-language/parses/{parse_run_id}": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Natural Language Parse",
+        "operationId": "get_natural_language_parse_api_v1_screens_natural_language_parses__parse_run_id__get",
+        "parameters": [
+          {
+            "name": "parse_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parse Run Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NaturalLanguageParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/saved": {
+      "post": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Create Saved Screen",
+        "operationId": "create_saved_screen_api_v1_screens_saved_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedScreenCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScreenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "List Saved Screens",
+        "operationId": "list_saved_screens_api_v1_screens_saved_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScreenListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/saved/{saved_screen_id}": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Saved Screen",
+        "operationId": "get_saved_screen_api_v1_screens_saved__saved_screen_id__get",
+        "parameters": [
+          {
+            "name": "saved_screen_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Saved Screen Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScreenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Update Saved Screen",
+        "operationId": "update_saved_screen_api_v1_screens_saved__saved_screen_id__patch",
+        "parameters": [
+          {
+            "name": "saved_screen_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Saved Screen Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedScreenUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScreenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Delete Saved Screen",
+        "operationId": "delete_saved_screen_api_v1_screens_saved__saved_screen_id__delete",
+        "parameters": [
+          {
+            "name": "saved_screen_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Saved Screen Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -4707,6 +5207,227 @@
         ],
         "title": "Movement"
       },
+      "NaturalLanguageGrounding": {
+        "properties": {
+          "filter_index": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Filter Index"
+          },
+          "source_text": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Source Text"
+          },
+          "value_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Text"
+          },
+          "upper_value_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Value Text"
+          },
+          "unit_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 24
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filter_index",
+          "source_text"
+        ],
+        "title": "NaturalLanguageGrounding"
+      },
+      "NaturalLanguageParseCreate": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 2,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NaturalLanguageParseCreate"
+      },
+      "NaturalLanguageParseResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "disabled",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "semantic_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ready",
+                  "ambiguous",
+                  "unsupported",
+                  "policy_rejected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Status"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NaturalLanguageScreenParseResultV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "created_at"
+        ],
+        "title": "NaturalLanguageParseResponse"
+      },
+      "NaturalLanguageScreenParseResultV1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "natural-language-screen-parse-v1",
+            "title": "Schema Version",
+            "default": "natural-language-screen-parse-v1"
+          },
+          "semantic_status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "ambiguous",
+              "unsupported"
+            ],
+            "title": "Semantic Status"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreenQuery-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "clarification": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification"
+          },
+          "grounding": {
+            "items": {
+              "$ref": "#/components/schemas/NaturalLanguageGrounding"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Grounding"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "semantic_status",
+          "summary"
+        ],
+        "title": "NaturalLanguageScreenParseResultV1"
+      },
       "ObservationDimension": {
         "type": "string",
         "enum": [
@@ -5619,11 +6340,237 @@
         ],
         "title": "ResearchSnapshotEnvelope"
       },
+      "SavedScreenCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "query": {
+            "$ref": "#/components/schemas/ScreenQuery-Input"
+          },
+          "source_parse_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Parse Run Id"
+          },
+          "original_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "query"
+        ],
+        "title": "SavedScreenCreate"
+      },
+      "SavedScreenListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SavedScreenResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "SavedScreenListResponse"
+      },
+      "SavedScreenResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "query": {
+            "$ref": "#/components/schemas/ScreenQuery-Output"
+          },
+          "query_hash": {
+            "type": "string",
+            "title": "Query Hash"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "builder",
+              "natural_language"
+            ],
+            "title": "Source Kind"
+          },
+          "original_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Text"
+          },
+          "compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "reconfirmation_required",
+              "unsupported"
+            ],
+            "title": "Compatibility"
+          },
+          "compatibility_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "query",
+          "query_hash",
+          "source_kind",
+          "compatibility",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SavedScreenResponse"
+      },
+      "SavedScreenUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreenQuery-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SavedScreenUpdate"
+      },
       "ScreenCatalogResponse": {
         "properties": {
           "dsl_version": {
             "type": "string",
             "title": "Dsl Version"
+          },
+          "catalog_version": {
+            "type": "string",
+            "title": "Catalog Version"
+          },
+          "catalog_hash": {
+            "type": "string",
+            "title": "Catalog Hash"
+          },
+          "criteria_contract_hash": {
+            "type": "string",
+            "title": "Criteria Contract Hash"
           },
           "metrics": {
             "items": {
@@ -5665,6 +6612,9 @@
         "type": "object",
         "required": [
           "dsl_version",
+          "catalog_version",
+          "catalog_hash",
+          "criteria_contract_hash",
           "metrics",
           "peer_metric_codes",
           "industries",
@@ -5672,6 +6622,61 @@
           "limitations"
         ],
         "title": "ScreenCatalogResponse"
+      },
+      "ScreenCoverageEstimateResponse": {
+        "properties": {
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "eligible_count": {
+            "type": "integer",
+            "title": "Eligible Count",
+            "default": 0
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenCriterionCoverage"
+            },
+            "type": "array",
+            "title": "Criteria"
+          },
+          "all_criteria_available_count": {
+            "type": "integer",
+            "title": "All Criteria Available Count",
+            "default": 0
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ScreenCoverageEstimateResponse"
       },
       "ScreenCoverageResponse": {
         "properties": {
@@ -5732,6 +6737,23 @@
             "type": "object",
             "title": "Fact Counts"
           },
+          "fact_status_counts": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Fact Status Counts"
+          },
+          "criterion_available_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Criterion Available Counts"
+          },
           "taxonomy_code": {
             "anyOf": [
               {
@@ -5760,6 +6782,18 @@
             "title": "Commercial Use Status",
             "default": "development_evaluation_only"
           },
+          "data_use_stage": {
+            "type": "string",
+            "const": "development_evaluation",
+            "title": "Data Use Stage",
+            "default": "development_evaluation"
+          },
+          "production_eligibility": {
+            "type": "string",
+            "const": "requires_legal_review",
+            "title": "Production Eligibility",
+            "default": "requires_legal_review"
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -5775,10 +6809,79 @@
         ],
         "title": "ScreenCoverageResponse"
       },
+      "ScreenCriterionCoverage": {
+        "properties": {
+          "criterion_key": {
+            "type": "string",
+            "title": "Criterion Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "eligible_count": {
+            "type": "integer",
+            "title": "Eligible Count"
+          },
+          "available_count": {
+            "type": "integer",
+            "title": "Available Count"
+          },
+          "coverage_ratio": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Coverage Ratio"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "partial",
+              "unavailable"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "criterion_key",
+          "label",
+          "eligible_count",
+          "available_count",
+          "coverage_ratio",
+          "status"
+        ],
+        "title": "ScreenCriterionCoverage"
+      },
       "ScreenExecutionCreate": {
         "properties": {
           "query": {
             "$ref": "#/components/schemas/ScreenQuery-Input"
+          },
+          "saved_screen_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Screen Id"
+          },
+          "confirmed_parse_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Parse Run Id"
           }
         },
         "additionalProperties": false,
@@ -5787,6 +6890,28 @@
           "query"
         ],
         "title": "ScreenExecutionCreate"
+      },
+      "ScreenExecutionListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenExecutionResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ScreenExecutionListResponse"
       },
       "ScreenExecutionResponse": {
         "properties": {
@@ -5866,6 +6991,23 @@
               }
             ],
             "title": "Finished At"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "reused": {
+            "type": "boolean",
+            "title": "Reused",
+            "default": false
           }
         },
         "additionalProperties": false,

@@ -61,6 +61,8 @@ export type ScreenCatalogResponse =
   components["schemas"]["ScreenCatalogResponse"];
 export type ScreenCoverageResponse =
   components["schemas"]["ScreenCoverageResponse"];
+export type ScreenCoverageEstimateResponse =
+  components["schemas"]["ScreenCoverageEstimateResponse"];
 export type ScreenQuery = components["schemas"]["ScreenQuery-Input"];
 export type ScreenValidationResponse =
   components["schemas"]["ScreenValidationResponse"];
@@ -69,6 +71,15 @@ export type ScreenExecutionResponse =
 export type ScreenResultListResponse =
   components["schemas"]["ScreenResultListResponse"];
 export type ScreenResultItem = components["schemas"]["ScreenResultItem"];
+export type NaturalLanguageParseResponse =
+  components["schemas"]["NaturalLanguageParseResponse"];
+export type NaturalLanguageScreenParseResultV1 =
+  components["schemas"]["NaturalLanguageScreenParseResultV1"];
+export type SavedScreenResponse = components["schemas"]["SavedScreenResponse"];
+export type SavedScreenListResponse =
+  components["schemas"]["SavedScreenListResponse"];
+export type ScreenExecutionListResponse =
+  components["schemas"]["ScreenExecutionListResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -332,6 +343,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getScreenCoverage() {
       return request<ScreenCoverageResponse>("/api/v1/screens/coverage");
     },
+    estimateScreenCoverage(query: ScreenQuery) {
+      return jsonRequest<ScreenCoverageEstimateResponse>(
+        "/api/v1/screens/coverage/estimate",
+        "POST",
+        query,
+      );
+    },
     validateScreen(query: ScreenQuery) {
       return jsonRequest<ScreenValidationResponse>(
         "/api/v1/screens/validate",
@@ -339,11 +357,23 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         query,
       );
     },
-    createScreenExecution(query: ScreenQuery) {
+    createScreenExecution(
+      query: ScreenQuery,
+      options: { savedScreenId?: string; confirmedParseRunId?: string } = {},
+    ) {
       return jsonRequest<ScreenExecutionResponse>(
         "/api/v1/screens/executions",
         "POST",
-        { query },
+        {
+          query,
+          saved_screen_id: options.savedScreenId,
+          confirmed_parse_run_id: options.confirmedParseRunId,
+        },
+      );
+    },
+    getScreenExecutions(limit = 20) {
+      return request<ScreenExecutionListResponse>(
+        `/api/v1/screens/executions?limit=${limit}`,
       );
     },
     getScreenExecution(executionId: string) {
@@ -356,6 +386,52 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       if (cursor) query.set("cursor", cursor);
       return request<ScreenResultListResponse>(
         `/api/v1/screens/executions/${encodeURIComponent(executionId)}/results?${query}`,
+      );
+    },
+    createNaturalLanguageScreenParse(text: string) {
+      return jsonRequest<NaturalLanguageParseResponse>(
+        "/api/v1/screens/natural-language/parses",
+        "POST",
+        { text },
+      );
+    },
+    getNaturalLanguageScreenParse(parseRunId: string) {
+      return request<NaturalLanguageParseResponse>(
+        `/api/v1/screens/natural-language/parses/${encodeURIComponent(parseRunId)}`,
+      );
+    },
+    getSavedScreens() {
+      return request<SavedScreenListResponse>("/api/v1/screens/saved");
+    },
+    createSavedScreen(payload: {
+      name: string;
+      description?: string;
+      query: ScreenQuery;
+      sourceParseRunId?: string;
+      originalText?: string;
+    }) {
+      return jsonRequest<SavedScreenResponse>("/api/v1/screens/saved", "POST", {
+        name: payload.name,
+        description: payload.description,
+        query: payload.query,
+        source_parse_run_id: payload.sourceParseRunId,
+        original_text: payload.originalText,
+      });
+    },
+    updateSavedScreen(
+      savedScreenId: string,
+      payload: { name?: string; description?: string; query?: ScreenQuery },
+    ) {
+      return jsonRequest<SavedScreenResponse>(
+        `/api/v1/screens/saved/${encodeURIComponent(savedScreenId)}`,
+        "PATCH",
+        payload,
+      );
+    },
+    deleteSavedScreen(savedScreenId: string) {
+      return request<void>(
+        `/api/v1/screens/saved/${encodeURIComponent(savedScreenId)}`,
+        { method: "DELETE" },
       );
     },
   };

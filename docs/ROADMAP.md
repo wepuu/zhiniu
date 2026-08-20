@@ -55,16 +55,19 @@ Global deterministic research-signal projection from Phase 3, 6 and 7 artifacts;
 preferences; and idempotent in-app delivery only for signals known after watchlist membership.
 Email, digest schedules, quiet hours and push channels remain deferred.
 
-## Phase 9 - Deterministic Research Screening (current)
+## Phase 9 - Deterministic Research Screening
 
 Versioned allow-listed query DSL, immutable point-in-time screening snapshots, user-owned
 idempotent executions, evidence-linked results, background tasks and separately composed
-desktop/mobile discovery workflows. Natural-language query parsing, saved screens, OR/NOT groups
-and full-market backfill remain deferred.
+desktop/mobile discovery workflows.
 
-## Phase 10 - Advanced Research Workspace
+## Phase 10 - Natural Language Research Screening & Saved Research (current)
 
-Company comparison, saved screens, report export and professional research workspace expansion.
+Policy-gated natural-language-to-DSL candidate parsing, deterministic grounding and explicit
+confirmation, truthful per-query coverage, user-owned saved screens, rerunnable provenance and
+desktop/mobile research workspaces. OR/NOT groups, shared screen templates, alerts from saved
+screens, company comparison, report export and broader professional workspace expansion remain
+deferred.
 
 ## Phase 11 - Commercialization
 

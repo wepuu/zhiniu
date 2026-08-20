@@ -43,6 +43,23 @@ uv run python -m zhaoniu_api.cli validate-screen --query-file screen.json
 uv run python -m zhaoniu_api.cli execute-screen --query-file screen.json --user-email user@example.com
 ```
 
-Natural-language parsing, saved screen definitions, OR/NOT groups, historical public UI controls,
-full-market backfill and automatic watchlist insertion are deferred. A future language parser may
-only produce a candidate DSL document for validation and explicit user confirmation.
+## Phase 10 language and workspace layer
+
+Phase 10 adds a deliberately thin layer above the deterministic engine:
+
+```text
+private text -> policy gate -> structured parser -> grounding validator
+             -> candidate ScreenQuery -> explicit user confirmation -> Phase 9 engine
+```
+
+The parser never executes a query, selects companies, calculates metrics, or bypasses the catalog.
+Raw text is held in Redis for at most ten minutes while the background task runs and is not stored
+in PostgreSQL, LLM audit rows, or saved-screen records. Only the input HMAC, bounded source spans,
+validated structured candidate and version hashes are retained. A confirmed candidate must match
+the submitted canonical query hash before it can be executed.
+
+Saved screens are user-owned, limited to ten per internal-beta account, and retain a canonical DSL
+document plus catalog/criteria-contract provenance. Compatibility is computed on read as
+`compatible`, `catalog_changed`, or `invalid`; reruns always use the latest immutable screening
+snapshot. OR/NOT groups, shared templates, historical public UI controls, full-market backfill and
+automatic watchlist insertion remain deferred.
