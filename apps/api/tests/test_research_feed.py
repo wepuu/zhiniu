@@ -1,6 +1,23 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any
+from uuid import uuid4
 
-from zhaoniu_api.research_feed.service import should_deliver_alert
+from zhaoniu_api.config import Settings
+from zhaoniu_api.research_feed.service import ResearchFeedService, should_deliver_alert
+
+
+class _EmptyScalarResult:
+    def all(self) -> list[Any]:
+        return []
+
+
+class _CapturingSession:
+    def __init__(self) -> None:
+        self.statement: Any = None
+
+    async def scalars(self, statement: Any) -> _EmptyScalarResult:
+        self.statement = statement
+        return _EmptyScalarResult()
 
 
 def test_historical_signal_is_not_backfilled_to_new_watchlist_membership() -> None:
@@ -45,3 +62,19 @@ def test_alert_match_respects_attention_and_source_settings() -> None:
         enabled=True,
         source_enabled=False,
     )
+
+
+async def test_feed_collapses_equivalent_signal_versions_before_pagination() -> None:
+    session = _CapturingSession()
+    service = ResearchFeedService(session, Settings())  # type: ignore[arg-type]
+
+    response = await service.feed(
+        uuid4(), cursor=None, limit=40, source_kind=None, minimum_attention=None
+    )
+
+    statement = str(session.statement)
+    assert "row_number() OVER" in statement
+    assert "research_signals.dedup_group_key" in statement
+    assert "anon_1.dedup_rank =" in statement
+    assert response.today.total == 0
+    assert response.recent.total == 0

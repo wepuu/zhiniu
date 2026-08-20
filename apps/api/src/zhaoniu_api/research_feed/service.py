@@ -383,6 +383,31 @@ class ResearchFeedService:
         ]
         if source_kind:
             conditions.append(ResearchSignalRecord.source_kind == source_kind)
+        latest_signal = (
+            select(
+                ResearchSignalRecord.id.label("signal_id"),
+                func.row_number()
+                .over(
+                    partition_by=(
+                        ResearchSignalRecord.symbol,
+                        ResearchSignalRecord.source_kind,
+                        ResearchSignalRecord.dedup_group_key,
+                    ),
+                    order_by=(
+                        ResearchSignalRecord.known_at.desc(),
+                        ResearchSignalRecord.id.asc(),
+                    ),
+                )
+                .label("dedup_rank"),
+            )
+            .where(*conditions)
+            .subquery()
+        )
+        conditions = [
+            ResearchSignalRecord.id.in_(
+                select(latest_signal.c.signal_id).where(latest_signal.c.dedup_rank == 1)
+            )
+        ]
         if minimum_attention:
             conditions.append(
                 case(ATTENTION_RANK, value=ResearchSignalRecord.attention_level)
