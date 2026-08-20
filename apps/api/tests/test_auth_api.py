@@ -31,6 +31,9 @@ class FakeAuthService:
             is_current=True,
         )
         self.logged_out = False
+        self.verification_status = "verified"
+        self.password_reset_requested = False
+        self.password_reset_confirmed = False
 
     async def register(
         self,
@@ -38,6 +41,7 @@ class FakeAuthService:
         email: str,
         password: str,
         invitation_code: str,
+        legal_acceptances: dict[str, str],
         user_agent: str | None,
         ip_address: str | None,
     ) -> AuthenticatedSession:
@@ -80,6 +84,30 @@ class FakeAuthService:
     async def revoke_session(self, user_id: UUID, session_id: UUID) -> bool:
         return session_id == self.session.id
 
+    async def required_legal_acceptances(self, user_id: UUID) -> list[str]:
+        return []
+
+    async def verify_email(self, token: str) -> str:
+        if token == "x" * 48:
+            return self.verification_status
+        raise AuthenticationError("email_verification_invalid")
+
+    async def resend_verification(self, user_id: UUID) -> str:
+        return "sent"
+
+    async def request_password_reset(self, email: str) -> None:
+        self.password_reset_requested = True
+
+    async def confirm_password_reset(self, token: str, new_password: str) -> None:
+        if token != "x" * 48:
+            raise AuthenticationError("password_reset_invalid")
+        self.password_reset_confirmed = True
+
+    async def accept_legal_documents(
+        self, user_id: UUID, acceptances: dict[str, str]
+    ) -> list[str]:
+        return []
+
 
 class FakeAccessControlService:
     async def effective_entitlements(self, user_id: UUID) -> EffectiveEntitlements:
@@ -109,6 +137,16 @@ def test_auth_routes_issue_cookie_and_read_current_user() -> None:
             "email": "analyst@example.com",
             "password": "long-password-123",
             "invitation_code": "INV-TEST-CODE",
+            "legal_acceptances": [
+                {
+                    "document_type": "terms_of_service",
+                    "document_version": "2026-08-v1",
+                },
+                {
+                    "document_type": "privacy_policy",
+                    "document_version": "2026-08-v1",
+                },
+            ],
         },
     )
     assert created.status_code == 201
@@ -145,3 +183,31 @@ def test_login_rejects_invalid_credentials() -> None:
         json={"email": "analyst@example.com", "password": "wrong-password-123"},
     )
     assert response.status_code == 401
+
+
+def test_account_recovery_routes_use_generic_request_and_single_use_contract() -> None:
+    app = create_app()
+    fake = FakeAuthService()
+    app.dependency_overrides[get_auth_service] = lambda: fake
+    client = TestClient(app)
+
+    requested = client.post(
+        "/api/v1/auth/password-reset/request", json={"email": "unknown@example.com"}
+    )
+    assert requested.status_code == 202
+    assert requested.json() == {"status": "accepted"}
+    assert fake.password_reset_requested is True
+
+    verified = client.post(
+        "/api/v1/auth/email-verification/verify", json={"token": "x" * 48}
+    )
+    assert verified.status_code == 200
+    assert verified.json() == {"status": "verified"}
+
+    reset = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": "x" * 48, "new_password": "new-password-value-123"},
+    )
+    assert reset.status_code == 200
+    assert reset.json() == {"status": "completed"}
+    assert fake.password_reset_confirmed is True

@@ -38,6 +38,10 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 32. Historical signals may appear in a feed but must never be backfilled as user alerts.
 33. Personalized feed cursors must freeze a query cutoff and use deterministic keyset ordering.
 34. Cookie-authenticated writes require CSRF validation and an allowed Origin.
+35. Account lifecycle tokens are one-time, expiring and stored only as cryptographic digests.
+36. Password reset revokes all active sessions; advanced-access activation requires verified email.
+37. Production readiness, legal approval and financial-data approval are explicit fail-closed gates.
+38. Logs and email-delivery audit must not retain secrets, cookies, plaintext tokens or message bodies.
 
 ## Standard commands
 

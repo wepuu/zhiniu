@@ -25,6 +25,7 @@ from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.db import User
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.market_data.service import SyncResult
+from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
 from zhaoniu_api.research.models import ResearchBuildResult
@@ -105,6 +106,8 @@ def _parser() -> argparse.ArgumentParser:
     access_code.add_argument("--expires-in-days", type=int, default=7)
     inspect_access = subcommands.add_parser("inspect-user-access")
     inspect_access.add_argument("--user-email", required=True)
+    subcommands.add_parser("check-beta-readiness")
+    subcommands.add_parser("beta-status")
     return parser
 
 
@@ -214,6 +217,8 @@ async def _run(args: argparse.Namespace) -> None:
                 if user_id is None:
                     raise ValueError("user_not_found")
                 result = await build_access_control_service(session).access_envelope(user_id)
+            elif args.command in {"check-beta-readiness", "beta-status"}:
+                result = await evaluate_beta_readiness(session, get_settings())
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of

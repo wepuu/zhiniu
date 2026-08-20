@@ -89,6 +89,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/email-verification/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Email */
+        post: operations["verify_email_api_v1_auth_email_verification_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email-verification/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Email Verification */
+        post: operations["resend_email_verification_api_v1_auth_email_verification_resend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Password Reset */
+        post: operations["request_password_reset_api_v1_auth_password_reset_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Password Reset */
+        post: operations["confirm_password_reset_api_v1_auth_password_reset_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Legal Documents */
+        get: operations["current_legal_documents_api_v1_legal_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/legal-acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Legal Documents */
+        post: operations["accept_legal_documents_api_v1_me_legal_acceptances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/sessions": {
         parameters: {
             query?: never;
@@ -809,6 +911,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/livez": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liveness */
+        get: operations["liveness_livez_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_readyz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1230,6 +1366,18 @@ export interface components {
              */
             collected_at: string;
         };
+        /** DependencyStatus */
+        DependencyStatus: {
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "degraded" | "unavailable" | "disabled";
+            /** Detail */
+            detail?: string | null;
+        };
         /** EffectiveEntitlements */
         EffectiveEntitlements: {
             /**
@@ -1247,6 +1395,19 @@ export interface components {
             limits: {
                 [key: string]: number;
             };
+        };
+        /** EmailVerificationRequest */
+        EmailVerificationRequest: {
+            /** Token */
+            token: string;
+        };
+        /** EmailVerificationResponse */
+        EmailVerificationResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "verified" | "already_verified" | "sent" | "delivery_unavailable";
         };
         /** EntitlementsResponse */
         EntitlementsResponse: {
@@ -1701,10 +1862,52 @@ export interface components {
             /** Redistribution Status */
             redistribution_status: string;
         };
+        /** LegalAcceptanceBatchRequest */
+        LegalAcceptanceBatchRequest: {
+            /** Items */
+            items: components["schemas"]["LegalAcceptanceRequest"][];
+        };
+        /** LegalAcceptanceRequest */
+        LegalAcceptanceRequest: {
+            /**
+             * Document Type
+             * @enum {string}
+             */
+            document_type: "terms_of_service" | "privacy_policy" | "risk_disclosure" | "ai_content_notice";
+            /** Document Version */
+            document_version: string;
+        };
+        /** LegalAcceptanceStatusResponse */
+        LegalAcceptanceStatusResponse: {
+            /** Required Document Types */
+            required_document_types: string[];
+        };
+        /** LegalDocumentListResponse */
+        LegalDocumentListResponse: {
+            /** Items */
+            items: components["schemas"]["LegalDocumentResponse"][];
+        };
+        /** LegalDocumentResponse */
+        LegalDocumentResponse: {
+            /** Document Type */
+            document_type: string;
+            /** Version */
+            version: string;
+            /** Title */
+            title: string;
+            /** Path */
+            path: string;
+            /** Content Hash */
+            content_hash: string;
+            /** Required At Registration */
+            required_at_registration: boolean;
+        };
         /** MeResponse */
         MeResponse: {
             user: components["schemas"]["UserResponse"];
             entitlements: components["schemas"]["EntitlementsResponse"];
+            /** Required Legal Acceptances */
+            required_legal_acceptances?: string[];
         };
         /** MetricCriterion */
         "MetricCriterion-Input": {
@@ -1840,6 +2043,26 @@ export interface components {
             items: components["schemas"]["ResearchObservation"][];
             /** Total */
             total: number;
+        };
+        /** OperationAcceptedResponse */
+        OperationAcceptedResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "completed";
+        };
+        /** PasswordResetConfirmRequest */
+        PasswordResetConfirmRequest: {
+            /** Token */
+            token: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PasswordResetRequest */
+        PasswordResetRequest: {
+            /** Email */
+            email: string;
         };
         /** PeerBenchmarkEvidenceSummary */
         PeerBenchmarkEvidenceSummary: {
@@ -2003,6 +2226,20 @@ export interface components {
             /** Stocks */
             stocks?: components["schemas"]["PeerStockResponse"][];
         };
+        /** ReadinessResponse */
+        ReadinessResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Service */
+            service: string;
+            /** Migration Head */
+            migration_head: string;
+            /** Dependencies */
+            dependencies: components["schemas"]["DependencyStatus"][];
+        };
         /** RegistrationRequest */
         RegistrationRequest: {
             /** Email */
@@ -2011,6 +2248,8 @@ export interface components {
             password: string;
             /** Invitation Code */
             invitation_code: string;
+            /** Legal Acceptances */
+            legal_acceptances: components["schemas"]["LegalAcceptanceRequest"][];
         };
         /** ResearchCoverage */
         ResearchCoverage: {
@@ -2658,6 +2897,10 @@ export interface components {
             created_at: string;
             /** Last Login At */
             last_login_at: string | null;
+            /** Email Verified At */
+            email_verified_at?: string | null;
+            /** Password Changed At */
+            password_changed_at?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2903,6 +3146,191 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_email_api_v1_auth_email_verification_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailVerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_email_verification_api_v1_auth_email_verification_resend_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailVerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_password_reset_api_v1_auth_password_reset_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationAcceptedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_password_reset_api_v1_auth_password_reset_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationAcceptedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_legal_documents_api_v1_legal_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalDocumentListResponse"];
+                };
+            };
+        };
+    };
+    accept_legal_documents_api_v1_me_legal_acceptances_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LegalAcceptanceBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalAcceptanceStatusResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4467,6 +4895,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    liveness_livez_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    readiness_readyz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
                 };
             };
         };

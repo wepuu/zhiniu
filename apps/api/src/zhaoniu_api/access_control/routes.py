@@ -56,6 +56,10 @@ async def activate_access(
         http_status = (
             status.HTTP_503_SERVICE_UNAVAILABLE
             if code == "access_activation_unavailable"
-            else status.HTTP_422_UNPROCESSABLE_ENTITY
+            else (
+                status.HTTP_409_CONFLICT
+                if code == "email_verification_required"
+                else status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
         )
         raise HTTPException(status_code=http_status, detail=code) from error

@@ -1,4 +1,4 @@
-# Phase 9 Data Model
+# Phase 12 Data Model
 
 ## Entity relationships
 
@@ -188,3 +188,14 @@ records tied to an immutable screening snapshot.
 
 Access is evaluated from the base plan plus active grants at request time. Expiry does not mutate
 historical rows, and the frontend is never the authorization boundary.
+
+## Phase 12 account lifecycle tables
+
+- `users.email_verified_at` and `users.password_changed_at` expose account-security state without
+  storing transient secrets.
+- `email_verification_tokens` and `password_reset_tokens` retain one-time SHA-256 token digests,
+  expiry, use and revocation timestamps. Plaintext tokens exist only in outbound links.
+- `transactional_email_deliveries` records delivery purpose, provider state and redacted failure
+  categories; message bodies and tokens are never persisted.
+- `user_legal_acceptances` records user, document key, immutable document version/hash, timestamp
+  and bounded request metadata. A unique identity prevents duplicate acceptance rows.

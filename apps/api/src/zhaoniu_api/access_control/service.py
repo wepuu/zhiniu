@@ -185,6 +185,11 @@ class AccessControlService:
         if not self.activation_available():
             raise AccessControlError("access_activation_unavailable")
         effective_at = now or datetime.now(UTC)
+        user = await self._session.get(User, user_id)
+        if user is None:
+            raise AccessControlError("activation_code_unavailable")
+        if user.email_verified_at is None:
+            raise AccessControlError("email_verification_required")
         try:
             digest = code_hmac(code, "ACT", self._settings.access_activation_hmac_secret)
         except ValueError as error:

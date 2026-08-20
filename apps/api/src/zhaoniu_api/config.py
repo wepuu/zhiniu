@@ -20,12 +20,28 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     auth_session_days: int = Field(default=30, ge=1, le=90)
     auth_password_min_length: int = Field(default=15, ge=15, le=128)
+    public_base_url: str = "http://localhost:3000"
+    trusted_hosts: str = "localhost,127.0.0.1,testserver"
+    registration_mode: Literal["invite_only", "closed"] = "invite_only"
+    beta_mode: Literal["controlled", "internal"] = "controlled"
+    beta_max_active_users: int = Field(default=500, ge=1, le=100000)
     registration_invite_hmac_secret: str = "development-invite-secret-change-me"
     access_activation_hmac_secret: str = "development-activation-secret-change-me"
     access_activation_enabled: bool = False
     support_contact_url: str = ""
     access_operator_id: str = "local-cli"
     commercialization_status: Literal["review_required", "approved", "blocked"] = "review_required"
+    legal_review_status: Literal["review_required", "approved", "blocked"] = "review_required"
+    data_use_status: Literal["review_required", "approved", "blocked"] = "review_required"
+    email_delivery_mode: Literal["disabled", "smtp"] = "disabled"
+    email_from_address: str = ""
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+    email_verification_ttl_hours: int = Field(default=24, ge=1, le=168)
+    password_reset_ttl_minutes: int = Field(default=30, ge=10, le=120)
     market_data_provider: Literal["akshare"] = "akshare"
     disclosure_provider: Literal["akshare"] = "akshare"
     llm_enabled: bool = False
@@ -57,6 +73,10 @@ class Settings(BaseSettings):
             item.strip().rstrip("/") for item in self.allowed_origins.split(",") if item.strip()
         )
 
+    @property
+    def trusted_host_list(self) -> tuple[str, ...]:
+        return tuple(item.strip() for item in self.trusted_hosts.split(",") if item.strip())
+
     def validate_runtime_security(self) -> None:
         if self.app_env != "production":
             return
@@ -64,6 +84,12 @@ class Settings(BaseSettings):
             raise ValueError("production_auth_cookie_must_be_secure")
         if "*" in self.origin_allowlist:
             raise ValueError("production_allowed_origins_must_be_explicit")
+        if not self.public_base_url.startswith("https://"):
+            raise ValueError("production_public_base_url_must_use_https")
+        if not self.trusted_host_list or "*" in self.trusted_host_list:
+            raise ValueError("production_trusted_hosts_must_be_explicit")
+        if "localhost" in self.database_url or "localhost" in self.redis_url:
+            raise ValueError("production_dependencies_must_not_use_localhost")
         unsafe_secrets = {
             "development-invite-secret-change-me",
             "development-activation-secret-change-me",
@@ -77,6 +103,15 @@ class Settings(BaseSettings):
             raise ValueError("production_access_code_secrets_are_unsafe")
         if self.access_activation_enabled and self.commercialization_status != "approved":
             raise ValueError("production_access_activation_requires_approval")
+        if self.email_delivery_mode == "smtp" and (
+            not self.smtp_host or not self.email_from_address
+        ):
+            raise ValueError("production_email_configuration_incomplete")
+        if self.screen_parser_enabled and (
+            len(self.screen_parser_hmac_secret) < 32
+            or self.screen_parser_hmac_secret == "development-only-change-me"
+        ):
+            raise ValueError("production_screen_parser_secret_is_unsafe")
 
 
 @lru_cache

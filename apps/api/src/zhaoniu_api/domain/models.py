@@ -157,6 +157,8 @@ class UserAccount:
     status: str
     created_at: datetime
     last_login_at: datetime | None = None
+    email_verified_at: datetime | None = None
+    password_changed_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)

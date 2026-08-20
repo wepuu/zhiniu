@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSchema
@@ -281,8 +281,17 @@ class AuthRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class LegalAcceptanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    document_type: Literal[
+        "terms_of_service", "privacy_policy", "risk_disclosure", "ai_content_notice"
+    ]
+    document_version: str = Field(min_length=1, max_length=40)
+
+
 class RegistrationRequest(AuthRequest):
     invitation_code: str = Field(min_length=8, max_length=80)
+    legal_acceptances: list[LegalAcceptanceRequest] = Field(min_length=2, max_length=4)
 
 
 class UserResponse(BaseModel):
@@ -291,6 +300,8 @@ class UserResponse(BaseModel):
     status: str
     created_at: datetime
     last_login_at: datetime | None
+    email_verified_at: datetime | None = None
+    password_changed_at: datetime | None = None
 
     @classmethod
     def from_domain(cls, user: UserAccount) -> "UserResponse":
@@ -307,11 +318,71 @@ class EntitlementsResponse(BaseModel):
 class MeResponse(BaseModel):
     user: UserResponse
     entitlements: EntitlementsResponse
+    required_legal_acceptances: list[str] = Field(default_factory=list)
 
 
 class AuthResponse(BaseModel):
     user: UserResponse
     entitlements: EntitlementsResponse
+
+
+class EmailVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=32, max_length=256)
+
+
+class EmailVerificationResponse(BaseModel):
+    status: Literal["verified", "already_verified", "sent", "delivery_unavailable"]
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=320)
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(min_length=32, max_length=256)
+    new_password: str = Field(min_length=15, max_length=128)
+
+
+class OperationAcceptedResponse(BaseModel):
+    status: Literal["accepted", "completed"]
+
+
+class LegalDocumentResponse(BaseModel):
+    document_type: str
+    version: str
+    title: str
+    path: str
+    content_hash: str
+    required_at_registration: bool
+
+
+class LegalDocumentListResponse(BaseModel):
+    items: list[LegalDocumentResponse]
+
+
+class LegalAcceptanceBatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[LegalAcceptanceRequest] = Field(min_length=1, max_length=4)
+
+
+class LegalAcceptanceStatusResponse(BaseModel):
+    required_document_types: list[str]
+
+
+class DependencyStatus(BaseModel):
+    name: str
+    status: Literal["healthy", "degraded", "unavailable", "disabled"]
+    detail: str | None = None
+
+
+class ReadinessResponse(BaseModel):
+    status: Literal["ready", "not_ready"]
+    service: str
+    migration_head: str
+    dependencies: list[DependencyStatus]
 
 
 class SessionResponse(BaseModel):

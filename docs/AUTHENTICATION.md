@@ -22,9 +22,20 @@ New invitation registrations receive the versioned `basic` access baseline. Acco
 before the Phase 11 migration retain the versioned `legacy_beta` baseline so deployment does not
 silently remove existing capabilities.
 
+## Email verification and recovery
+
+New registrations record the accepted current terms and privacy versions, then receive a one-time
+verification link through the configured transactional-email adapter. Only a SHA-256 token digest
+is stored. Verification and resend operations revoke sibling tokens; an unverified account may use
+basic product surfaces but cannot redeem an advanced-access code.
+
+Password-reset requests always return the same accepted response, whether or not the email exists.
+Reset tokens are single-use and expiring. A successful reset changes the password and atomically
+revokes every active session for the account.
+
 ## Operator safety
 
 Invitation and activation secrets must be different, non-default values in production. They are
 configuration secrets and must not enter logs, database rows or version control. Rate limiting is
-fail-closed in production when Redis is unavailable. Email verification, password recovery and
-account deletion remain outside Phase 11.
+fail-closed in production when Redis is unavailable. Automated account deletion and self-service
+data export remain deferred from the controlled Beta.

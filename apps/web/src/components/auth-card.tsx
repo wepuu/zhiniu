@@ -4,7 +4,7 @@ import { ApiError, createZhaoniuClient } from "@zhaoniu/api-client";
 import { LoaderCircle, Telescope } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 const api = createZhaoniuClient();
 
@@ -20,6 +20,33 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [legalVersions, setLegalVersions] = useState<{
+    terms_of_service: string;
+    privacy_policy: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isRegister) return;
+    void api
+      .getCurrentLegalDocuments()
+      .then((response) => {
+        const terms = response.items.find(
+          (item) => item.document_type === "terms_of_service",
+        );
+        const privacy = response.items.find(
+          (item) => item.document_type === "privacy_policy",
+        );
+        if (terms && privacy) {
+          setLegalVersions({
+            terms_of_service: terms.version,
+            privacy_policy: privacy.version,
+          });
+        }
+      })
+      .catch(() => setError("暂时无法读取注册协议，请稍后再试。"));
+  }, [isRegister]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,19 +59,38 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
       setError("两次输入的密码不一致。");
       return;
     }
+    if (isRegister && (!termsAccepted || !privacyAccepted || !legalVersions)) {
+      setError("请阅读并同意当前版本的用户协议和隐私政策。");
+      return;
+    }
     setSubmitting(true);
     try {
       if (isRegister) {
-        await api.register(email, password, invitationCode);
+        await api.register(email, password, invitationCode, [
+          {
+            document_type: "terms_of_service",
+            document_version: legalVersions!.terms_of_service,
+          },
+          {
+            document_type: "privacy_policy",
+            document_version: legalVersions!.privacy_policy,
+          },
+        ]);
       } else {
         await api.login(email, password);
       }
       const next = search.get("next");
-      router.push(next && next.startsWith("/") ? next : "/watchlist");
+      router.push(
+        next && next.startsWith("/")
+          ? next
+          : isRegister
+            ? "/verify-email"
+            : "/watchlist",
+      );
       router.refresh();
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409) {
-        setError("这个邮箱已经注册，请直接登录。");
+        setError("邮箱已注册，或受控体验名额暂时已满。请尝试登录或联系客服。");
       } else if (caught instanceof ApiError && caught.status === 401) {
         setError("邮箱或密码不正确。");
       } else if (caught instanceof ApiError && caught.status === 422) {
@@ -102,6 +148,46 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
               />
             </label>
           )}
+          {isRegister && (
+            <div className="border-ink/8 bg-mist space-y-3 rounded-xl border p-3.5 text-sm">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="accent-blue mt-0.5 size-4"
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                  required
+                />
+                <span>
+                  我已阅读并同意
+                  <Link
+                    className="text-blue mx-1 font-medium"
+                    href="/legal/terms"
+                  >
+                    用户协议
+                  </Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="accent-blue mt-0.5 size-4"
+                  checked={privacyAccepted}
+                  onChange={(event) => setPrivacyAccepted(event.target.checked)}
+                  required
+                />
+                <span>
+                  我已阅读并同意
+                  <Link
+                    className="text-blue mx-1 font-medium"
+                    href="/legal/privacy"
+                  >
+                    隐私政策
+                  </Link>
+                </span>
+              </label>
+            </div>
+          )}
           <label className="block text-sm font-medium">
             邮箱
             <input
@@ -148,7 +234,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           <button
             type="submit"
             className="bg-blue flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={submitting}
+            disabled={submitting || (isRegister && !legalVersions)}
           >
             {submitting && <LoaderCircle className="size-4 animate-spin" />}
             {isRegister ? "创建账户" : "安全登录"}
@@ -163,6 +249,13 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
             {isRegister ? "登录" : "受邀注册"}
           </Link>
         </p>
+        {!isRegister && (
+          <p className="mt-3 text-center text-sm">
+            <Link className="text-blue font-medium" href="/forgot-password">
+              忘记密码？
+            </Link>
+          </p>
+        )}
         <p className="border-ink/8 text-slate mt-7 border-t pt-5 text-center text-xs leading-5">
           研究工具不构成投资建议，请独立核对数据与证据。
         </p>

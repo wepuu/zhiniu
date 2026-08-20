@@ -1,0 +1,130 @@
+name: zhaoniu-production
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    command:
+      [
+        "alembic",
+        "-c",
+        "infrastructure/migrations/alembic.ini",
+        "upgrade",
+        "head",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    expose: ["8000"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    environment:
+      ZHAONIU_DISABLE_DB_POOL: "1"
+    command:
+      [
+        "celery",
+        "-A",
+        "zhaoniu_worker.celery_app:celery_app",
+        "worker",
+        "--workdir",
+        "apps/worker/src",
+        "--loglevel",
+        "INFO",
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8000
+    expose: ["3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  proxy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

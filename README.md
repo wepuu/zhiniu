@@ -3,10 +3,10 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 1-10，并正在交付 Phase 11：在确定性筛选和自然语言研究工作区
-之上，新增邀请注册、版本化功能权限、客服发放的高级功能激活码和桌面/移动访问状态。
+当前仓库已完成 Phase 1-12。Phase 12 在邀请注册和版本化权益之上补齐邮箱验证、密码
+重置、法律文本版本接受、生产健康检查、受控 Beta 门禁以及 PostgreSQL 备份恢复演练。
 项目不包含支付、订单、公开价格或结算流程。AKShare 仍仅用于开发和技术评估；荐股、
-邮箱验证、密码找回、账户删除和公开生产合规仍未生产化。
+自动化个人信息权利门户和未经审批的公开生产发布仍不在当前范围内。
 
 ## Repository map
 
@@ -67,6 +67,9 @@ uv run python -m zhaoniu_api.cli validate-screen --query-file screen.json
 uv run python -m zhaoniu_api.cli generate-registration-invites --count 10 --expires-in-days 7 --name internal-beta
 uv run python -m zhaoniu_api.cli issue-access-code --user-email user@example.com --term month --expires-in-days 7
 uv run python -m zhaoniu_api.cli inspect-user-access --user-email user@example.com
+uv run python -m zhaoniu_api.cli check-beta-readiness
+uv run python scripts/postgres_ops.py backup --output .local/backups/zhaoniu.dump
+uv run python scripts/postgres_ops.py verify --backup .local/backups/zhaoniu.dump
 ```
 
 AI is disabled by default. Before enabling it, explicitly configure `LLM_ENABLED=true`,
@@ -79,7 +82,8 @@ outside development/evaluation.
 
 Web: `http://localhost:3000`  
 API docs: `http://localhost:8000/docs`  
-Health: `http://localhost:8000/api/v1/health`
+Liveness: `http://localhost:8000/livez`
+Readiness: `http://localhost:8000/readyz`
 
 ## Quality commands
 
@@ -105,7 +109,13 @@ GET /api/v1/health
 POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
+POST /api/v1/auth/email-verification/verify
+POST /api/v1/auth/email-verification/resend
+POST /api/v1/auth/password-reset/request
+POST /api/v1/auth/password-reset/confirm
+GET /api/v1/legal/current
 GET /api/v1/me
+POST /api/v1/me/legal-acceptances
 GET /api/v1/me/access
 POST /api/v1/me/access/activate
 GET /api/v1/me/sessions

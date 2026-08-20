@@ -39,6 +39,24 @@ function useAlertSummary() {
   });
 }
 
+function VerificationBanner() {
+  const account = useQuery({
+    queryKey: ["current-account"],
+    queryFn: () => api.getMe(),
+    retry: false,
+    staleTime: 60_000,
+  });
+  if (!account.data || account.data.user.email_verified_at) return null;
+  return (
+    <div className="border-attention/20 bg-attention/8 text-ink border-b px-4 py-2.5 text-center text-xs sm:text-sm">
+      邮箱尚未验证。验证后可找回密码并继续开通高级研究功能。
+      <Link href="/verify-email" className="text-blue ml-2 font-medium">
+        立即验证
+      </Link>
+    </div>
+  );
+}
+
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-2.5">
@@ -168,6 +186,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <DesktopSidebar />
       <div className="md:pl-60">
         <Header />
+        <VerificationBanner />
         <Container>{children}</Container>
       </div>
       <MobileBottomNav />

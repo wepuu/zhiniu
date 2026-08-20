@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 11 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 12 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -87,8 +87,17 @@ evidence, public research snapshots, industry classifications and peer benchmark
 User-owned: users, sessions, watchlists/items, alerts, preferences, chats, access grants and usage.
 Every user-owned record and query carries `user_id`. Phase 8 implements alert preferences and
 deliveries while keeping research signals global. Phase 11 adds invitation registration and
-operator-issued activation without adding an in-product commerce flow. Chats and the full public
-account lifecycle remain deferred.
+operator-issued activation without an in-product commerce flow. Phase 12 adds verified account
+recovery, versioned legal acceptance and production-operability boundaries. Chats, automated
+data-rights workflows and public launch remain deferred.
+
+## Production runtime
+
+The production Compose topology places Caddy in front of separately built web and API containers,
+runs Alembic as a one-shot dependency, and keeps PostgreSQL and Redis private to the network. `/livez`
+proves the process is responsive; `/readyz` independently reports PostgreSQL, migration-head and
+Redis state. PostgreSQL or schema mismatch blocks readiness. Redis degradation is visible but does
+not misrepresent the durable database as unavailable.
 
 ## Module boundaries
 

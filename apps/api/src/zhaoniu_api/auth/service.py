@@ -5,22 +5,33 @@ from secrets import token_urlsafe
 from uuid import UUID
 
 from pwdlib import PasswordHash
-from sqlalchemy import select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.access_control.codes import code_hmac
 from zhaoniu_api.access_control.service import BASIC_PLAN_VERSION_ID
+from zhaoniu_api.auth.email import (
+    TransactionalEmail,
+    TransactionalEmailError,
+    TransactionalEmailGateway,
+    build_email_gateway,
+)
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
+    EmailVerificationTokenRecord,
+    PasswordResetTokenRecord,
     RegistrationInviteBatchRecord,
     RegistrationInviteRecord,
+    TransactionalEmailDeliveryRecord,
     User,
+    UserLegalAcceptanceRecord,
     UserResearchAlertSettingsRecord,
     UserSessionRecord,
     WatchlistRecord,
 )
 from zhaoniu_api.domain.models import UserAccount, UserSession
+from zhaoniu_api.legal import legal_document, required_registration_documents
 
 DEFAULT_WATCHLIST_NAME = "核心观察"
 
@@ -38,10 +49,16 @@ class AuthenticationError(ValueError):
 
 
 class AuthService:
-    def __init__(self, session: AsyncSession, settings: Settings) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        settings: Settings,
+        email_gateway: TransactionalEmailGateway | None = None,
+    ) -> None:
         self._session = session
         self._settings = settings
         self._password_hash = PasswordHash.recommended()
+        self._email = email_gateway or build_email_gateway(settings)
 
     @property
     def session_max_age_seconds(self) -> int:
@@ -53,12 +70,23 @@ class AuthService:
         email: str,
         password: str,
         invitation_code: str,
+        legal_acceptances: dict[str, str],
         user_agent: str | None,
         ip_address: str | None,
     ) -> AuthenticatedSession:
         normalized_email = normalize_email(email)
         validate_password(password, min_length=self._settings.auth_password_min_length)
+        if self._settings.registration_mode != "invite_only":
+            raise AuthenticationError("registration_closed")
+        validate_registration_acceptances(legal_acceptances)
         now = datetime.now(UTC)
+        if self._settings.beta_mode == "controlled":
+            await self._session.execute(text("SELECT pg_advisory_xact_lock(120012)"))
+            active_users = await self._session.scalar(
+                select(func.count()).select_from(User).where(User.status == "active")
+            )
+            if int(active_users or 0) >= self._settings.beta_max_active_users:
+                raise AuthenticationError("beta_capacity_reached")
         try:
             invite_digest = code_hmac(
                 invitation_code,
@@ -100,11 +128,38 @@ class AuthService:
             WatchlistRecord(user_id=user.id, name=DEFAULT_WATCHLIST_NAME, is_default=True)
         )
         self._session.add(UserResearchAlertSettingsRecord(user_id=user.id))
+        for document_type, version in legal_acceptances.items():
+            document = legal_document(document_type)
+            if document is None:
+                continue
+            self._session.add(
+                UserLegalAcceptanceRecord(
+                    user_id=user.id,
+                    document_type=document_type,
+                    document_version=version,
+                    content_hash=document.content_hash,
+                    accepted_at=now,
+                )
+            )
         invite.consumed_by_user_id = user.id
         invite.consumed_at = now
         try:
             auth = await self._create_session_record(user, user_agent, ip_address, now)
+            verification_token, delivery = await self._create_email_verification(user, now)
             await self._session.commit()
+            await self._deliver_email(
+                delivery,
+                TransactionalEmail(
+                    recipient=user.email,
+                    subject="验证你的知牛研究邮箱",
+                    text_body=(
+                        "请使用以下链接验证邮箱：\n"
+                        f"{self._settings.public_base_url.rstrip('/')}/verify-email?token={verification_token}\n"
+                        "如果不是你发起的注册，请忽略此邮件。"
+                    ),
+                    template_key="verify_email",
+                ),
+            )
             return auth
         except IntegrityError as error:
             await self._session.rollback()
@@ -218,6 +273,237 @@ class AuthService:
         await self._session.commit()
         return True
 
+    async def verify_email(self, token: str) -> str:
+        now = datetime.now(UTC)
+        row = await self._session.scalar(
+            select(EmailVerificationTokenRecord)
+            .where(EmailVerificationTokenRecord.token_hash == hash_token(token))
+            .with_for_update()
+        )
+        if row is None or row.revoked_at is not None:
+            raise AuthenticationError("email_verification_invalid")
+        user = await self._session.get(User, row.user_id)
+        if user is None:
+            raise AuthenticationError("email_verification_invalid")
+        if row.consumed_at is not None or user.email_verified_at is not None:
+            return "already_verified"
+        if row.expires_at <= now or row.email_snapshot != user.email:
+            raise AuthenticationError("email_verification_expired")
+        row.consumed_at = now
+        user.email_verified_at = now
+        await self._session.execute(
+            update(EmailVerificationTokenRecord)
+            .where(
+                EmailVerificationTokenRecord.user_id == user.id,
+                EmailVerificationTokenRecord.id != row.id,
+                EmailVerificationTokenRecord.consumed_at.is_(None),
+                EmailVerificationTokenRecord.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        await self._session.commit()
+        return "verified"
+
+    async def resend_verification(self, user_id: UUID) -> str:
+        user = await self._session.get(User, user_id)
+        if user is None:
+            raise AuthenticationError("user_not_found")
+        if user.email_verified_at is not None:
+            return "already_verified"
+        now = datetime.now(UTC)
+        await self._session.execute(
+            update(EmailVerificationTokenRecord)
+            .where(
+                EmailVerificationTokenRecord.user_id == user.id,
+                EmailVerificationTokenRecord.consumed_at.is_(None),
+                EmailVerificationTokenRecord.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        token, delivery = await self._create_email_verification(user, now)
+        await self._session.commit()
+        delivered = await self._deliver_email(
+            delivery,
+            TransactionalEmail(
+                recipient=user.email,
+                subject="验证你的知牛研究邮箱",
+                text_body=(
+                    "请使用以下链接验证邮箱：\n"
+                    f"{self._settings.public_base_url.rstrip('/')}/verify-email?token={token}"
+                ),
+                template_key="verify_email",
+            ),
+        )
+        return "sent" if delivered else "delivery_unavailable"
+
+    async def request_password_reset(self, email: str) -> None:
+        user = await self._session.scalar(
+            select(User).where(User.email == normalize_email(email), User.status == "active")
+        )
+        if user is None:
+            self._password_hash.hash("zhaoniu-dummy-password-reset")
+            return
+        now = datetime.now(UTC)
+        await self._session.execute(
+            update(PasswordResetTokenRecord)
+            .where(
+                PasswordResetTokenRecord.user_id == user.id,
+                PasswordResetTokenRecord.consumed_at.is_(None),
+                PasswordResetTokenRecord.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        token = token_urlsafe(48)
+        self._session.add(
+            PasswordResetTokenRecord(
+                user_id=user.id,
+                token_hash=hash_token(token),
+                expires_at=now + timedelta(minutes=self._settings.password_reset_ttl_minutes),
+            )
+        )
+        delivery = TransactionalEmailDeliveryRecord(
+            user_id=user.id,
+            template_key="reset_password",
+            template_version="v1",
+            provider=self._email.provider_name,
+            status="pending",
+        )
+        self._session.add(delivery)
+        await self._session.commit()
+        await self._deliver_email(
+            delivery,
+            TransactionalEmail(
+                recipient=user.email,
+                subject="重置你的知牛研究密码",
+                text_body=(
+                    "请使用以下链接重置密码：\n"
+                    f"{self._settings.public_base_url.rstrip('/')}/reset-password?token={token}\n"
+                    "链接将在短时间后失效。"
+                ),
+                template_key="reset_password",
+            ),
+        )
+
+    async def confirm_password_reset(self, token: str, new_password: str) -> None:
+        validate_password(new_password, min_length=self._settings.auth_password_min_length)
+        now = datetime.now(UTC)
+        row = await self._session.scalar(
+            select(PasswordResetTokenRecord)
+            .where(PasswordResetTokenRecord.token_hash == hash_token(token))
+            .with_for_update()
+        )
+        if row is None or row.consumed_at is not None or row.revoked_at is not None:
+            raise AuthenticationError("password_reset_invalid")
+        if row.expires_at <= now:
+            raise AuthenticationError("password_reset_expired")
+        user = await self._session.get(User, row.user_id)
+        if user is None or user.status != "active":
+            raise AuthenticationError("password_reset_invalid")
+        user.password_hash = self._password_hash.hash(new_password)
+        user.password_changed_at = now
+        row.consumed_at = now
+        await self._session.execute(
+            update(PasswordResetTokenRecord)
+            .where(
+                PasswordResetTokenRecord.user_id == user.id,
+                PasswordResetTokenRecord.id != row.id,
+                PasswordResetTokenRecord.consumed_at.is_(None),
+                PasswordResetTokenRecord.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        await self._session.execute(
+            update(UserSessionRecord)
+            .where(UserSessionRecord.user_id == user.id, UserSessionRecord.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        await self._session.commit()
+
+    async def accept_legal_documents(
+        self, user_id: UUID, acceptances: dict[str, str]
+    ) -> list[str]:
+        now = datetime.now(UTC)
+        for document_type, version in acceptances.items():
+            document = legal_document(document_type)
+            if document is None or document.version != version:
+                raise AuthenticationError("legal_document_version_invalid")
+            existing = await self._session.scalar(
+                select(UserLegalAcceptanceRecord.id).where(
+                    UserLegalAcceptanceRecord.user_id == user_id,
+                    UserLegalAcceptanceRecord.document_type == document_type,
+                    UserLegalAcceptanceRecord.document_version == version,
+                )
+            )
+            if existing is None:
+                self._session.add(
+                    UserLegalAcceptanceRecord(
+                        user_id=user_id,
+                        document_type=document_type,
+                        document_version=version,
+                        content_hash=document.content_hash,
+                        accepted_at=now,
+                    )
+                )
+        await self._session.commit()
+        return await self.required_legal_acceptances(user_id)
+
+    async def required_legal_acceptances(self, user_id: UUID) -> list[str]:
+        accepted = set(
+            (
+                await self._session.execute(
+                    select(
+                        UserLegalAcceptanceRecord.document_type,
+                        UserLegalAcceptanceRecord.document_version,
+                    ).where(UserLegalAcceptanceRecord.user_id == user_id)
+                )
+            ).all()
+        )
+        return [
+            item.document_type
+            for item in required_registration_documents()
+            if (item.document_type, item.version) not in accepted
+        ]
+
+    async def _create_email_verification(
+        self, user: User, now: datetime
+    ) -> tuple[str, TransactionalEmailDeliveryRecord]:
+        token = token_urlsafe(48)
+        self._session.add(
+            EmailVerificationTokenRecord(
+                user_id=user.id,
+                token_hash=hash_token(token),
+                email_snapshot=user.email,
+                expires_at=now + timedelta(hours=self._settings.email_verification_ttl_hours),
+            )
+        )
+        delivery = TransactionalEmailDeliveryRecord(
+            user_id=user.id,
+            template_key="verify_email",
+            template_version="v1",
+            provider=self._email.provider_name,
+            status="pending",
+        )
+        self._session.add(delivery)
+        return token, delivery
+
+    async def _deliver_email(
+        self, delivery: TransactionalEmailDeliveryRecord, message: TransactionalEmail
+    ) -> bool:
+        try:
+            result = await self._email.send(message)
+            delivery.provider = result.provider
+            delivery.provider_message_id = result.message_id[:200]
+            delivery.status = "sent"
+            delivery.sent_at = datetime.now(UTC)
+            delivery.error_code = None
+            await self._session.commit()
+            return True
+        except TransactionalEmailError as error:
+            delivery.status = "failed"
+            delivery.error_code = str(error)[:80]
+            await self._session.commit()
+            return False
+
     async def _create_session_record(
         self,
         user: User,
@@ -268,6 +554,8 @@ def user_to_domain(user: User) -> UserAccount:
         status=user.status,
         created_at=user.created_at,
         last_login_at=user.last_login_at,
+        email_verified_at=user.email_verified_at,
+        password_changed_at=user.password_changed_at,
     )
 
 
@@ -282,3 +570,9 @@ def session_to_domain(row: UserSessionRecord, *, is_current: bool) -> UserSessio
         user_agent=row.user_agent,
         is_current=is_current,
     )
+
+
+def validate_registration_acceptances(acceptances: dict[str, str]) -> None:
+    for document in required_registration_documents():
+        if acceptances.get(document.document_type) != document.version:
+            raise AuthenticationError("required_legal_acceptance_missing")

@@ -26,6 +26,7 @@ from zhaoniu_api.dependencies import (
     WatchlistRepo,
 )
 from zhaoniu_api.domain.models import Watchlist, resolve_symbol
+from zhaoniu_api.legal import LEGAL_DOCUMENTS
 from zhaoniu_api.peer_research.models import (
     PeerComparisonEnvelope,
     PeerUniverseResponse,
@@ -42,6 +43,8 @@ from zhaoniu_api.schemas import (
     CreateWatchlistRequest,
     DailyBarListResponse,
     DailyBarResponse,
+    EmailVerificationRequest,
+    EmailVerificationResponse,
     EntitlementsResponse,
     FinancialPeriodListResponse,
     FinancialPeriodResponse,
@@ -49,7 +52,14 @@ from zhaoniu_api.schemas import (
     FundamentalMetricResponse,
     FundamentalResearchResponse,
     HealthResponse,
+    LegalAcceptanceBatchRequest,
+    LegalAcceptanceStatusResponse,
+    LegalDocumentListResponse,
+    LegalDocumentResponse,
     MeResponse,
+    OperationAcceptedResponse,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     RegistrationRequest,
     SessionListResponse,
     SessionResponse,
@@ -111,12 +121,15 @@ async def register(
             email=payload.email,
             password=payload.password,
             invitation_code=payload.invitation_code,
+            legal_acceptances={
+                item.document_type: item.document_version for item in payload.legal_acceptances
+            },
             user_agent=request.headers.get("user-agent"),
             ip_address=request.client.host if request.client else None,
         )
     except AuthenticationError as error:
         code = str(error)
-        if code == "email_already_registered":
+        if code in {"email_already_registered", "beta_capacity_reached"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=code) from error
         if code == "invalid_or_unavailable_invitation":
             raise HTTPException(
@@ -178,13 +191,141 @@ async def logout(
 
 
 @router.get("/me", response_model=MeResponse, tags=["auth"])
-async def get_me(user: CurrentUser, access: AccessControlServiceDependency) -> MeResponse:
+async def get_me(
+    user: CurrentUser,
+    access: AccessControlServiceDependency,
+    auth: AuthServiceDependency,
+) -> MeResponse:
     return MeResponse(
         user=UserResponse.from_domain(user),
         entitlements=EntitlementsResponse.model_validate(
             (await access.effective_entitlements(user.id)).model_dump()
         ),
+        required_legal_acceptances=await auth.required_legal_acceptances(user.id),
     )
+
+
+@router.post(
+    "/auth/email-verification/verify",
+    response_model=EmailVerificationResponse,
+    tags=["auth"],
+)
+async def verify_email(
+    payload: EmailVerificationRequest, auth: AuthServiceDependency
+) -> EmailVerificationResponse:
+    try:
+        result = await auth.verify_email(payload.token)
+        return EmailVerificationResponse(status=result)  # type: ignore[arg-type]
+    except AuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
+
+
+@router.post(
+    "/auth/email-verification/resend",
+    response_model=EmailVerificationResponse,
+    tags=["auth"],
+)
+async def resend_email_verification(
+    request: Request,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    auth: AuthServiceDependency,
+) -> EmailVerificationResponse:
+    try:
+        await enforce_access_rate_limit(
+            get_settings(),
+            scope="email_verification",
+            identity=f"{user_id}:{request.client.host if request.client else 'unknown'}",
+            limit=3,
+            window_seconds=900,
+        )
+        result = await auth.resend_verification(user_id)
+        return EmailVerificationResponse(status=result)  # type: ignore[arg-type]
+    except AccessRateLimitExceeded as error:
+        raise HTTPException(status_code=429, detail="email_verification_rate_limited") from error
+
+
+@router.post(
+    "/auth/password-reset/request",
+    response_model=OperationAcceptedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["auth"],
+)
+async def request_password_reset(
+    payload: PasswordResetRequest, request: Request, auth: AuthServiceDependency
+) -> OperationAcceptedResponse:
+    client_host = request.client.host if request.client else "unknown"
+    try:
+        await enforce_access_rate_limit(
+            get_settings(),
+            scope="password_reset_request",
+            identity=f"{client_host}:{payload.email.lower()}",
+            limit=3,
+            window_seconds=900,
+        )
+    except AccessRateLimitExceeded:
+        return OperationAcceptedResponse(status="accepted")
+    await auth.request_password_reset(payload.email)
+    return OperationAcceptedResponse(status="accepted")
+
+
+@router.post(
+    "/auth/password-reset/confirm",
+    response_model=OperationAcceptedResponse,
+    tags=["auth"],
+)
+async def confirm_password_reset(
+    payload: PasswordResetConfirmRequest, auth: AuthServiceDependency
+) -> OperationAcceptedResponse:
+    try:
+        await auth.confirm_password_reset(payload.token, payload.new_password)
+    except AuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
+    return OperationAcceptedResponse(status="completed")
+
+
+@router.get("/legal/current", response_model=LegalDocumentListResponse, tags=["legal"])
+async def current_legal_documents() -> LegalDocumentListResponse:
+    return LegalDocumentListResponse(
+        items=[
+            LegalDocumentResponse(
+                document_type=item.document_type,
+                version=item.version,
+                title=item.title,
+                path=item.path,
+                content_hash=item.content_hash,
+                required_at_registration=item.required_at_registration,
+            )
+            for item in LEGAL_DOCUMENTS
+        ]
+    )
+
+
+@router.post(
+    "/me/legal-acceptances",
+    response_model=LegalAcceptanceStatusResponse,
+    tags=["legal"],
+)
+async def accept_legal_documents(
+    payload: LegalAcceptanceBatchRequest,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    auth: AuthServiceDependency,
+) -> LegalAcceptanceStatusResponse:
+    try:
+        remaining = await auth.accept_legal_documents(
+            user_id,
+            {item.document_type: item.document_version for item in payload.items},
+        )
+    except AuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
+    return LegalAcceptanceStatusResponse(required_document_types=remaining)
 
 
 @router.get("/me/sessions", response_model=SessionListResponse, tags=["auth"])

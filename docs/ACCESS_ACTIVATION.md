@@ -21,6 +21,8 @@ redemption record. Retrying the same successful redemption is idempotent.
 
 The authenticated browser calls `POST /api/v1/me/access/activate` with CSRF and Origin protection.
 The response contains the newly resolved access envelope. Public HTTP routes cannot create codes.
+The account email must already be verified. This applies to new redemptions and does not invalidate
+an access grant issued before Phase 12.
 
 ## Production gate
 

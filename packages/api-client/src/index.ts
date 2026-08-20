@@ -39,6 +39,14 @@ export type AccessEnvelope = components["schemas"]["AccessEnvelope"];
 export type AccessActivationResponse =
   components["schemas"]["AccessActivationResponse"];
 export type SessionListResponse = components["schemas"]["SessionListResponse"];
+export type EmailVerificationResponse =
+  components["schemas"]["EmailVerificationResponse"];
+export type OperationAcceptedResponse =
+  components["schemas"]["OperationAcceptedResponse"];
+export type LegalDocumentListResponse =
+  components["schemas"]["LegalDocumentListResponse"];
+export type LegalAcceptanceStatusResponse =
+  components["schemas"]["LegalAcceptanceStatusResponse"];
 export type WatchlistResponse = components["schemas"]["WatchlistResponse"];
 export type WatchlistMembershipResponse =
   components["schemas"]["WatchlistMembershipResponse"];
@@ -153,11 +161,20 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
   }
 
   return {
-    register(email: string, password: string, invitationCode: string) {
+    register(
+      email: string,
+      password: string,
+      invitationCode: string,
+      legalAcceptances: Array<{
+        document_type: "terms_of_service" | "privacy_policy";
+        document_version: string;
+      }>,
+    ) {
       return jsonRequest<AuthResponse>("/api/v1/auth/register", "POST", {
         email,
         password,
         invitation_code: invitationCode,
+        legal_acceptances: legalAcceptances,
       });
     },
     login(email: string, password: string) {
@@ -165,6 +182,45 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         email,
         password,
       });
+    },
+    verifyEmail(token: string) {
+      return jsonRequest<EmailVerificationResponse>(
+        "/api/v1/auth/email-verification/verify",
+        "POST",
+        { token },
+      );
+    },
+    resendEmailVerification() {
+      return request<EmailVerificationResponse>(
+        "/api/v1/auth/email-verification/resend",
+        { method: "POST" },
+      );
+    },
+    requestPasswordReset(email: string) {
+      return jsonRequest<OperationAcceptedResponse>(
+        "/api/v1/auth/password-reset/request",
+        "POST",
+        { email },
+      );
+    },
+    confirmPasswordReset(token: string, newPassword: string) {
+      return jsonRequest<OperationAcceptedResponse>(
+        "/api/v1/auth/password-reset/confirm",
+        "POST",
+        { token, new_password: newPassword },
+      );
+    },
+    getCurrentLegalDocuments() {
+      return request<LegalDocumentListResponse>("/api/v1/legal/current");
+    },
+    acceptLegalDocuments(
+      items: Array<{ document_type: string; document_version: string }>,
+    ) {
+      return jsonRequest<LegalAcceptanceStatusResponse>(
+        "/api/v1/me/legal-acceptances",
+        "POST",
+        { items },
+      );
     },
     logout() {
       return request<void>("/api/v1/auth/logout", { method: "POST" });

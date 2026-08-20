@@ -69,14 +69,21 @@ desktop/mobile research workspaces. OR/NOT groups, shared screen templates, aler
 screens, company comparison, report export and broader professional workspace expansion remain
 deferred.
 
-## Phase 11 - Invitation Access & Advanced Feature Activation (current)
+## Phase 11 - Invitation Access & Advanced Feature Activation
 
 Invitation-only registration, immutable plan versions, backend-resolved feature access,
 operator-issued user-bound activation codes, calendar validity, production approval gates and
 desktop/mobile account-access states. Payment, checkout, public pricing, orders, refunds, webhooks,
-email verification, password recovery and a general administration console remain deferred.
+The product deliberately has no payment, price, order or checkout surface.
 
-## Phase 12 - Factor / Backtest
+## Phase 12 - Controlled Beta Production Readiness (current)
 
-Versioned factor definitions, deterministic engines, survivorship-bias controls, research
-simulations, backtest-grade point-in-time datasets, and explicit non-advice language.
+Email verification, password recovery with global session revocation, versioned legal acceptance,
+production-safe configuration, liveness/readiness probes, structured request logging, container
+packaging, backup/restore drills and an explicit controlled-Beta release gate. Automated data-rights
+workflows and public launch remain deferred.
+
+## Future - Factor / Backtest
+
+Versioned factor definitions and research simulations remain a future phase. They require
+backtest-grade point-in-time datasets and survivorship-bias controls before product work starts.

@@ -56,7 +56,9 @@ export function AdvancedAccessCard() {
       setMessage(
         error instanceof ApiError && error.status === 503
           ? "当前暂不可激活，请联系客服。"
-          : "激活码不可用，请核对后重试。",
+          : error instanceof ApiError && error.status === 409
+            ? "请先验证注册邮箱，再使用高级功能激活码。"
+            : "激活码不可用，请核对后重试。",
       );
     } finally {
       setSubmitting(false);
