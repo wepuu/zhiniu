@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+asyncpg://zhaoniu:zhaoniu@localhost:5432/zhaoniu"
     redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = "redis://localhost:6379/1"
+    celery_result_backend: str = "redis://localhost:6379/2"
     auth_cookie_name: str = "zhaoniu_session"
     auth_csrf_cookie_name: str = "zhaoniu_csrf"
     auth_cookie_secure: bool = False

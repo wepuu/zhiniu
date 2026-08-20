@@ -57,6 +57,18 @@ export type AlertSummaryResponse =
 export type AlertSettingsResponse =
   components["schemas"]["AlertSettingsResponse"];
 export type AlertSettingsUpdate = components["schemas"]["AlertSettingsUpdate"];
+export type ScreenCatalogResponse =
+  components["schemas"]["ScreenCatalogResponse"];
+export type ScreenCoverageResponse =
+  components["schemas"]["ScreenCoverageResponse"];
+export type ScreenQuery = components["schemas"]["ScreenQuery-Input"];
+export type ScreenValidationResponse =
+  components["schemas"]["ScreenValidationResponse"];
+export type ScreenExecutionResponse =
+  components["schemas"]["ScreenExecutionResponse"];
+export type ScreenResultListResponse =
+  components["schemas"]["ScreenResultListResponse"];
+export type ScreenResultItem = components["schemas"]["ScreenResultItem"];
 
 export class ApiError extends Error {
   constructor(
@@ -312,6 +324,38 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         "/api/v1/me/research-alert-settings",
         "PUT",
         payload,
+      );
+    },
+    getScreenCatalog() {
+      return request<ScreenCatalogResponse>("/api/v1/screens/catalog");
+    },
+    getScreenCoverage() {
+      return request<ScreenCoverageResponse>("/api/v1/screens/coverage");
+    },
+    validateScreen(query: ScreenQuery) {
+      return jsonRequest<ScreenValidationResponse>(
+        "/api/v1/screens/validate",
+        "POST",
+        query,
+      );
+    },
+    createScreenExecution(query: ScreenQuery) {
+      return jsonRequest<ScreenExecutionResponse>(
+        "/api/v1/screens/executions",
+        "POST",
+        { query },
+      );
+    },
+    getScreenExecution(executionId: string) {
+      return request<ScreenExecutionResponse>(
+        `/api/v1/screens/executions/${encodeURIComponent(executionId)}`,
+      );
+    },
+    getScreenResults(executionId: string, cursor?: string, limit = 40) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (cursor) query.set("cursor", cursor);
+      return request<ScreenResultListResponse>(
+        `/api/v1/screens/executions/${encodeURIComponent(executionId)}/results?${query}`,
       );
     },
   };

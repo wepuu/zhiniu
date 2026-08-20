@@ -25,6 +25,7 @@ from zhaoniu_api.peer_research.sql_repository import SQLAlchemyPeerResearchRepos
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research.sql_repository import SQLAlchemyResearchRepository
 from zhaoniu_api.research_feed.service import ResearchFeedService
+from zhaoniu_api.screening.service import ScreeningService
 
 
 def build_market_data_service(session: AsyncSession) -> MarketDataSyncService:
@@ -90,3 +91,7 @@ def build_corporate_event_service(session: AsyncSession) -> CorporateEventServic
 
 def build_research_feed_service(session: AsyncSession) -> ResearchFeedService:
     return ResearchFeedService(session, get_settings())
+
+
+def build_screening_service(session: AsyncSession) -> ScreeningService:
+    return ScreeningService(session)

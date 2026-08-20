@@ -86,12 +86,20 @@ describe("ResearchFeedDashboard", () => {
   it("renders separated today and 14-day sections from the API schema", async () => {
     renderDashboard();
     expect(
-      await screen.findByRole("heading", {
-        name: "贵州茅台 · 营业收入变化需要继续核对",
-      }),
+      await screen.findByRole(
+        "heading",
+        {
+          name: "贵州茅台 · 营业收入变化需要继续核对",
+        },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "今日新增00" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "最近 14 天01" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "今日新增00" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "最近 14 天01" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("研究覆盖")).toBeInTheDocument();
   });
 

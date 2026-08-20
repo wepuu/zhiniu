@@ -255,3 +255,33 @@ async def _dispatch_research_alert(signal_id: str) -> dict[str, object]:
 @celery_app.task(name="research_alerts.dispatch")  # type: ignore[untyped-decorator]
 def dispatch_research_alert(signal_id: str) -> dict[str, object]:
     return asyncio.run(_dispatch_research_alert(signal_id))
+
+
+async def _build_screening_snapshot(as_of: str | None) -> dict[str, object]:
+    from zhaoniu_api.composition import build_screening_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_screening_service(session).build_snapshot(
+            datetime.fromisoformat(as_of) if as_of else None
+        )
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="screening.build_snapshot")  # type: ignore[untyped-decorator]
+def build_screening_snapshot(as_of: str | None = None) -> dict[str, object]:
+    return asyncio.run(_build_screening_snapshot(as_of))
+
+
+async def _execute_screen(execution_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_screening_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_screening_service(session).execute(UUID(execution_id))
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="screening.execute")  # type: ignore[untyped-decorator]
+def execute_screen(execution_id: str) -> dict[str, object]:
+    return asyncio.run(_execute_screen(execution_id))

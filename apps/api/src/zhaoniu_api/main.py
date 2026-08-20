@@ -5,6 +5,7 @@ from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.research_feed.routes import router as research_feed_router
 from zhaoniu_api.routes import router
+from zhaoniu_api.screening.routes import router as screening_router
 
 
 def create_app() -> FastAPI:
@@ -24,11 +25,12 @@ def create_app() -> FastAPI:
     app.include_router(router)
     app.include_router(corporate_event_router)
     app.include_router(research_feed_router)
+    app.include_router(screening_router)
 
     @app.middleware("http")
     async def private_cache_control(request, call_next):  # type: ignore[no-untyped-def]
         response = await call_next(request)
-        if request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists")):
+        if request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists", "/api/v1/screens")):
             response.headers["Cache-Control"] = "private, no-store"
             response.headers["Vary"] = "Cookie"
         return response

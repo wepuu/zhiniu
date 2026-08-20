@@ -3,6 +3,9 @@ import asyncio
 import json
 from dataclasses import asdict
 from datetime import date, datetime
+from pathlib import Path
+
+from sqlalchemy import select
 
 from zhaoniu_api.ai_research.models import AIResearchBuildResult
 from zhaoniu_api.composition import (
@@ -13,14 +16,17 @@ from zhaoniu_api.composition import (
     build_peer_research_service,
     build_research_feed_service,
     build_research_service,
+    build_screening_service,
 )
 from zhaoniu_api.corporate_events.models import EventBuildResult
 from zhaoniu_api.database import engine, session_factory
+from zhaoniu_api.db import User
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.market_data.service import SyncResult
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
 from zhaoniu_api.research.models import ResearchBuildResult
+from zhaoniu_api.screening.models import ScreeningBuildResult, ScreenQuery
 
 
 def _date(value: str) -> date:
@@ -80,6 +86,13 @@ def _parser() -> argparse.ArgumentParser:
     signal_projection.add_argument("symbol")
     dispatch_alert = subcommands.add_parser("dispatch-research-alert")
     dispatch_alert.add_argument("signal_id")
+    screening_snapshot = subcommands.add_parser("build-screening-snapshot")
+    screening_snapshot.add_argument("--as-of", type=datetime.fromisoformat)
+    validate_screen = subcommands.add_parser("validate-screen")
+    validate_screen.add_argument("--query-file", type=Path, required=True)
+    execute_screen = subcommands.add_parser("execute-screen")
+    execute_screen.add_argument("--query-file", type=Path, required=True)
+    execute_screen.add_argument("--user-email", required=True)
     return parser
 
 
@@ -94,6 +107,7 @@ async def _run(args: argparse.Namespace) -> None:
                 | IndustrySyncResult
                 | PeerBuildResult
                 | EventBuildResult
+                | ScreeningBuildResult
                 | object
             )
             if args.command == "sync-stock-master":
@@ -152,6 +166,19 @@ async def _run(args: argparse.Namespace) -> None:
                 from uuid import UUID
 
                 result = await build_research_feed_service(session).dispatch(UUID(args.signal_id))
+            elif args.command == "build-screening-snapshot":
+                result = await build_screening_service(session).build_snapshot(args.as_of)
+            elif args.command == "validate-screen":
+                query = ScreenQuery.model_validate_json(args.query_file.read_text(encoding="utf-8"))
+                result = build_screening_service(session).validate(query)
+            elif args.command == "execute-screen":
+                query = ScreenQuery.model_validate_json(args.query_file.read_text(encoding="utf-8"))
+                user_id = await session.scalar(select(User.id).where(User.email == args.user_email))
+                if user_id is None:
+                    raise ValueError("user_not_found")
+                screening = build_screening_service(session)
+                claimed = await screening.create_execution(user_id, query)
+                result = await screening.execute(claimed.id)
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of

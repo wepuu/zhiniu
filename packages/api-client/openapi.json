@@ -1976,6 +1976,294 @@
           }
         }
       }
+    },
+    "/api/v1/screens/catalog": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Screen Catalog",
+        "operationId": "get_screen_catalog_api_v1_screens_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/coverage": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Screen Coverage",
+        "operationId": "get_screen_coverage_api_v1_screens_coverage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenCoverageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/validate": {
+      "post": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Validate Screen",
+        "operationId": "validate_screen_api_v1_screens_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenQuery-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenValidationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/executions": {
+      "post": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Create Screen Execution",
+        "operationId": "create_screen_execution_api_v1_screens_executions_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenExecutionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/executions/{execution_id}": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Screen Execution",
+        "operationId": "get_screen_execution_api_v1_screens_executions__execution_id__get",
+        "parameters": [
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Execution Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/executions/{execution_id}/results": {
+      "get": {
+        "tags": [
+          "research screening"
+        ],
+        "summary": "Get Screen Results",
+        "operationId": "get_screen_results_api_v1_screens_executions__execution_id__results_get",
+        "parameters": [
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Execution Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 40,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenResultListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3066,6 +3354,48 @@
         ],
         "title": "EntitlementsResponse"
       },
+      "EventCriterion": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "event",
+            "title": "Kind",
+            "default": "event"
+          },
+          "event_family": {
+            "type": "string",
+            "enum": [
+              "share_repurchase",
+              "share_pledge",
+              "share_unlock",
+              "regulatory_action"
+            ],
+            "title": "Event Family"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "exists",
+              "not_exists"
+            ],
+            "title": "Mode"
+          },
+          "within_days": {
+            "type": "integer",
+            "maximum": 730.0,
+            "minimum": 1.0,
+            "title": "Within Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_family",
+          "mode",
+          "within_days"
+        ],
+        "title": "EventCriterion"
+      },
       "EventFamily": {
         "type": "string",
         "enum": [
@@ -4138,6 +4468,41 @@
         ],
         "title": "IncomeStatementResponse"
       },
+      "IndustryCriterion": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "industry",
+            "title": "Kind",
+            "default": "industry"
+          },
+          "taxonomy_code": {
+            "type": "string",
+            "title": "Taxonomy Code"
+          },
+          "taxonomy_version": {
+            "type": "string",
+            "title": "Taxonomy Version"
+          },
+          "industry_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Industry Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "taxonomy_code",
+          "taxonomy_version",
+          "industry_codes"
+        ],
+        "title": "IndustryCriterion"
+      },
       "IndustryResponse": {
         "properties": {
           "taxonomy_code": {
@@ -4202,6 +4567,134 @@
           "entitlements"
         ],
         "title": "MeResponse"
+      },
+      "MetricCriterion-Input": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "metric",
+            "title": "Kind",
+            "default": "metric"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "selector": {
+            "type": "string",
+            "enum": [
+              "latest_available",
+              "latest_fy"
+            ],
+            "title": "Selector",
+            "default": "latest_available"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "between"
+            ],
+            "title": "Operator"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Value"
+          },
+          "upper_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "operator",
+          "value"
+        ],
+        "title": "MetricCriterion"
+      },
+      "MetricCriterion-Output": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "metric",
+            "title": "Kind",
+            "default": "metric"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "selector": {
+            "type": "string",
+            "enum": [
+              "latest_available",
+              "latest_fy"
+            ],
+            "title": "Selector",
+            "default": "latest_available"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "between"
+            ],
+            "title": "Operator"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          },
+          "upper_value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "operator",
+          "value"
+        ],
+        "title": "MetricCriterion"
       },
       "Movement": {
         "type": "string",
@@ -4426,6 +4919,120 @@
           "not_built"
         ],
         "title": "PeerComparisonStatus"
+      },
+      "PeerCriterion-Input": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "peer",
+            "title": "Kind",
+            "default": "peer"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "between"
+            ],
+            "title": "Operator"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Value"
+          },
+          "upper_value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "operator",
+          "value"
+        ],
+        "title": "PeerCriterion"
+      },
+      "PeerCriterion-Output": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "peer",
+            "title": "Kind",
+            "default": "peer"
+          },
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "between"
+            ],
+            "title": "Operator"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          },
+          "upper_value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "operator",
+          "value"
+        ],
+        "title": "PeerCriterion"
       },
       "PeerMetricComparisonResponse": {
         "properties": {
@@ -5011,6 +5618,721 @@
           "status"
         ],
         "title": "ResearchSnapshotEnvelope"
+      },
+      "ScreenCatalogResponse": {
+        "properties": {
+          "dsl_version": {
+            "type": "string",
+            "title": "Dsl Version"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenMetricCatalogItem"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "peer_metric_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Peer Metric Codes"
+          },
+          "industries": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenIndustryCatalogItem"
+            },
+            "type": "array",
+            "title": "Industries"
+          },
+          "event_families": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Families"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dsl_version",
+          "metrics",
+          "peer_metric_codes",
+          "industries",
+          "event_families",
+          "limitations"
+        ],
+        "title": "ScreenCatalogResponse"
+      },
+      "ScreenCoverageResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "partial_coverage",
+              "not_built",
+              "building",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "universe_count": {
+            "type": "integer",
+            "title": "Universe Count",
+            "default": 0
+          },
+          "eligible_count": {
+            "type": "integer",
+            "title": "Eligible Count",
+            "default": 0
+          },
+          "excluded_count": {
+            "type": "integer",
+            "title": "Excluded Count",
+            "default": 0
+          },
+          "fact_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Fact Counts"
+          },
+          "taxonomy_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy Code"
+          },
+          "taxonomy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy Version"
+          },
+          "commercial_use_status": {
+            "type": "string",
+            "const": "development_evaluation_only",
+            "title": "Commercial Use Status",
+            "default": "development_evaluation_only"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ScreenCoverageResponse"
+      },
+      "ScreenExecutionCreate": {
+        "properties": {
+          "query": {
+            "$ref": "#/components/schemas/ScreenQuery-Input"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "ScreenExecutionCreate"
+      },
+      "ScreenExecutionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "screening_snapshot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Screening Snapshot Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "query_hash": {
+            "type": "string",
+            "title": "Query Hash"
+          },
+          "engine_version": {
+            "type": "string",
+            "title": "Engine Version"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "result_count": {
+            "type": "integer",
+            "title": "Result Count"
+          },
+          "evaluated_count": {
+            "type": "integer",
+            "title": "Evaluated Count"
+          },
+          "unknown_count": {
+            "type": "integer",
+            "title": "Unknown Count"
+          },
+          "excluded_count": {
+            "type": "integer",
+            "title": "Excluded Count"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "screening_snapshot_id",
+          "status",
+          "query_hash",
+          "engine_version",
+          "knowledge_cutoff",
+          "result_count",
+          "evaluated_count",
+          "unknown_count",
+          "excluded_count",
+          "created_at"
+        ],
+        "title": "ScreenExecutionResponse"
+      },
+      "ScreenIndustryCatalogItem": {
+        "properties": {
+          "taxonomy_code": {
+            "type": "string",
+            "title": "Taxonomy Code"
+          },
+          "taxonomy_version": {
+            "type": "string",
+            "title": "Taxonomy Version"
+          },
+          "industry_code": {
+            "type": "string",
+            "title": "Industry Code"
+          },
+          "industry_name": {
+            "type": "string",
+            "title": "Industry Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "taxonomy_code",
+          "taxonomy_version",
+          "industry_code",
+          "industry_name"
+        ],
+        "title": "ScreenIndustryCatalogItem"
+      },
+      "ScreenMatchedCondition": {
+        "properties": {
+          "criterion_key": {
+            "type": "string",
+            "title": "Criterion Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "effective_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective On"
+          },
+          "evidence_type": {
+            "type": "string",
+            "title": "Evidence Type"
+          },
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evidence Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "criterion_key",
+          "label",
+          "value",
+          "evidence_type",
+          "evidence_id"
+        ],
+        "title": "ScreenMatchedCondition"
+      },
+      "ScreenMetricCatalogItem": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "metric",
+              "valuation"
+            ],
+            "title": "Source Kind"
+          },
+          "selectors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selectors"
+          },
+          "operators": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "gt",
+                "gte",
+                "lt",
+                "lte",
+                "between"
+              ]
+            },
+            "type": "array",
+            "title": "Operators"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "display_name",
+          "dimension",
+          "unit",
+          "source_kind",
+          "selectors",
+          "operators"
+        ],
+        "title": "ScreenMetricCatalogItem"
+      },
+      "ScreenQuery-Input": {
+        "properties": {
+          "dsl_version": {
+            "type": "string",
+            "const": "screen-query-v1",
+            "title": "Dsl Version",
+            "default": "screen-query-v1"
+          },
+          "filters": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/MetricCriterion-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/PeerCriterion-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/IndustryCriterion"
+                },
+                {
+                  "$ref": "#/components/schemas/EventCriterion"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "event": "#/components/schemas/EventCriterion",
+                  "industry": "#/components/schemas/IndustryCriterion",
+                  "metric": "#/components/schemas/MetricCriterion-Input",
+                  "peer": "#/components/schemas/PeerCriterion-Input"
+                }
+              }
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Filters"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/ScreenSort"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "title": "ScreenQuery"
+      },
+      "ScreenQuery-Output": {
+        "properties": {
+          "dsl_version": {
+            "type": "string",
+            "const": "screen-query-v1",
+            "title": "Dsl Version",
+            "default": "screen-query-v1"
+          },
+          "filters": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/MetricCriterion-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/PeerCriterion-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/IndustryCriterion"
+                },
+                {
+                  "$ref": "#/components/schemas/EventCriterion"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "event": "#/components/schemas/EventCriterion",
+                  "industry": "#/components/schemas/IndustryCriterion",
+                  "metric": "#/components/schemas/MetricCriterion-Output",
+                  "peer": "#/components/schemas/PeerCriterion-Output"
+                }
+              }
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Filters"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/ScreenSort"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "title": "ScreenQuery"
+      },
+      "ScreenResultItem": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "stock_name": {
+            "type": "string",
+            "title": "Stock Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "industry_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry Name"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "matched_conditions": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenMatchedCondition"
+            },
+            "type": "array",
+            "title": "Matched Conditions"
+          },
+          "research_path": {
+            "type": "string",
+            "title": "Research Path"
+          },
+          "is_in_watchlist": {
+            "type": "boolean",
+            "title": "Is In Watchlist"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "stock_name",
+          "exchange",
+          "ordinal",
+          "matched_conditions",
+          "research_path",
+          "is_in_watchlist"
+        ],
+        "title": "ScreenResultItem"
+      },
+      "ScreenResultListResponse": {
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Execution Id"
+          },
+          "query_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Query Cutoff"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenResultItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "execution_id",
+          "query_cutoff",
+          "items",
+          "total"
+        ],
+        "title": "ScreenResultListResponse"
+      },
+      "ScreenSort": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field",
+            "default": "symbol"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Direction",
+            "default": "asc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ScreenSort"
+      },
+      "ScreenValidationIssue": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "code",
+          "message"
+        ],
+        "title": "ScreenValidationIssue"
+      },
+      "ScreenValidationResponse": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "canonical_query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreenQuery-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "query_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Hash"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenValidationIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "title": "ScreenValidationResponse"
       },
       "SessionListResponse": {
         "properties": {

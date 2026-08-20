@@ -1144,6 +1144,159 @@ class UserResearchAlertSettingsRecord(Base):
     )
 
 
+class ScreeningSnapshotRecord(Base):
+    __tablename__ = "screening_snapshots"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_screening_snapshot_idempotency"),
+        Index("ix_screening_snapshot_cutoff", "knowledge_cutoff", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    universe_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metric_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    taxonomy_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    taxonomy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    peer_producer_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    event_radar_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    selector_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    coverage_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ScreeningSnapshotMemberRecord(Base):
+    __tablename__ = "screening_snapshot_members"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "symbol", name="uq_screening_snapshot_member"),
+        Index("ix_screening_snapshot_member_status", "snapshot_id", "eligibility_status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("screening_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    issuer_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    eligibility_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    exclusion_reason: Mapped[str | None] = mapped_column(String(120))
+
+
+class ScreeningSnapshotFactRecord(Base):
+    __tablename__ = "screening_snapshot_facts"
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN metric_point_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN valuation_observation_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN peer_position_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN industry_membership_id IS NOT NULL THEN 1 ELSE 0 END + "
+            "CASE WHEN event_radar_snapshot_id IS NOT NULL THEN 1 ELSE 0 END) = 1",
+            name="ck_screening_fact_one_source",
+        ),
+        UniqueConstraint(
+            "snapshot_id", "symbol", "criterion_key", name="uq_screening_snapshot_fact"
+        ),
+        Index("ix_screening_fact_lookup", "snapshot_id", "criterion_key", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("screening_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    criterion_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    metric_point_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("fundamental_metric_points.id", ondelete="RESTRICT")
+    )
+    valuation_observation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("valuation_observations.id", ondelete="RESTRICT")
+    )
+    peer_position_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("company_peer_metric_positions.id", ondelete="RESTRICT"),
+    )
+    industry_membership_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("industry_memberships.id", ondelete="RESTRICT")
+    )
+    event_radar_snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("event_radar_snapshots.id", ondelete="RESTRICT")
+    )
+
+
+class ScreenExecutionRecord(Base):
+    __tablename__ = "screen_executions"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "screening_snapshot_id",
+            "query_hash",
+            "engine_version",
+            name="uq_screen_execution_identity",
+        ),
+        Index("ix_screen_execution_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    screening_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("screening_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    canonical_query: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    query_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    result_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    evaluated_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    unknown_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    excluded_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ScreenResultRecord(Base):
+    __tablename__ = "screen_results"
+    __table_args__ = (
+        UniqueConstraint("execution_id", "symbol", name="uq_screen_result_symbol"),
+        UniqueConstraint("execution_id", "ordinal", name="uq_screen_result_ordinal"),
+        Index("ix_screen_result_execution", "execution_id", "ordinal"),
+        Index("ix_screen_result_symbol", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    execution_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("screen_executions.id", ondelete="CASCADE"), nullable=False
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    ordinal: Mapped[int] = mapped_column(nullable=False)
+    sort_value: Mapped[Decimal | None] = mapped_column(Numeric(30, 8))
+    matched_condition_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    evidence_refs: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
 class UserResearchAlertDeliveryRecord(Base):
     __tablename__ = "user_research_alert_deliveries"
     __table_args__ = (

@@ -12,6 +12,7 @@ from zhaoniu_api.composition import (
     build_fundamental_service,
     build_peer_research_service,
     build_research_service,
+    build_screening_service,
 )
 from zhaoniu_api.config import Settings, get_settings
 from zhaoniu_api.corporate_events.service import CorporateEventService
@@ -27,6 +28,8 @@ from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research_feed.service import ResearchFeedService
+from zhaoniu_api.screening.dispatch import ScreeningDispatcher
+from zhaoniu_api.screening.service import ScreeningService
 
 
 def get_auth_service(
@@ -110,6 +113,18 @@ def get_research_feed_service(
     return ResearchFeedService(session, settings)
 
 
+def get_screening_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ScreeningService:
+    return build_screening_service(session)
+
+
+def get_screening_dispatcher(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ScreeningDispatcher:
+    return ScreeningDispatcher(settings)
+
+
 async def require_csrf(
     request: Request,
     auth: Annotated[AuthService, Depends(get_auth_service)],
@@ -141,4 +156,8 @@ CorporateEventServiceDependency = Annotated[
     CorporateEventService, Depends(get_corporate_event_service)
 ]
 ResearchFeedServiceDependency = Annotated[ResearchFeedService, Depends(get_research_feed_service)]
+ScreeningServiceDependency = Annotated[ScreeningService, Depends(get_screening_service)]
+ScreeningDispatcherDependency = Annotated[
+    ScreeningDispatcher, Depends(get_screening_dispatcher)
+]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 7 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 9 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -108,6 +108,8 @@ account lifecycle remain deferred.
   and read-only API models.
 - `research_feed`: deterministic global signal projection, watchlist-scoped feed queries, coverage,
   in-app alert matching and user-owned delivery state.
+- `screening`: versioned query validation, immutable market-wide screening snapshots,
+  deterministic evidence-linked execution and user-scoped result retrieval.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 ## Personalized research projection
@@ -122,6 +124,15 @@ arrive. AI output is read-only enrichment and never triggers generation from a f
 Alert dispatch is keyed by signal identity and matcher version. Membership must predate the
 signal's `known_at`; therefore historical projection is visible in the feed but never backfilled as
 an alert. Cookie-authenticated writes require a same-session CSRF token and an allowed Origin.
+
+## Research screening
+
+Phase 9 creates a global immutable screening snapshot from retained Phase 2, 6 and 7 facts at one
+knowledge cutoff. It stores typed source references rather than copied financial values. A closed
+DSL is validated against server-owned catalogs before a Celery execution evaluates the snapshot.
+Executions and results carry `user_id`; equivalent execution work is deduplicated. Missing or
+incomplete coverage cannot satisfy a condition, especially a negative event condition. The web
+client renders matched conditions and evidence links but performs no screening calculation.
 
 Reference repositories remain isolated under `references/` and never enter product packages. See
 `OPEN_SOURCE_REUSE.md` for source, commit, license and reuse decisions.

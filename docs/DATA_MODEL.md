@@ -1,4 +1,4 @@
-# Phase 7 Data Model
+# Phase 9 Data Model
 
 ## Entity relationships
 
@@ -140,3 +140,18 @@ Peer research is global shared research and does not carry `user_id`.
 
 There is intentionally no `user_feed_items` table. The feed joins global signals to current
 watchlist membership at query time; only alert settings and deliveries are user-owned.
+
+## Phase 9 screening tables
+
+- `screening_snapshots`: immutable cutoff, producer-version and idempotency envelope for one
+  eligible market universe.
+- `screening_snapshot_members`: canonical stock membership plus deterministic eligibility and
+  exclusion reason.
+- `screening_snapshot_facts`: one typed upstream reference for an available metric, valuation,
+  peer position, industry membership or event-radar fact.
+- `screen_executions`: user-owned canonical query, query hash, lease, status and aggregate counts.
+- `screen_results`: user-owned execution result ordering, matched-condition manifest and evidence
+  reference manifest. Source numerical values remain in their canonical upstream tables.
+
+Screen definitions are not persisted in Phase 9. The immutable execution stores the submitted
+canonical query. Saved and shared screens are a later user-workspace capability.

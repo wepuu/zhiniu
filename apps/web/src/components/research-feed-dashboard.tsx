@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { ResearchSectionTabs } from "@/components/research-section-tabs";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 const sourceLabels = {
@@ -106,6 +107,7 @@ export function ResearchFeedDashboard() {
 
   return (
     <>
+      <ResearchSectionTabs />
       <section className="border-ink/10 flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end">
         <div>
           <p className="font-data text-blue text-[11px] uppercase tracking-[0.18em]">

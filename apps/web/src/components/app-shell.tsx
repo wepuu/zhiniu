@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const navigation = [
-  { href: "/", label: "自选研究", icon: House },
+  { href: "/", label: "研究", icon: House },
   { href: "/watchlist", label: "自选", icon: Bookmark },
   { href: "/alerts", label: "提醒", icon: Bell },
   { href: "/settings", label: "设置", icon: Settings },
@@ -23,7 +23,9 @@ const navigation = [
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return href === "/"
+    ? pathname === "/" || pathname.startsWith("/screens")
+    : pathname.startsWith(href);
 }
 
 function useAlertSummary() {

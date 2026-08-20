@@ -567,6 +567,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screens/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Screen Catalog */
+        get: operations["get_screen_catalog_api_v1_screens_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Screen Coverage */
+        get: operations["get_screen_coverage_api_v1_screens_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate Screen */
+        post: operations["validate_screen_api_v1_screens_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Screen Execution */
+        post: operations["create_screen_execution_api_v1_screens_executions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Screen Execution */
+        get: operations["get_screen_execution_api_v1_screens_executions__execution_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/executions/{execution_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Screen Results */
+        get: operations["get_screen_results_api_v1_screens_executions__execution_id__results_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -937,6 +1039,26 @@ export interface components {
             limits: {
                 [key: string]: number;
             };
+        };
+        /** EventCriterion */
+        EventCriterion: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "event";
+            /**
+             * Event Family
+             * @enum {string}
+             */
+            event_family: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "exists" | "not_exists";
+            /** Within Days */
+            within_days: number;
         };
         /**
          * EventFamily
@@ -1323,6 +1445,20 @@ export interface components {
             /** Parent Net Profit */
             parent_net_profit: string | null;
         };
+        /** IndustryCriterion */
+        IndustryCriterion: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "industry";
+            /** Taxonomy Code */
+            taxonomy_code: string;
+            /** Taxonomy Version */
+            taxonomy_version: string;
+            /** Industry Codes */
+            industry_codes: string[];
+        };
         /** IndustryResponse */
         IndustryResponse: {
             /** Taxonomy Code */
@@ -1346,6 +1482,56 @@ export interface components {
         MeResponse: {
             user: components["schemas"]["UserResponse"];
             entitlements: components["schemas"]["EntitlementsResponse"];
+        };
+        /** MetricCriterion */
+        "MetricCriterion-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "metric";
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Selector
+             * @default latest_available
+             * @enum {string}
+             */
+            selector: "latest_available" | "latest_fy";
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "gt" | "gte" | "lt" | "lte" | "between";
+            /** Value */
+            value: number | string;
+            /** Upper Value */
+            upper_value?: number | string | null;
+        };
+        /** MetricCriterion */
+        "MetricCriterion-Output": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "metric";
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Selector
+             * @default latest_available
+             * @enum {string}
+             */
+            selector: "latest_available" | "latest_fy";
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "gt" | "gte" | "lt" | "lte" | "between";
+            /** Value */
+            value: string;
+            /** Upper Value */
+            upper_value?: string | null;
         };
         /**
          * Movement
@@ -1419,6 +1605,44 @@ export interface components {
          * @enum {string}
          */
         PeerComparisonStatus: "available" | "not_applicable" | "unsupported_template" | "missing_industry" | "missing_metric" | "incomparable_basis" | "insufficient_peers" | "invalid_inputs" | "not_built";
+        /** PeerCriterion */
+        "PeerCriterion-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "peer";
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "gt" | "gte" | "lt" | "lte" | "between";
+            /** Value */
+            value: number | string;
+            /** Upper Value */
+            upper_value?: number | string | null;
+        };
+        /** PeerCriterion */
+        "PeerCriterion-Output": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "peer";
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "gt" | "gte" | "lt" | "lte" | "between";
+            /** Value */
+            value: string;
+            /** Upper Value */
+            upper_value?: string | null;
+        };
         /** PeerMetricComparisonResponse */
         PeerMetricComparisonResponse: {
             /** Metric Code */
@@ -1615,6 +1839,258 @@ export interface components {
              */
             status: "ready" | "not_built";
             snapshot?: components["schemas"]["ResearchSnapshotDocument"] | null;
+        };
+        /** ScreenCatalogResponse */
+        ScreenCatalogResponse: {
+            /** Dsl Version */
+            dsl_version: string;
+            /** Metrics */
+            metrics: components["schemas"]["ScreenMetricCatalogItem"][];
+            /** Peer Metric Codes */
+            peer_metric_codes: string[];
+            /** Industries */
+            industries: components["schemas"]["ScreenIndustryCatalogItem"][];
+            /** Event Families */
+            event_families: string[];
+            /** Limitations */
+            limitations: string[];
+        };
+        /** ScreenCoverageResponse */
+        ScreenCoverageResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "partial_coverage" | "not_built" | "building" | "failed";
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Knowledge Cutoff */
+            knowledge_cutoff?: string | null;
+            /**
+             * Universe Count
+             * @default 0
+             */
+            universe_count: number;
+            /**
+             * Eligible Count
+             * @default 0
+             */
+            eligible_count: number;
+            /**
+             * Excluded Count
+             * @default 0
+             */
+            excluded_count: number;
+            /** Fact Counts */
+            fact_counts?: {
+                [key: string]: number;
+            };
+            /** Taxonomy Code */
+            taxonomy_code?: string | null;
+            /** Taxonomy Version */
+            taxonomy_version?: string | null;
+            /**
+             * Commercial Use Status
+             * @default development_evaluation_only
+             * @constant
+             */
+            commercial_use_status: "development_evaluation_only";
+            /** Limitations */
+            limitations?: string[];
+        };
+        /** ScreenExecutionCreate */
+        ScreenExecutionCreate: {
+            query: components["schemas"]["ScreenQuery-Input"];
+        };
+        /** ScreenExecutionResponse */
+        ScreenExecutionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Screening Snapshot Id
+             * Format: uuid
+             */
+            screening_snapshot_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "succeeded" | "failed";
+            /** Query Hash */
+            query_hash: string;
+            /** Engine Version */
+            engine_version: string;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /** Result Count */
+            result_count: number;
+            /** Evaluated Count */
+            evaluated_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Excluded Count */
+            excluded_count: number;
+            /** Error Summary */
+            error_summary?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /** ScreenIndustryCatalogItem */
+        ScreenIndustryCatalogItem: {
+            /** Taxonomy Code */
+            taxonomy_code: string;
+            /** Taxonomy Version */
+            taxonomy_version: string;
+            /** Industry Code */
+            industry_code: string;
+            /** Industry Name */
+            industry_name: string;
+        };
+        /** ScreenMatchedCondition */
+        ScreenMatchedCondition: {
+            /** Criterion Key */
+            criterion_key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string | boolean;
+            /** Unit */
+            unit?: string | null;
+            /** Effective On */
+            effective_on?: string | null;
+            /** Evidence Type */
+            evidence_type: string;
+            /**
+             * Evidence Id
+             * Format: uuid
+             */
+            evidence_id: string;
+        };
+        /** ScreenMetricCatalogItem */
+        ScreenMetricCatalogItem: {
+            /** Code */
+            code: string;
+            /** Display Name */
+            display_name: string;
+            /** Dimension */
+            dimension: string;
+            /** Unit */
+            unit: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "metric" | "valuation";
+            /** Selectors */
+            selectors: string[];
+            /** Operators */
+            operators: ("gt" | "gte" | "lt" | "lte" | "between")[];
+        };
+        /** ScreenQuery */
+        "ScreenQuery-Input": {
+            /**
+             * Dsl Version
+             * @default screen-query-v1
+             * @constant
+             */
+            dsl_version: "screen-query-v1";
+            /** Filters */
+            filters: (components["schemas"]["MetricCriterion-Input"] | components["schemas"]["PeerCriterion-Input"] | components["schemas"]["IndustryCriterion"] | components["schemas"]["EventCriterion"])[];
+            sort?: components["schemas"]["ScreenSort"];
+        };
+        /** ScreenQuery */
+        "ScreenQuery-Output": {
+            /**
+             * Dsl Version
+             * @default screen-query-v1
+             * @constant
+             */
+            dsl_version: "screen-query-v1";
+            /** Filters */
+            filters: (components["schemas"]["MetricCriterion-Output"] | components["schemas"]["PeerCriterion-Output"] | components["schemas"]["IndustryCriterion"] | components["schemas"]["EventCriterion"])[];
+            sort?: components["schemas"]["ScreenSort"];
+        };
+        /** ScreenResultItem */
+        ScreenResultItem: {
+            /** Symbol */
+            symbol: string;
+            /** Stock Name */
+            stock_name: string;
+            /** Exchange */
+            exchange: string;
+            /** Industry Name */
+            industry_name?: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /** Matched Conditions */
+            matched_conditions: components["schemas"]["ScreenMatchedCondition"][];
+            /** Research Path */
+            research_path: string;
+            /** Is In Watchlist */
+            is_in_watchlist: boolean;
+        };
+        /** ScreenResultListResponse */
+        ScreenResultListResponse: {
+            /**
+             * Execution Id
+             * Format: uuid
+             */
+            execution_id: string;
+            /**
+             * Query Cutoff
+             * Format: date-time
+             */
+            query_cutoff: string;
+            /** Items */
+            items: components["schemas"]["ScreenResultItem"][];
+            /** Total */
+            total: number;
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** ScreenSort */
+        ScreenSort: {
+            /**
+             * Field
+             * @default symbol
+             */
+            field: string;
+            /**
+             * Direction
+             * @default asc
+             * @enum {string}
+             */
+            direction: "asc" | "desc";
+        };
+        /** ScreenValidationIssue */
+        ScreenValidationIssue: {
+            /** Path */
+            path: string;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ScreenValidationResponse */
+        ScreenValidationResponse: {
+            /** Valid */
+            valid: boolean;
+            canonical_query?: components["schemas"]["ScreenQuery-Output"] | null;
+            /** Query Hash */
+            query_hash?: string | null;
+            /** Issues */
+            issues?: components["schemas"]["ScreenValidationIssue"][];
         };
         /** SessionListResponse */
         SessionListResponse: {
@@ -2960,6 +3436,183 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlertSettingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_screen_catalog_api_v1_screens_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenCatalogResponse"];
+                };
+            };
+        };
+    };
+    get_screen_coverage_api_v1_screens_coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenCoverageResponse"];
+                };
+            };
+        };
+    };
+    validate_screen_api_v1_screens_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenQuery-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenValidationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_screen_execution_api_v1_screens_executions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenExecutionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenExecutionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_screen_execution_api_v1_screens_executions__execution_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenExecutionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_screen_results_api_v1_screens_executions__execution_id__results_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenResultListResponse"];
                 };
             };
             /** @description Validation Error */

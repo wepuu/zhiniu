@@ -48,19 +48,30 @@ immutable event versions, point-in-time radar snapshots, neutral attention rules
 separately verified desktop/mobile event-radar flows. News, source-conflict fusion and expanded event
 families remain deferred.
 
-## Phase 8 - Personalized Research Feed & In-App Research Alerts (current)
+## Phase 8 - Personalized Research Feed & In-App Research Alerts
 
 Global deterministic research-signal projection from Phase 3, 6 and 7 artifacts; watchlist-scoped
 14-day research feed with anchored cursor ordering; per-source coverage; CSRF-protected alert
 preferences; and idempotent in-app delivery only for signals known after watchlist membership.
 Email, digest schedules, quiet hours and push channels remain deferred.
 
-## Phase 9 - Factor / Backtest
+## Phase 9 - Deterministic Research Screening (current)
 
-Versioned factor definitions, deterministic engines, survivorship-bias controls, research
-simulations, backtest-grade point-in-time datasets, and explicit non-advice language.
+Versioned allow-listed query DSL, immutable point-in-time screening snapshots, user-owned
+idempotent executions, evidence-linked results, background tasks and separately composed
+desktop/mobile discovery workflows. Natural-language query parsing, saved screens, OR/NOT groups
+and full-market backfill remain deferred.
 
-## Phase 10 - Commercialization
+## Phase 10 - Advanced Research Workspace
+
+Company comparison, saved screens, report export and professional research workspace expansion.
+
+## Phase 11 - Commercialization
 
 Plan catalog, entitlement service, subscriptions, payment integration, admin, observability, privacy,
 licensed data, and production deployment hardening.
+
+## Phase 12 - Factor / Backtest
+
+Versioned factor definitions, deterministic engines, survivorship-bias controls, research
+simulations, backtest-grade point-in-time datasets, and explicit non-advice language.
