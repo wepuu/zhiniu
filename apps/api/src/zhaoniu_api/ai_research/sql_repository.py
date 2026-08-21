@@ -42,9 +42,7 @@ class SQLAlchemyAIResearchRepository:
             generated_at=row.generated_at,
         )
 
-    async def find_output_by_key(
-        self, idempotency_key: str
-    ) -> AIResearchOutputDocument | None:
+    async def find_output_by_key(self, idempotency_key: str) -> AIResearchOutputDocument | None:
         row = await self._session.scalar(
             select(AIResearchOutputRecord).where(
                 AIResearchOutputRecord.idempotency_key == idempotency_key
@@ -52,9 +50,7 @@ class SQLAlchemyAIResearchRepository:
         )
         return self._output(row) if row else None
 
-    async def latest_output(
-        self, canonical_symbol: str
-    ) -> AIResearchOutputDocument | None:
+    async def latest_output(self, canonical_symbol: str) -> AIResearchOutputDocument | None:
         row = await self._session.scalar(
             select(AIResearchOutputRecord)
             .where(AIResearchOutputRecord.symbol == canonical_symbol)
@@ -173,6 +169,9 @@ class SQLAlchemyAIResearchRepository:
                     task_type=audit.task_type,
                     provider=audit.provider,
                     model=audit.model,
+                    requested_model=audit.requested_model,
+                    actual_model=audit.actual_model,
+                    capability_mode=audit.capability_mode,
                     input_tokens=audit.input_tokens,
                     output_tokens=audit.output_tokens,
                     latency_ms=audit.latency_ms,
@@ -192,9 +191,7 @@ class SQLAlchemyAIResearchRepository:
             await self._session.rollback()
             raise
 
-    async def complete_run(
-        self, output: AIResearchOutputDocument, *, idempotency_key: str
-    ) -> None:
+    async def complete_run(self, output: AIResearchOutputDocument, *, idempotency_key: str) -> None:
         try:
             await self._session.execute(
                 insert(AIResearchOutputRecord)

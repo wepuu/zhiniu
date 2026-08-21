@@ -30,6 +30,69 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def _deliver_transactional_email(
+    delivery_id: str, message_data: dict[str, object]
+) -> dict[str, object]:
+    from sqlalchemy import select
+    from zhaoniu_api.auth.email import (
+        TransactionalEmail,
+        TransactionalEmailError,
+        build_email_gateway,
+    )
+    from zhaoniu_api.config import get_settings
+    from zhaoniu_api.database import session_factory
+    from zhaoniu_api.db import TransactionalEmailDeliveryRecord
+
+    async with session_factory() as session:
+        delivery = await session.scalar(
+            select(TransactionalEmailDeliveryRecord)
+            .where(TransactionalEmailDeliveryRecord.id == UUID(delivery_id))
+            .with_for_update()
+        )
+        if delivery is None:
+            return {"status": "missing", "delivery_id": delivery_id}
+        if delivery.status in {"submitted", "delivered"}:
+            return {"status": "skipped", "delivery_id": delivery_id}
+
+        gateway = build_email_gateway(get_settings())
+        try:
+            result = await gateway.send(TransactionalEmail(**message_data))  # type: ignore[arg-type]
+        except TransactionalEmailError as error:
+            delivery.status = "failed"
+            delivery.error_code = str(error)[:80]
+            await session.commit()
+            raise
+
+        now = datetime.now().astimezone()
+        delivery.provider = result.provider
+        delivery.provider_message_id = result.message_id
+        delivery.status = "submitted"
+        delivery.error_code = None
+        delivery.sent_at = now
+        delivery.submitted_at = now
+        delivery.last_event_at = now
+        await session.commit()
+        return {
+            "status": "submitted",
+            "delivery_id": delivery_id,
+            "provider": result.provider,
+        }
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    name="transactional_email.deliver",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def deliver_transactional_email(
+    delivery_id: str, message_data: dict[str, object]
+) -> dict[str, object]:
+    """Submit one idempotent transactional email outside the request lifecycle."""
+    return asyncio.run(_deliver_transactional_email(delivery_id, message_data))
+
+
 async def _sync_daily_bars(symbol: str, start: str | None, end: str | None) -> dict[str, object]:
     from zhaoniu_api.composition import build_market_data_service
     from zhaoniu_api.database import session_factory

@@ -33,13 +33,19 @@ class Settings(BaseSettings):
     commercialization_status: Literal["review_required", "approved", "blocked"] = "review_required"
     legal_review_status: Literal["review_required", "approved", "blocked"] = "review_required"
     data_use_status: Literal["review_required", "approved", "blocked"] = "review_required"
-    email_delivery_mode: Literal["disabled", "smtp"] = "disabled"
+    email_delivery_mode: Literal["disabled", "smtp", "resend"] = "disabled"
     email_from_address: str = ""
     smtp_host: str = ""
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_use_tls: bool = True
+    resend_api_key: str = ""
+    resend_from_name: str = "知牛研究"
+    resend_from_email: str = ""
+    resend_sending_domain: str = ""
+    resend_webhook_secret: str = ""
+    email_diagnostic_recipient: str = ""
     email_verification_ttl_hours: int = Field(default=24, ge=1, le=168)
     password_reset_ttl_minutes: int = Field(default=30, ge=10, le=120)
     market_data_provider: Literal["akshare"] = "akshare"
@@ -49,6 +55,9 @@ class Settings(BaseSettings):
     llm_max_attempts: int = Field(default=4, ge=1, le=4)
     llm_per_model_timeout_seconds: float = Field(default=75, gt=0, le=180)
     llm_run_deadline_seconds: float = Field(default=240, gt=0, le=600)
+    llm_structured_output_mode: Literal["json_schema", "json_object"] = "json_schema"
+    llm_provider_max_concurrency: int = Field(default=2, ge=1, le=16)
+    llm_provider_daily_call_limit: int = Field(default=100, ge=1, le=10000)
     screen_parser_enabled: bool = False
     screen_parser_model_chain: str = ""
     screen_parser_max_attempts: int = Field(default=2, ge=1, le=2)
@@ -67,6 +76,8 @@ class Settings(BaseSettings):
     coverage_provider_rate_limit: int = Field(default=30, ge=1, le=600)
     beta_feedback_rate_limit: int = Field(default=5, ge=1, le=30)
     beta_learning_min_group_size: int = Field(default=3, ge=2, le=20)
+    operator_elevation_minutes: int = Field(default=15, ge=5, le=30)
+    operator_user_search_rate_limit: int = Field(default=30, ge=5, le=120)
 
     @property
     def llm_models(self) -> tuple[str, ...]:
@@ -132,6 +143,13 @@ class Settings(BaseSettings):
             not self.smtp_host or not self.email_from_address
         ):
             raise ValueError("production_email_configuration_incomplete")
+        if self.email_delivery_mode == "resend" and (
+            not self.resend_api_key
+            or not self.resend_from_email
+            or not self.resend_sending_domain
+            or not self.resend_webhook_secret
+        ):
+            raise ValueError("production_resend_configuration_incomplete")
         if self.screen_parser_enabled and (
             len(self.screen_parser_hmac_secret) < 32
             or self.screen_parser_hmac_secret == "development-only-change-me"

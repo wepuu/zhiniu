@@ -28,6 +28,7 @@ from zhaoniu_api.db import User
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.market_data.service import SyncResult
 from zhaoniu_api.operations import evaluate_beta_readiness
+from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
 from zhaoniu_api.research.models import ResearchBuildResult
@@ -131,6 +132,15 @@ def _parser() -> argparse.ArgumentParser:
     feedback_status = subcommands.add_parser("update-beta-feedback-status")
     feedback_status.add_argument("feedback_id", type=UUID)
     feedback_status.add_argument("status", choices=("triaged", "resolved"))
+    grant_operator = subcommands.add_parser("grant-operator")
+    grant_operator.add_argument("--email", required=True)
+    grant_operator.add_argument(
+        "--role", choices=("viewer", "support", "operations", "security_admin"), required=True
+    )
+    revoke_operator = subcommands.add_parser("revoke-operator")
+    revoke_operator.add_argument("--email", required=True)
+    subcommands.add_parser("list-operators")
+    subcommands.add_parser("check-production-readiness")
     return parser
 
 
@@ -272,6 +282,42 @@ async def _run(args: argparse.Namespace) -> None:
                 result = await build_coverage_service(session).update_feedback_status(
                     args.feedback_id, args.status
                 )
+            elif args.command == "grant-operator":
+                membership = await OperatorService(session, get_settings()).grant_operator(
+                    args.email, args.role
+                )
+                result = {
+                    "status": "granted",
+                    "user_id": membership.user_id,
+                    "role": membership.role,
+                }
+            elif args.command == "revoke-operator":
+                revoked = await OperatorService(session, get_settings()).revoke_operator(args.email)
+                result = {"status": "revoked" if revoked else "not_found"}
+            elif args.command == "list-operators":
+                rows = await OperatorService(session, get_settings()).list_operators()
+                result = [
+                    {
+                        "user_id": membership.user_id,
+                        "email": email,
+                        "role": membership.role,
+                        "created_at": membership.created_at,
+                    }
+                    for membership, email in rows
+                ]
+            elif args.command == "check-production-readiness":
+                settings = get_settings()
+                if settings.app_env != "production":
+                    result = {
+                        "status": "not_production_environment",
+                        "environment": settings.app_env,
+                    }
+                else:
+                    settings.validate_runtime_security()
+                    result = {
+                        "status": "configuration_valid",
+                        "environment": settings.app_env,
+                    }
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of

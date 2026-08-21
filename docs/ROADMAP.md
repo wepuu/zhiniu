@@ -83,13 +83,21 @@ production-safe configuration, liveness/readiness probes, structured request log
 packaging, backup/restore drills and an explicit controlled-Beta release gate. Automated data-rights
 workflows and public launch remain deferred.
 
-## Phase 13 - Beta Learning & Research Coverage Operations (current)
+## Phase 13 - Beta Learning & Research Coverage Operations
 
 Immutable priority-universe and research-coverage snapshots, explicit availability/freshness/source
 health axes, deterministic allow-listed gap planning, operator-triggered bounded backfill with
 leases and auditable item outcomes, structured in-product Beta feedback, and aggregate 7/30-day
 learning reports with small-cell suppression. There is no scheduled full-market backfill, automatic
 AI generation, behavioral telemetry, research score, or public launch expansion.
+
+## Phase 14 - Operations Console & Production Provider Readiness (current)
+
+Internal role-based operations console, password-confirmed high-risk actions, immutable operator
+audit, exact account support lookup, coverage and AI job dispatch, provider health diagnostics,
+Resend background delivery/webhook lifecycle, and explicit DeepSeek structured-output capability
+modes. The console is not a general admin CRUD system and does not expose provider secrets,
+passwords, tokens, raw prompts, private screening text, or unrestricted database access.
 
 ## Future - Factor / Backtest
 

@@ -8,9 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from zhaoniu_api.access_control.routes import router as access_control_router
+from zhaoniu_api.auth.webhook_routes import router as webhook_router
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.coverage.routes import router as coverage_router
+from zhaoniu_api.operations_console.routes import router as operations_console_router
 from zhaoniu_api.research_feed.routes import router as research_feed_router
 from zhaoniu_api.routes import router
 from zhaoniu_api.screening.routes import router as screening_router
@@ -39,6 +41,8 @@ def create_app() -> FastAPI:
     app.include_router(screening_router)
     app.include_router(access_control_router)
     app.include_router(coverage_router)
+    app.include_router(operations_console_router)
+    app.include_router(webhook_router)
     app.include_router(system_router)
 
     @app.middleware("http")
@@ -53,7 +57,10 @@ def create_app() -> FastAPI:
         private_screen = request.url.path.startswith("/api/v1/screens") and (
             request.url.path not in public_screen_paths
         )
-        if request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists")) or private_screen:
+        if (
+            request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists", "/api/v1/admin"))
+            or private_screen
+        ):
             response.headers["Cache-Control"] = "private, no-store"
             response.headers["Vary"] = "Cookie, Origin"
         response.headers.setdefault("X-Content-Type-Options", "nosniff")

@@ -97,6 +97,23 @@ export type CoverageDimension = components["schemas"]["CoverageDimension"];
 export type BetaFeedbackCreate = components["schemas"]["BetaFeedbackCreate"];
 export type BetaFeedbackResponse =
   components["schemas"]["BetaFeedbackResponse"];
+export type OperatorContext = components["schemas"]["OperatorContext"];
+export type OperatorDashboardResponse =
+  components["schemas"]["OperatorDashboardResponse"];
+export type OperatorUserListResponse =
+  components["schemas"]["OperatorUserListResponse"];
+export type OperatorFeedbackListResponse =
+  components["schemas"]["OperatorFeedbackListResponse"];
+export type OperatorAuditListResponse =
+  components["schemas"]["OperatorAuditListResponse"];
+export type ProviderStatusListResponse =
+  components["schemas"]["ProviderStatusListResponse"];
+export type OperatorActionResponse =
+  components["schemas"]["OperatorActionResponse"];
+export type OperatorInviteBatchResponse =
+  components["schemas"]["OperatorInviteBatchResponse"];
+export type OperatorAccessCodeResponse =
+  components["schemas"]["OperatorAccessCodeResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -522,6 +539,84 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         "/api/v1/me/beta-feedback",
         "POST",
         payload,
+      );
+    },
+    getOperatorContext() {
+      return request<OperatorContext>("/api/v1/admin/context");
+    },
+    elevateOperator(password: string) {
+      return jsonRequest<OperatorContext>(
+        "/api/v1/admin/auth/elevate",
+        "POST",
+        {
+          password,
+        },
+      );
+    },
+    getOperatorDashboard() {
+      return request<OperatorDashboardResponse>("/api/v1/admin/dashboard");
+    },
+    getOperatorUsers(q = "") {
+      const query = new URLSearchParams({ q, limit: "30" });
+      return request<OperatorUserListResponse>(`/api/v1/admin/users?${query}`);
+    },
+    setOperatorUserStatus(userId: string, targetStatus: "active" | "disabled") {
+      const query = new URLSearchParams({ target_status: targetStatus });
+      return request<OperatorActionResponse>(
+        `/api/v1/admin/users/${encodeURIComponent(userId)}/status?${query}`,
+        { method: "POST" },
+      );
+    },
+    revokeOperatorUserSessions(userId: string) {
+      return request<OperatorActionResponse>(
+        `/api/v1/admin/users/${encodeURIComponent(userId)}/revoke-sessions`,
+        { method: "POST" },
+      );
+    },
+    resendOperatorVerification(userId: string) {
+      return request<OperatorActionResponse>(
+        `/api/v1/admin/users/${encodeURIComponent(userId)}/resend-verification`,
+        { method: "POST" },
+      );
+    },
+    createOperatorInviteBatch(count: number, expiresInDays = 14) {
+      return jsonRequest<OperatorInviteBatchResponse>(
+        "/api/v1/admin/invite-batches",
+        "POST",
+        { count, expires_in_days: expiresInDays },
+      );
+    },
+    issueOperatorAccessCode(userId: string, term: "month" | "year") {
+      return jsonRequest<OperatorAccessCodeResponse>(
+        `/api/v1/admin/users/${encodeURIComponent(userId)}/access-codes`,
+        "POST",
+        { term, expires_in_days: 7 },
+      );
+    },
+    getOperatorFeedback(status?: "new" | "triaged" | "resolved") {
+      const query = new URLSearchParams({ limit: "50" });
+      if (status) query.set("feedback_status", status);
+      return request<OperatorFeedbackListResponse>(
+        `/api/v1/admin/feedback?${query}`,
+      );
+    },
+    updateOperatorFeedback(feedbackId: string, status: "triaged" | "resolved") {
+      return jsonRequest<OperatorActionResponse>(
+        `/api/v1/admin/feedback/${encodeURIComponent(feedbackId)}`,
+        "PATCH",
+        { status },
+      );
+    },
+    getOperatorAudit() {
+      return request<OperatorAuditListResponse>("/api/v1/admin/audit?limit=80");
+    },
+    getProviderStatuses() {
+      return request<ProviderStatusListResponse>("/api/v1/admin/providers");
+    },
+    diagnoseProvider(provider: "deepseek" | "resend") {
+      return request<ProviderStatusListResponse>(
+        `/api/v1/admin/providers/${provider}/diagnose`,
+        { method: "POST" },
       );
     },
   };

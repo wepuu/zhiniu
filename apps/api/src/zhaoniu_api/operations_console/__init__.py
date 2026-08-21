@@ -1,0 +1,1 @@
+"""Internal operator console domain."""

@@ -28,6 +28,8 @@ from zhaoniu_api.infrastructure.sql_repositories import (
     SQLAlchemyStockRepository,
     SQLAlchemyWatchlistRepository,
 )
+from zhaoniu_api.operations_console.models import OperatorContext
+from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
 from zhaoniu_api.research.service import DeterministicResearchService
@@ -149,6 +151,27 @@ def get_coverage_service(
     return build_coverage_service(session)
 
 
+def get_operator_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OperatorService:
+    return OperatorService(session, settings)
+
+
+async def get_operator_context(
+    request: Request,
+    user: Annotated[UserAccount, Depends(get_current_user)],
+    auth: Annotated[AuthService, Depends(get_auth_service)],
+    service: Annotated[OperatorService, Depends(get_operator_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OperatorContext:
+    token = request.cookies.get(settings.auth_cookie_name)
+    context = await service.context(user.id, await auth.operator_elevation(token))
+    if context is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="operator_required")
+    return context
+
+
 async def require_csrf(
     request: Request,
     auth: Annotated[AuthService, Depends(get_auth_service)],
@@ -189,4 +212,6 @@ NaturalLanguageScreeningServiceDependency = Annotated[
     NaturalLanguageScreeningService, Depends(get_natural_language_screening_service)
 ]
 CoverageServiceDependency = Annotated[ResearchCoverageService, Depends(get_coverage_service)]
+OperatorServiceDependency = Annotated[OperatorService, Depends(get_operator_service)]
+OperatorContextDependency = Annotated[OperatorContext, Depends(get_operator_context)]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

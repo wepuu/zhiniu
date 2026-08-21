@@ -66,6 +66,8 @@ class LLMUsage(BaseModel):
     latency_ms: int
     cost_microunits: int | None = None
     status: str
+    requested_model: str | None = None
+    capability_mode: str | None = None
 
 
 class LLMStructuredResponse(BaseModel):

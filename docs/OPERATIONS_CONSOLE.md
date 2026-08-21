@@ -1,0 +1,39 @@
+# Operations Console Runbook
+
+Phase 14 exposes the internal console at `/admin`. It uses the normal cookie session and CSRF
+boundary; operator membership is an additional server-side authorization layer.
+
+## Roles
+
+- `viewer`: dashboard, coverage, provider and audit reads only.
+- `support`: exact user lookup, session revocation, email-verification resend, invitations,
+  user-bound access codes and feedback triage.
+- `operations`: coverage/AI task dispatch, feedback triage and provider diagnostics.
+- `security_admin`: the combined capability set plus account status changes.
+
+Grant or revoke membership through the explicit CLI. Membership changes and all sensitive console
+actions are audited.
+
+```text
+uv run python -m zhaoniu_api.cli grant-operator user@example.com security_admin
+uv run python -m zhaoniu_api.cli list-operators
+uv run python -m zhaoniu_api.cli revoke-operator user@example.com
+```
+
+Session revocation, account status, email resend, invitation/access-code creation, provider
+diagnostics and background research execution require a recent password confirmation. The
+elevation expires after 15 minutes by default. Mobile is intentionally read-only for high-risk
+actions.
+
+The audit stream stores action keys, actor role, bounded target identity, outcome and safe metadata.
+It must never contain passwords, plaintext activation/invitation codes, session tokens, API keys,
+full email bodies, provider responses, model prompts or natural-language screening input.
+
+Before a production launch, run:
+
+```text
+uv run python -m zhaoniu_api.cli check-production-readiness
+```
+
+This command only reports `configuration_valid` when `APP_ENV=production` and all production
+security constraints pass.

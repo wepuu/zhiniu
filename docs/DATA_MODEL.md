@@ -1,4 +1,4 @@
-# Phase 13 Data Model
+# Phase 14 Data Model
 
 ## Entity relationships
 
@@ -213,3 +213,18 @@ historical rows, and the frontend is never the authorization boundary.
 
 Coverage snapshots never replace immutable financial, research, peer, event, screening, or AI
 artifacts. They are a versioned operational projection over those retained sources.
+
+## Phase 14 operations and provider tables
+
+- `operator_memberships`: one active, server-granted role per operator account. This is separate
+  from customer feature access and can be revoked without changing the user identity.
+- `operator_audit_events`: append-only actor role, action key, target, result and bounded safe
+  metadata for console and CLI actions.
+- `provider_diagnostic_runs`: redacted status, capability, latency and reason for explicit Resend or
+  DeepSeek checks; no credential, prompt or provider payload is stored.
+- `transactional_email_provider_events`: deduplicated signed webhook lifecycle facts linked by the
+  provider message identity. Raw webhook payloads are not retained.
+- `transactional_email_deliveries` adds a logical idempotency key and submitted/delivered/event
+  times. `llm_calls` adds requested model, provider-returned model and capability mode.
+- `user_sessions.operator_elevated_until` is a short-lived password-confirmed authorization fact;
+  it does not create another session or weaken CSRF/origin enforcement.

@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 13 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 14 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -123,6 +123,9 @@ not misrepresent the durable database as unavailable.
   saved-screen/result retrieval.
 - `access_control`: invitation and activation code lifecycle, immutable plan versions, effective
   feature resolution, access limits and production activation gates.
+- `operations_console`: role capabilities, step-up authorization, bounded operational actions,
+  provider diagnostics and immutable audit; it coordinates existing services rather than bypassing
+  their domain boundaries.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 ## Personalized research projection

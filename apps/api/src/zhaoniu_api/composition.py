@@ -79,7 +79,12 @@ def build_ai_research_service(session: AsyncSession) -> AIResearchService:
         stocks=SQLAlchemyStockRepository(session),
         research=SQLAlchemyResearchRepository(session),
         ai_research=SQLAlchemyAIResearchRepository(session),
-        gateway=LiteLLMGateway(),
+        gateway=LiteLLMGateway(
+            settings.llm_structured_output_mode,
+            redis_url=settings.redis_url,
+            max_concurrency=settings.llm_provider_max_concurrency,
+            daily_call_limit=settings.llm_provider_daily_call_limit,
+        ),
         options=AIResearchOptions(
             enabled=settings.llm_enabled,
             model_chain=settings.llm_models,
@@ -113,7 +118,12 @@ def build_natural_language_screening_service(
     settings = get_settings()
     return NaturalLanguageScreeningService(
         session,
-        LiteLLMGateway(),
+        LiteLLMGateway(
+            settings.llm_structured_output_mode,
+            redis_url=settings.redis_url,
+            max_concurrency=settings.llm_provider_max_concurrency,
+            daily_call_limit=settings.llm_provider_daily_call_limit,
+        ),
         NaturalLanguageParserOptions(
             enabled=settings.screen_parser_enabled,
             model_chain=settings.screen_parser_models,

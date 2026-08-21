@@ -165,3 +165,6 @@ class LLMCallAudit:
     status: str
     finish_reason: str | None = None
     error_code: str | None = None
+    requested_model: str | None = None
+    actual_model: str | None = None
+    capability_mode: str | None = None

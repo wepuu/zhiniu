@@ -108,12 +108,16 @@ class TransactionalEmailDeliveryRecord(Base):
     template_version: Mapped[str] = mapped_column(String(32), nullable=False)
     provider: Mapped[str] = mapped_column(String(48), nullable=False)
     provider_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    logical_delivery_key: Mapped[str | None] = mapped_column(String(96), nullable=True)
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class UserLegalAcceptanceRecord(Base):
@@ -156,6 +160,109 @@ class UserSessionRecord(Base):
     last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    operator_elevated_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class OperatorMembershipRecord(Base):
+    __tablename__ = "operator_memberships"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('viewer', 'support', 'operations', 'security_admin')",
+            name="ck_operator_membership_role",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OperatorAuditEventRecord(Base):
+    __tablename__ = "operator_audit_events"
+    __table_args__ = (
+        CheckConstraint(
+            "result IN ('succeeded', 'denied', 'failed')", name="ck_operator_audit_result"
+        ),
+        Index("ix_operator_audit_created", "created_at", "action_key"),
+        Index("ix_operator_audit_actor", "actor_user_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    actor_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    action_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(120))
+    request_id: Mapped[str | None] = mapped_column(String(80))
+    result: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(96))
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProviderDiagnosticRunRecord(Base):
+    __tablename__ = "provider_diagnostic_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('disabled', 'unknown', 'healthy', 'degraded', 'unavailable')",
+            name="ck_provider_diagnostic_status",
+        ),
+        Index("ix_provider_diagnostic_latest", "provider", "capability", "checked_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    provider: Mapped[str] = mapped_column(String(48), nullable=False)
+    capability: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    latency_ms: Mapped[int | None]
+    reason_code: Mapped[str | None] = mapped_column(String(96))
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+
+
+class TransactionalEmailProviderEventRecord(Base):
+    __tablename__ = "transactional_email_provider_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider", "provider_event_id", name="uq_transactional_email_provider_event"
+        ),
+        Index(
+            "ix_email_provider_event_message",
+            "provider",
+            "provider_message_id",
+            "event_created_at",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    provider: Mapped[str] = mapped_column(String(48), nullable=False)
+    provider_event_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_message_id: Mapped[str | None] = mapped_column(String(200))
+    event_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(96))
 
 
 class StockRecord(TimestampMixin, Base):
@@ -952,6 +1059,9 @@ class LLMCallRecord(Base):
     task_type: Mapped[str] = mapped_column(String(80), index=True)
     provider: Mapped[str] = mapped_column(String(40))
     model: Mapped[str] = mapped_column(String(160))
+    requested_model: Mapped[str | None] = mapped_column(String(160))
+    actual_model: Mapped[str | None] = mapped_column(String(160))
+    capability_mode: Mapped[str | None] = mapped_column(String(32))
     input_tokens: Mapped[int]
     output_tokens: Mapped[int]
     latency_ms: Mapped[int]

@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from secrets import token_urlsafe
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pwdlib import PasswordHash
 from sqlalchemy import func, select, text, update
@@ -210,6 +210,54 @@ class AuthService:
             await self._session.commit()
         return user_to_domain(user)
 
+    async def verify_current_password(self, user_id: UUID, password: str) -> bool:
+        user = await self._session.get(User, user_id)
+        return bool(
+            user is not None
+            and user.status == "active"
+            and self._password_hash.verify(password, user.password_hash)
+        )
+
+    async def elevate_operator_session(self, token: str | None, *, minutes: int) -> datetime | None:
+        if not token:
+            return None
+        elevated_until = datetime.now(UTC) + timedelta(minutes=minutes)
+        row = await self._session.scalar(
+            update(UserSessionRecord)
+            .where(
+                UserSessionRecord.token_hash == hash_token(token),
+                UserSessionRecord.revoked_at.is_(None),
+                UserSessionRecord.expires_at > datetime.now(UTC),
+            )
+            .values(operator_elevated_until=elevated_until)
+            .returning(UserSessionRecord)
+        )
+        await self._session.commit()
+        return elevated_until if row is not None else None
+
+    async def operator_elevation(self, token: str | None) -> datetime | None:
+        if not token:
+            return None
+        return await self._session.scalar(
+            select(UserSessionRecord.operator_elevated_until).where(
+                UserSessionRecord.token_hash == hash_token(token),
+                UserSessionRecord.revoked_at.is_(None),
+                UserSessionRecord.expires_at > datetime.now(UTC),
+            )
+        )
+
+    async def revoke_all_sessions(self, user_id: UUID) -> int:
+        result = await self._session.execute(
+            update(UserSessionRecord)
+            .where(
+                UserSessionRecord.user_id == user_id,
+                UserSessionRecord.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC), operator_elevated_until=None)
+        )
+        await self._session.commit()
+        return int(getattr(result, "rowcount", 0) or 0)
+
     async def logout(self, token: str | None) -> None:
         if not token:
             return
@@ -354,18 +402,20 @@ class AuthService:
             .values(revoked_at=now)
         )
         token = token_urlsafe(48)
-        self._session.add(
-            PasswordResetTokenRecord(
-                user_id=user.id,
-                token_hash=hash_token(token),
-                expires_at=now + timedelta(minutes=self._settings.password_reset_ttl_minutes),
-            )
+        token_record = PasswordResetTokenRecord(
+            id=uuid4(),
+            user_id=user.id,
+            token_hash=hash_token(token),
+            expires_at=now + timedelta(minutes=self._settings.password_reset_ttl_minutes),
         )
+        self._session.add(token_record)
         delivery = TransactionalEmailDeliveryRecord(
+            id=uuid4(),
             user_id=user.id,
             template_key="reset_password",
             template_version="v1",
             provider=self._email.provider_name,
+            logical_delivery_key=f"reset_password/{token_record.id}",
             status="pending",
         )
         self._session.add(delivery)
@@ -419,9 +469,7 @@ class AuthService:
         )
         await self._session.commit()
 
-    async def accept_legal_documents(
-        self, user_id: UUID, acceptances: dict[str, str]
-    ) -> list[str]:
+    async def accept_legal_documents(self, user_id: UUID, acceptances: dict[str, str]) -> list[str]:
         now = datetime.now(UTC)
         for document_type, version in acceptances.items():
             document = legal_document(document_type)
@@ -468,19 +516,21 @@ class AuthService:
         self, user: User, now: datetime
     ) -> tuple[str, TransactionalEmailDeliveryRecord]:
         token = token_urlsafe(48)
-        self._session.add(
-            EmailVerificationTokenRecord(
-                user_id=user.id,
-                token_hash=hash_token(token),
-                email_snapshot=user.email,
-                expires_at=now + timedelta(hours=self._settings.email_verification_ttl_hours),
-            )
+        token_record = EmailVerificationTokenRecord(
+            id=uuid4(),
+            user_id=user.id,
+            token_hash=hash_token(token),
+            email_snapshot=user.email,
+            expires_at=now + timedelta(hours=self._settings.email_verification_ttl_hours),
         )
+        self._session.add(token_record)
         delivery = TransactionalEmailDeliveryRecord(
+            id=uuid4(),
             user_id=user.id,
             template_key="verify_email",
             template_version="v1",
             provider=self._email.provider_name,
+            logical_delivery_key=f"verify_email/{token_record.id}",
             status="pending",
         )
         self._session.add(delivery)
@@ -489,6 +539,27 @@ class AuthService:
     async def _deliver_email(
         self, delivery: TransactionalEmailDeliveryRecord, message: TransactionalEmail
     ) -> bool:
+        message = replace(message, idempotency_key=delivery.logical_delivery_key)
+        if self._settings.email_delivery_mode == "resend":
+            from celery import Celery  # type: ignore[import-untyped]
+
+            dispatcher = Celery(
+                "zhaoniu-email-dispatch",
+                broker=self._settings.celery_broker_url,
+                backend=self._settings.celery_result_backend,
+            )
+            try:
+                dispatcher.send_task(
+                    "transactional_email.deliver",
+                    args=[str(delivery.id), asdict(message)],
+                )
+                await self._session.commit()
+                return True
+            except Exception:
+                delivery.status = "failed"
+                delivery.error_code = "email_dispatch_unavailable"
+                await self._session.commit()
+                return False
         try:
             result = await self._email.send(message)
             delivery.provider = result.provider
