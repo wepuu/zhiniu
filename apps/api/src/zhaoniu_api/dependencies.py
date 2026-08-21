@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.service import AIResearchService
 from zhaoniu_api.auth.service import AuthService
+from zhaoniu_api.automation.service import AutomationService
 from zhaoniu_api.composition import (
     build_ai_research_service,
+    build_automation_service,
     build_corporate_event_service,
     build_coverage_service,
     build_fundamental_service,
@@ -158,6 +160,12 @@ def get_operator_service(
     return OperatorService(session, settings)
 
 
+def get_automation_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AutomationService:
+    return build_automation_service(session)
+
+
 async def get_operator_context(
     request: Request,
     user: Annotated[UserAccount, Depends(get_current_user)],
@@ -213,5 +221,6 @@ NaturalLanguageScreeningServiceDependency = Annotated[
 ]
 CoverageServiceDependency = Annotated[ResearchCoverageService, Depends(get_coverage_service)]
 OperatorServiceDependency = Annotated[OperatorService, Depends(get_operator_service)]
+AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
 OperatorContextDependency = Annotated[OperatorContext, Depends(get_operator_context)]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

@@ -95,6 +95,33 @@ services:
       redis:
         condition: service_healthy
 
+  beat:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    environment:
+      ZHAONIU_DISABLE_DB_POOL: "1"
+    command:
+      [
+        "celery",
+        "-A",
+        "zhaoniu_worker.celery_app:celery_app",
+        "beat",
+        "--workdir",
+        "apps/worker/src",
+        "--loglevel",
+        "INFO",
+        "--pidfile",
+        "/tmp/zhaoniu-beat.pid",
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
   web:
     build:
       context: ../..

@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     beta_learning_min_group_size: int = Field(default=3, ge=2, le=20)
     operator_elevation_minutes: int = Field(default=15, ge=5, le=30)
     operator_user_search_rate_limit: int = Field(default=30, ge=5, le=120)
+    automation_hard_disabled: bool = True
+    automation_tick_seconds: int = Field(default=60, ge=30, le=300)
+    automation_max_universe_size: int = Field(default=100, ge=1, le=500)
+    automation_max_concurrency: int = Field(default=4, ge=1, le=16)
+    automation_catchup_window_minutes: int = Field(default=360, ge=0, le=1440)
+    automation_lease_minutes: int = Field(default=30, ge=5, le=120)
+    automation_ai_enabled: bool = False
+    automation_ai_max_calls_per_run: int = Field(default=10, ge=0, le=100)
+    automation_ai_concurrency: int = Field(default=1, ge=1, le=4)
 
     @property
     def llm_models(self) -> tuple[str, ...]:

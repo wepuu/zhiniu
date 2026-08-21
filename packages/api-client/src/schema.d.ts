@@ -1251,6 +1251,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/automation/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Policies */
+        get: operations["list_policies_api_v1_admin_automation_policies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/policies/{policy_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Policy */
+        patch: operations["update_policy_api_v1_admin_automation_policies__policy_key__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/automation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_v1_admin_automation_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Detail */
+        get: operations["run_detail_api_v1_admin_automation_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/policies/{policy_key}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Now */
+        post: operations["run_now_api_v1_admin_automation_policies__policy_key__run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/runs/{run_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Run */
+        post: operations["resume_run_api_v1_admin_automation_runs__run_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/stocks/{symbol}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Stock */
+        post: operations["refresh_stock_api_v1_admin_automation_stocks__symbol__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/webhooks/resend": {
         parameters: {
             query?: never;
@@ -1548,6 +1667,290 @@ export interface components {
         AuthResponse: {
             user: components["schemas"]["UserResponse"];
             entitlements: components["schemas"]["EntitlementsResponse"];
+        };
+        /** AutomationPolicyConfiguration */
+        AutomationPolicyConfiguration: {
+            /**
+             * Timezone
+             * @default Asia/Shanghai
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+            /**
+             * Daily Time
+             * @default 19:30
+             */
+            daily_time: string;
+            /**
+             * Max Universe Size
+             * @default 100
+             */
+            max_universe_size: number;
+            /**
+             * Financial Reporting Interval Hours
+             * @default 72
+             */
+            financial_reporting_interval_hours: number;
+            /**
+             * Financial Normal Interval Hours
+             * @default 168
+             */
+            financial_normal_interval_hours: number;
+            /**
+             * Event Pipeline Enabled
+             * @default true
+             */
+            event_pipeline_enabled: boolean;
+            /**
+             * Peer Research Enabled
+             * @default true
+             */
+            peer_research_enabled: boolean;
+            /**
+             * Ai Research Enabled
+             * @default false
+             */
+            ai_research_enabled: boolean;
+        };
+        /** AutomationPolicyListResponse */
+        AutomationPolicyListResponse: {
+            /** Items */
+            items: components["schemas"]["AutomationPolicyView"][];
+        };
+        /** AutomationPolicyUpdate */
+        AutomationPolicyUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            configuration: components["schemas"]["AutomationPolicyConfiguration"];
+        };
+        /** AutomationPolicyView */
+        AutomationPolicyView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Policy Key */
+            policy_key: string;
+            /** Display Name */
+            display_name: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Hard Disabled */
+            hard_disabled: boolean;
+            /** Revision */
+            revision: number;
+            configuration: components["schemas"]["AutomationPolicyConfiguration"];
+            /** Configuration Hash */
+            configuration_hash: string;
+            /** Next Due At */
+            next_due_at: string | null;
+            /** Last Evaluated At */
+            last_evaluated_at: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AutomationRunDetail */
+        AutomationRunDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Policy Key */
+            policy_key: string;
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "scheduled" | "manual" | "resume";
+            /**
+             * Scheduled For
+             * Format: date-time
+             */
+            scheduled_for: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "succeeded" | "succeeded_with_warnings" | "partial" | "failed" | "blocked" | "skipped";
+            /** Universe Size */
+            universe_size: number;
+            /** Total Steps */
+            total_steps: number;
+            /** Succeeded Steps */
+            succeeded_steps: number;
+            /** Failed Steps */
+            failed_steps: number;
+            /** Skipped Steps */
+            skipped_steps: number;
+            /** Warning Steps */
+            warning_steps: number;
+            /** Provider Call Count */
+            provider_call_count: number;
+            /** Rows Received */
+            rows_received: number;
+            /** Rows Written */
+            rows_written: number;
+            /** Signal Count */
+            signal_count: number;
+            /** Alert Count */
+            alert_count: number;
+            /** Ai Output Count */
+            ai_output_count: number;
+            /** Error Code */
+            error_code: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Policy Revision */
+            policy_revision: number;
+            /** Policy Hash */
+            policy_hash: string;
+            /** Universe Hash */
+            universe_hash: string | null;
+            /** Universe Symbols */
+            universe_symbols: string[];
+            /** Steps */
+            steps: components["schemas"]["AutomationStepView"][];
+        };
+        /** AutomationRunListResponse */
+        AutomationRunListResponse: {
+            /** Items */
+            items: components["schemas"]["AutomationRunSummary"][];
+            /** Total */
+            total: number;
+        };
+        /** AutomationRunSummary */
+        AutomationRunSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Policy Key */
+            policy_key: string;
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "scheduled" | "manual" | "resume";
+            /**
+             * Scheduled For
+             * Format: date-time
+             */
+            scheduled_for: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "succeeded" | "succeeded_with_warnings" | "partial" | "failed" | "blocked" | "skipped";
+            /** Universe Size */
+            universe_size: number;
+            /** Total Steps */
+            total_steps: number;
+            /** Succeeded Steps */
+            succeeded_steps: number;
+            /** Failed Steps */
+            failed_steps: number;
+            /** Skipped Steps */
+            skipped_steps: number;
+            /** Warning Steps */
+            warning_steps: number;
+            /** Provider Call Count */
+            provider_call_count: number;
+            /** Rows Received */
+            rows_received: number;
+            /** Rows Written */
+            rows_written: number;
+            /** Signal Count */
+            signal_count: number;
+            /** Alert Count */
+            alert_count: number;
+            /** Ai Output Count */
+            ai_output_count: number;
+            /** Error Code */
+            error_code: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AutomationStepView */
+        AutomationStepView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Scope Type
+             * @enum {string}
+             */
+            scope_type: "run" | "symbol" | "industry";
+            /** Scope Key */
+            scope_key: string;
+            /** Symbol */
+            symbol: string | null;
+            /** Step Key */
+            step_key: string;
+            /** Dependency Order */
+            dependency_order: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "succeeded" | "failed" | "skipped" | "blocked";
+            /** Attempt Count */
+            attempt_count: number;
+            /** Changed */
+            changed: boolean;
+            /** Provider Call Count */
+            provider_call_count: number;
+            /** Rows Received */
+            rows_received: number;
+            /** Rows Written */
+            rows_written: number;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+        };
+        /** AutomationTriggerResponse */
+        AutomationTriggerResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "skipped" | "blocked";
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Run Status
+             * @enum {string}
+             */
+            run_status: "pending" | "running" | "succeeded" | "succeeded_with_warnings" | "partial" | "failed" | "blocked" | "skipped";
         };
         /** BackfillItemResponse */
         BackfillItemResponse: {
@@ -6395,6 +6798,239 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_policies_api_v1_admin_automation_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationPolicyListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_policy_api_v1_admin_automation_policies__policy_key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_key: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationPolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationPolicyView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_admin_automation_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_detail_api_v1_admin_automation_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_now_api_v1_admin_automation_policies__policy_key__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_key: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_run_api_v1_admin_automation_runs__run_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_stock_api_v1_admin_automation_stocks__symbol__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerResponse"];
                 };
             };
             /** @description Validation Error */

@@ -42,6 +42,9 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 36. Password reset revokes all active sessions; advanced-access activation requires verified email.
 37. Production readiness, legal approval and financial-data approval are explicit fail-closed gates.
 38. Logs and email-delivery audit must not retain secrets, cookies, plaintext tokens or message bodies.
+39. Scheduled automation uses a single fixed tick; database policies and leases own business state.
+40. Scheduler timestamps are orchestration metadata and must never replace source `known_at`.
+41. Historical research backfills must never create retroactive user alerts.
 
 ## Standard commands
 

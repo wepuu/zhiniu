@@ -47,7 +47,9 @@ from zhaoniu_api.ports.providers import LLMGatewayError
 from zhaoniu_api.system import MIGRATION_HEAD
 
 CAPABILITIES: dict[str, frozenset[str]] = {
-    "viewer": frozenset({"dashboard.read", "coverage.read", "providers.read", "audit.read"}),
+    "viewer": frozenset(
+        {"dashboard.read", "coverage.read", "automation.read", "providers.read", "audit.read"}
+    ),
     "support": frozenset(
         {
             "dashboard.read",
@@ -71,6 +73,10 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "feedback.manage",
             "providers.read",
             "providers.diagnose",
+            "automation.read",
+            "automation.manage",
+            "automation.run",
+            "automation.resume",
             "audit.read",
         }
     ),
@@ -90,6 +96,10 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "ai.run",
             "providers.read",
             "providers.diagnose",
+            "automation.read",
+            "automation.manage",
+            "automation.run",
+            "automation.resume",
             "audit.read",
         }
     ),

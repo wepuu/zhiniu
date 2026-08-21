@@ -5,17 +5,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   ArrowLeft,
+  Bot,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
+  DatabaseZap,
   LayoutDashboard,
   LockKeyhole,
   Mail,
   MessageSquareText,
+  Play,
   RefreshCw,
+  RotateCcw,
   Search,
   ServerCog,
   ShieldCheck,
   Users,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -23,10 +29,17 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
-type View = "overview" | "users" | "feedback" | "providers" | "audit";
+type View =
+  | "overview"
+  | "automation"
+  | "users"
+  | "feedback"
+  | "providers"
+  | "audit";
 
 const views = [
   { id: "overview" as const, label: "运行总览", icon: LayoutDashboard },
+  { id: "automation" as const, label: "自动任务", icon: Workflow },
   { id: "users" as const, label: "账户支持", icon: Users },
   { id: "feedback" as const, label: "反馈队列", icon: MessageSquareText },
   { id: "providers" as const, label: "服务商", icon: ServerCog },
@@ -189,6 +202,9 @@ export function AdminWorkspace() {
             移动端用于安全查看；高风险运营动作请在桌面端完成。
           </div>
           {view === "overview" && <Overview />}
+          {view === "automation" && (
+            <AutomationPanel capabilities={operator.capabilities} />
+          )}
           {view === "users" && (
             <UsersPanel capabilities={operator.capabilities} />
           )}
@@ -331,6 +347,425 @@ function Overview() {
         </Card>
       )}
     </>
+  );
+}
+
+function AutomationPanel({ capabilities }: { capabilities: string[] }) {
+  const client = useQueryClient();
+  const [selectedRun, setSelectedRun] = useState<string | null>(null);
+  const policies = useQuery({
+    queryKey: ["automation-policies"],
+    queryFn: api.getAutomationPolicies,
+  });
+  const runs = useQuery({
+    queryKey: ["automation-runs"],
+    queryFn: api.getAutomationRuns,
+    refetchInterval: 15_000,
+  });
+  const detail = useQuery({
+    queryKey: ["automation-run", selectedRun],
+    queryFn: () => api.getAutomationRun(selectedRun!),
+    enabled: Boolean(selectedRun),
+    refetchInterval: selectedRun ? 10_000 : false,
+  });
+  const runNow = useMutation({
+    mutationFn: (policyKey: string) => api.runAutomationPolicy(policyKey),
+    onSuccess: (result) => {
+      setSelectedRun(result.run_id);
+      client.invalidateQueries({ queryKey: ["automation-runs"] });
+    },
+  });
+  const resume = useMutation({
+    mutationFn: (runId: string) => api.resumeAutomationRun(runId),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["automation-runs"] });
+      client.invalidateQueries({ queryKey: ["automation-run"] });
+    },
+  });
+  const canRun = capabilities.includes("automation.run");
+  const canResume = capabilities.includes("automation.resume");
+  const firstPolicy = policies.data?.items[0];
+  const latestRun = runs.data?.items[0];
+
+  return (
+    <>
+      <PanelTitle
+        eyebrow="Research operations"
+        title="自动研究任务"
+        detail="数据库记录运行事实；调度器只负责唤醒到期策略"
+      />
+      {firstPolicy?.hard_disabled && (
+        <div className="border-amber/25 bg-amber/8 mb-4 flex items-start gap-3 rounded-2xl border p-4">
+          <LockKeyhole className="text-amber mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="text-sm font-medium">环境级自动化开关已关闭</p>
+            <p className="text-slate mt-1 text-xs leading-5">
+              策略配置和手动检查仍可查看；定时任务不会自动启动。
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        {firstPolicy ? (
+          <AutomationPolicyCard
+            key={`${firstPolicy.configuration_hash}:${firstPolicy.enabled}`}
+            policy={firstPolicy}
+            canManage={capabilities.includes("automation.manage")}
+            canRun={canRun}
+            running={runNow.isPending}
+            onRun={() => runNow.mutate(firstPolicy.policy_key)}
+          />
+        ) : (
+          <Card className="text-slate p-6 text-sm">正在读取自动化策略…</Card>
+        )}
+        <Card className="p-5">
+          <div className="flex items-center gap-3">
+            <span className="bg-blue/8 text-blue grid size-10 place-items-center rounded-xl">
+              <CalendarClock className="size-4" />
+            </span>
+            <div>
+              <p className="text-slate text-xs">最近一次运行</p>
+              <p className="mt-0.5 text-sm font-medium">
+                {latestRun ? dateTime(latestRun.created_at) : "尚未运行"}
+              </p>
+            </div>
+            {latestRun && (
+              <span className="ml-auto">
+                <StatusPill status={latestRun.status} />
+              </span>
+            )}
+          </div>
+          {latestRun && (
+            <div className="border-ink/8 mt-5 grid grid-cols-3 gap-3 border-t pt-4 text-center">
+              <Metric label="股票" value={latestRun.universe_size} />
+              <Metric label="成功步骤" value={latestRun.succeeded_steps} />
+              <Metric label="失败步骤" value={latestRun.failed_steps} />
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <Card className="overflow-hidden">
+          <div className="border-ink/8 flex items-center justify-between border-b px-5 py-4">
+            <div>
+              <h3 className="text-sm font-medium">运行记录</h3>
+              <p className="text-slate mt-1 text-xs">默认显示最近 50 次</p>
+            </div>
+            <RefreshCw
+              className={`text-slate size-4 ${runs.isFetching ? "animate-spin" : ""}`}
+            />
+          </div>
+          <div className="divide-ink/8 divide-y">
+            {runs.data?.items.map((run) => (
+              <button
+                key={run.id}
+                onClick={() => setSelectedRun(run.id)}
+                className={`hover:bg-blue/[0.025] w-full px-5 py-4 text-left ${selectedRun === run.id ? "bg-blue/[0.04]" : ""}`}
+              >
+                <div className="flex items-center gap-2">
+                  <StatusPill status={run.status} />
+                  <span className="text-slate ml-auto text-[11px]">
+                    {dateTime(run.created_at)}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm font-medium">
+                  {run.trigger_kind === "scheduled" ? "定时刷新" : "人工刷新"}
+                  <span className="text-slate ml-2 font-normal">
+                    {run.universe_size} 只股票
+                  </span>
+                </p>
+                <p className="font-data text-slate mt-1 truncate text-[10px]">
+                  {run.id}
+                </p>
+              </button>
+            ))}
+            {!runs.data?.items.length && (
+              <p className="text-slate p-8 text-center text-sm">
+                尚无自动化运行记录
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <AutomationRunDetailPanel
+          run={detail.data}
+          loading={detail.isFetching}
+          canResume={canResume}
+          resuming={resume.isPending}
+          onResume={(runId) => resume.mutate(runId)}
+        />
+      </div>
+    </>
+  );
+}
+
+function AutomationPolicyCard({
+  policy,
+  canManage,
+  canRun,
+  running,
+  onRun,
+}: {
+  policy: Awaited<
+    ReturnType<typeof api.getAutomationPolicies>
+  >["items"][number];
+  canManage: boolean;
+  canRun: boolean;
+  running: boolean;
+  onRun: () => void;
+}) {
+  const client = useQueryClient();
+  const [enabled, setEnabled] = useState(policy.enabled);
+  const [dailyTime, setDailyTime] = useState(policy.configuration.daily_time);
+  const [events, setEvents] = useState(
+    policy.configuration.event_pipeline_enabled,
+  );
+  const [peers, setPeers] = useState(
+    policy.configuration.peer_research_enabled,
+  );
+  const [ai, setAI] = useState(policy.configuration.ai_research_enabled);
+  const update = useMutation({
+    mutationFn: () =>
+      api.updateAutomationPolicy(policy.policy_key, enabled, {
+        ...policy.configuration,
+        daily_time: dailyTime,
+        event_pipeline_enabled: events,
+        peer_research_enabled: peers,
+        ai_research_enabled: ai,
+      }),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: ["automation-policies"] }),
+  });
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="bg-blue/8 text-blue grid size-10 place-items-center rounded-xl">
+          <Workflow className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium">{policy.display_name}</h3>
+            <StatusPill status={policy.enabled ? "enabled" : "disabled"} />
+          </div>
+          <p className="font-data text-slate mt-1 text-[10px]">
+            REV {policy.revision} · {policy.configuration_hash.slice(0, 12)}
+          </p>
+        </div>
+        <button
+          onClick={onRun}
+          disabled={!canRun || running}
+          className="bg-ink hidden items-center gap-2 rounded-xl px-3 py-2 text-xs text-white disabled:opacity-40 md:flex"
+        >
+          <Play className="size-3.5" />
+          立即运行
+        </button>
+      </div>
+      <div className="border-ink/8 mt-5 grid gap-4 border-t pt-5 sm:grid-cols-2">
+        <label className="text-slate text-xs">
+          每日检查时间（上海）
+          <input
+            type="time"
+            value={dailyTime}
+            disabled={!canManage}
+            onChange={(event) => setDailyTime(event.target.value)}
+            className="border-ink/10 text-ink mt-2 hidden w-full rounded-xl border bg-white px-3 py-2.5 md:block"
+          />
+          <span className="text-ink mt-2 block rounded-xl bg-white px-3 py-2.5 md:hidden">
+            {dailyTime}
+          </span>
+        </label>
+        <div className="text-slate text-xs">
+          下次检查
+          <p className="text-ink mt-2 rounded-xl bg-white px-3 py-2.5">
+            {dateTime(policy.next_due_at)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <PolicyToggle
+          label="启用定时策略"
+          checked={enabled}
+          onChange={setEnabled}
+          disabled={!canManage}
+        />
+        <PolicyToggle
+          label="公司公告与事件"
+          checked={events}
+          onChange={setEvents}
+          disabled={!canManage}
+        />
+        <PolicyToggle
+          label="同行研究"
+          checked={peers}
+          onChange={setPeers}
+          disabled={!canManage}
+        />
+        <PolicyToggle
+          label="有限自动 AI"
+          checked={ai}
+          onChange={setAI}
+          disabled={!canManage}
+          icon="ai"
+        />
+      </div>
+      {canManage && (
+        <button
+          onClick={() => update.mutate()}
+          disabled={update.isPending}
+          className="border-blue/20 text-blue mt-4 hidden rounded-xl border px-3 py-2 text-xs disabled:opacity-50 md:block"
+        >
+          保存新版本
+        </button>
+      )}
+    </Card>
+  );
+}
+
+function PolicyToggle({
+  label,
+  checked,
+  onChange,
+  disabled,
+  icon,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled: boolean;
+  icon?: "ai";
+}) {
+  return (
+    <label className="border-ink/8 flex items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-xs">
+      {icon === "ai" ? (
+        <Bot className="text-blue size-3.5" />
+      ) : (
+        <DatabaseZap className="text-blue size-3.5" />
+      )}
+      <span className="flex-1">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="accent-blue hidden size-4 md:block"
+      />
+      <span
+        aria-label={checked ? "已启用" : "已关闭"}
+        className={`size-2 rounded-full md:hidden ${checked ? "bg-emerald-500" : "bg-slate-300"}`}
+      />
+    </label>
+  );
+}
+
+function AutomationRunDetailPanel({
+  run,
+  loading,
+  canResume,
+  resuming,
+  onResume,
+}: {
+  run?: Awaited<ReturnType<typeof api.getAutomationRun>>;
+  loading: boolean;
+  canResume: boolean;
+  resuming: boolean;
+  onResume: (runId: string) => void;
+}) {
+  if (!run) {
+    return (
+      <Card className="text-slate grid min-h-72 place-items-center p-8 text-center text-sm">
+        选择一条运行记录查看步骤、变化与错误摘要
+      </Card>
+    );
+  }
+  const resumable = ["failed", "partial", "succeeded_with_warnings"].includes(
+    run.status,
+  );
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-ink/8 flex items-start gap-3 border-b p-5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium">运行详情</h3>
+            <StatusPill status={run.status} />
+            {loading && (
+              <RefreshCw className="text-slate size-3.5 animate-spin" />
+            )}
+          </div>
+          <p className="font-data text-slate mt-1 truncate text-[10px]">
+            {run.id}
+          </p>
+        </div>
+        {resumable && canResume && (
+          <button
+            onClick={() => onResume(run.id)}
+            disabled={resuming}
+            className="border-blue/20 text-blue hidden items-center gap-2 rounded-xl border px-3 py-2 text-xs md:flex"
+          >
+            <RotateCcw className="size-3.5" />
+            恢复失败步骤
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-px bg-black/[0.06] sm:grid-cols-6">
+        <MetricTile label="股票" value={run.universe_size} />
+        <MetricTile label="成功" value={run.succeeded_steps} />
+        <MetricTile label="跳过" value={run.skipped_steps} />
+        <MetricTile label="失败" value={run.failed_steps} />
+        <MetricTile label="信号" value={run.signal_count} />
+        <MetricTile label="提醒" value={run.alert_count} />
+      </div>
+      <div className="max-h-[520px] overflow-auto">
+        <table className="w-full min-w-[660px] text-left text-xs">
+          <thead className="bg-paper text-slate sticky top-0">
+            <tr>
+              {["顺序", "范围", "步骤", "状态", "变化", "耗时"].map((item) => (
+                <th key={item} className="px-4 py-3 font-medium">
+                  {item}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {run.steps.map((step) => (
+              <tr key={step.id} className="border-ink/8 border-t">
+                <td className="font-data px-4 py-3">{step.dependency_order}</td>
+                <td className="px-4">
+                  {step.scope_type} · {step.symbol ?? step.scope_key}
+                </td>
+                <td className="px-4 font-medium">{step.step_key}</td>
+                <td className="px-4">
+                  <StatusPill status={step.status} />
+                </td>
+                <td className="px-4">{step.changed ? "有更新" : "无变化"}</td>
+                <td className="font-data px-4">
+                  {step.duration_ms ? `${step.duration_ms} ms` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="font-data text-lg font-semibold">{value}</p>
+      <p className="text-slate mt-1 text-[10px]">{label}</p>
+    </div>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-paper p-3 text-center">
+      <p className="font-data text-base font-semibold">{value}</p>
+      <p className="text-slate mt-1 text-[10px]">{label}</p>
+    </div>
   );
 }
 

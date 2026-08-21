@@ -91,13 +91,21 @@ leases and auditable item outcomes, structured in-product Beta feedback, and agg
 learning reports with small-cell suppression. There is no scheduled full-market backfill, automatic
 AI generation, behavioral telemetry, research score, or public launch expansion.
 
-## Phase 14 - Operations Console & Production Provider Readiness (current)
+## Phase 14 - Operations Console & Production Provider Readiness
 
 Internal role-based operations console, password-confirmed high-risk actions, immutable operator
 audit, exact account support lookup, coverage and AI job dispatch, provider health diagnostics,
 Resend background delivery/webhook lifecycle, and explicit DeepSeek structured-output capability
 modes. The console is not a general admin CRUD system and does not expose provider secrets,
 passwords, tokens, raw prompts, private screening text, or unrestricted database access.
+
+## Phase 15 - Automated Research Operations & Scheduling (current)
+
+Database-owned automation policies and immutable revisions, a single Celery Beat tick, frozen
+priority-universe runs, allow-listed symbol/industry/run steps, change-aware downstream rebuilds,
+leases and resumable failures, automatic signal and in-app alert projection, an optional bounded AI
+lane, and a desktop-first operations workspace. Full-market screening schedules, free-form cron,
+user schedules, exchange-calendar semantics and automated marketing email remain deferred.
 
 ## Future - Factor / Backtest
 

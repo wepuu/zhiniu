@@ -5,10 +5,11 @@ boundary; operator membership is an additional server-side authorization layer.
 
 ## Roles
 
-- `viewer`: dashboard, coverage, provider and audit reads only.
+- `viewer`: dashboard, coverage, automation, provider and audit reads only.
 - `support`: exact user lookup, session revocation, email-verification resend, invitations,
   user-bound access codes and feedback triage.
-- `operations`: coverage/AI task dispatch, feedback triage and provider diagnostics.
+- `operations`: coverage/AI/automation task dispatch, automation policy management, feedback
+  triage and provider diagnostics.
 - `security_admin`: the combined capability set plus account status changes.
 
 Grant or revoke membership through the explicit CLI. Membership changes and all sensitive console
@@ -24,6 +25,11 @@ Session revocation, account status, email resend, invitation/access-code creatio
 diagnostics and background research execution require a recent password confirmation. The
 elevation expires after 15 minutes by default. Mobile is intentionally read-only for high-risk
 actions.
+
+The Phase 15 automation view shows only allow-listed policy fields and database-owned run state.
+Policy changes, immediate runs, single-stock refresh and failed-run resume require elevation and
+produce operator audit events. Mobile keeps this view read-only. See
+`docs/AUTOMATED_RESEARCH_OPERATIONS.md` for enablement and emergency-stop order.
 
 The audit stream stores action keys, actor role, bounded target identity, outcome and safe metadata.
 It must never contain passwords, plaintext activation/invitation codes, session tokens, API keys,

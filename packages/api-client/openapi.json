@@ -4380,6 +4380,418 @@
         }
       }
     },
+    "/api/v1/admin/automation/policies": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "List Policies",
+        "operationId": "list_policies_api_v1_admin_automation_policies_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationPolicyListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/policies/{policy_key}": {
+      "patch": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Update Policy",
+        "operationId": "update_policy_api_v1_admin_automation_policies__policy_key__patch",
+        "parameters": [
+          {
+            "name": "policy_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Policy Key"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationPolicyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationPolicyView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/runs": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_api_v1_admin_automation_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Run Detail",
+        "operationId": "run_detail_api_v1_admin_automation_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/policies/{policy_key}/run": {
+      "post": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Run Now",
+        "operationId": "run_now_api_v1_admin_automation_policies__policy_key__run_post",
+        "parameters": [
+          {
+            "name": "policy_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Policy Key"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationTriggerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/runs/{run_id}/resume": {
+      "post": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Resume Run",
+        "operationId": "resume_run_api_v1_admin_automation_runs__run_id__resume_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationTriggerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/stocks/{symbol}/refresh": {
+      "post": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Refresh Stock",
+        "operationId": "refresh_stock_api_v1_admin_automation_stocks__symbol__refresh_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationTriggerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/webhooks/resend": {
       "post": {
         "tags": [
@@ -5060,6 +5472,717 @@
           "entitlements"
         ],
         "title": "AuthResponse"
+      },
+      "AutomationPolicyConfiguration": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai",
+            "title": "Timezone",
+            "default": "Asia/Shanghai"
+          },
+          "daily_time": {
+            "type": "string",
+            "title": "Daily Time",
+            "default": "19:30"
+          },
+          "max_universe_size": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Max Universe Size",
+            "default": 100
+          },
+          "financial_reporting_interval_hours": {
+            "type": "integer",
+            "maximum": 168.0,
+            "minimum": 24.0,
+            "title": "Financial Reporting Interval Hours",
+            "default": 72
+          },
+          "financial_normal_interval_hours": {
+            "type": "integer",
+            "maximum": 720.0,
+            "minimum": 72.0,
+            "title": "Financial Normal Interval Hours",
+            "default": 168
+          },
+          "event_pipeline_enabled": {
+            "type": "boolean",
+            "title": "Event Pipeline Enabled",
+            "default": true
+          },
+          "peer_research_enabled": {
+            "type": "boolean",
+            "title": "Peer Research Enabled",
+            "default": true
+          },
+          "ai_research_enabled": {
+            "type": "boolean",
+            "title": "Ai Research Enabled",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "AutomationPolicyConfiguration"
+      },
+      "AutomationPolicyListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationPolicyView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "AutomationPolicyListResponse"
+      },
+      "AutomationPolicyUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/AutomationPolicyConfiguration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "configuration"
+        ],
+        "title": "AutomationPolicyUpdate"
+      },
+      "AutomationPolicyView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "policy_key": {
+            "type": "string",
+            "title": "Policy Key"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "hard_disabled": {
+            "type": "boolean",
+            "title": "Hard Disabled"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/AutomationPolicyConfiguration"
+          },
+          "configuration_hash": {
+            "type": "string",
+            "title": "Configuration Hash"
+          },
+          "next_due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Due At"
+          },
+          "last_evaluated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Evaluated At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "policy_key",
+          "display_name",
+          "enabled",
+          "hard_disabled",
+          "revision",
+          "configuration",
+          "configuration_hash",
+          "next_due_at",
+          "last_evaluated_at",
+          "updated_at"
+        ],
+        "title": "AutomationPolicyView"
+      },
+      "AutomationRunDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "policy_key": {
+            "type": "string",
+            "title": "Policy Key"
+          },
+          "trigger_kind": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "manual",
+              "resume"
+            ],
+            "title": "Trigger Kind"
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "succeeded_with_warnings",
+              "partial",
+              "failed",
+              "blocked",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "universe_size": {
+            "type": "integer",
+            "title": "Universe Size"
+          },
+          "total_steps": {
+            "type": "integer",
+            "title": "Total Steps"
+          },
+          "succeeded_steps": {
+            "type": "integer",
+            "title": "Succeeded Steps"
+          },
+          "failed_steps": {
+            "type": "integer",
+            "title": "Failed Steps"
+          },
+          "skipped_steps": {
+            "type": "integer",
+            "title": "Skipped Steps"
+          },
+          "warning_steps": {
+            "type": "integer",
+            "title": "Warning Steps"
+          },
+          "provider_call_count": {
+            "type": "integer",
+            "title": "Provider Call Count"
+          },
+          "rows_received": {
+            "type": "integer",
+            "title": "Rows Received"
+          },
+          "rows_written": {
+            "type": "integer",
+            "title": "Rows Written"
+          },
+          "signal_count": {
+            "type": "integer",
+            "title": "Signal Count"
+          },
+          "alert_count": {
+            "type": "integer",
+            "title": "Alert Count"
+          },
+          "ai_output_count": {
+            "type": "integer",
+            "title": "Ai Output Count"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "policy_revision": {
+            "type": "integer",
+            "title": "Policy Revision"
+          },
+          "policy_hash": {
+            "type": "string",
+            "title": "Policy Hash"
+          },
+          "universe_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universe Hash"
+          },
+          "universe_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Universe Symbols"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationStepView"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "policy_key",
+          "trigger_kind",
+          "scheduled_for",
+          "status",
+          "universe_size",
+          "total_steps",
+          "succeeded_steps",
+          "failed_steps",
+          "skipped_steps",
+          "warning_steps",
+          "provider_call_count",
+          "rows_received",
+          "rows_written",
+          "signal_count",
+          "alert_count",
+          "ai_output_count",
+          "error_code",
+          "started_at",
+          "finished_at",
+          "created_at",
+          "policy_revision",
+          "policy_hash",
+          "universe_hash",
+          "universe_symbols",
+          "steps"
+        ],
+        "title": "AutomationRunDetail"
+      },
+      "AutomationRunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRunSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "AutomationRunListResponse"
+      },
+      "AutomationRunSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "policy_key": {
+            "type": "string",
+            "title": "Policy Key"
+          },
+          "trigger_kind": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "manual",
+              "resume"
+            ],
+            "title": "Trigger Kind"
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "succeeded_with_warnings",
+              "partial",
+              "failed",
+              "blocked",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "universe_size": {
+            "type": "integer",
+            "title": "Universe Size"
+          },
+          "total_steps": {
+            "type": "integer",
+            "title": "Total Steps"
+          },
+          "succeeded_steps": {
+            "type": "integer",
+            "title": "Succeeded Steps"
+          },
+          "failed_steps": {
+            "type": "integer",
+            "title": "Failed Steps"
+          },
+          "skipped_steps": {
+            "type": "integer",
+            "title": "Skipped Steps"
+          },
+          "warning_steps": {
+            "type": "integer",
+            "title": "Warning Steps"
+          },
+          "provider_call_count": {
+            "type": "integer",
+            "title": "Provider Call Count"
+          },
+          "rows_received": {
+            "type": "integer",
+            "title": "Rows Received"
+          },
+          "rows_written": {
+            "type": "integer",
+            "title": "Rows Written"
+          },
+          "signal_count": {
+            "type": "integer",
+            "title": "Signal Count"
+          },
+          "alert_count": {
+            "type": "integer",
+            "title": "Alert Count"
+          },
+          "ai_output_count": {
+            "type": "integer",
+            "title": "Ai Output Count"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "policy_key",
+          "trigger_kind",
+          "scheduled_for",
+          "status",
+          "universe_size",
+          "total_steps",
+          "succeeded_steps",
+          "failed_steps",
+          "skipped_steps",
+          "warning_steps",
+          "provider_call_count",
+          "rows_received",
+          "rows_written",
+          "signal_count",
+          "alert_count",
+          "ai_output_count",
+          "error_code",
+          "started_at",
+          "finished_at",
+          "created_at"
+        ],
+        "title": "AutomationRunSummary"
+      },
+      "AutomationStepView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "scope_type": {
+            "type": "string",
+            "enum": [
+              "run",
+              "symbol",
+              "industry"
+            ],
+            "title": "Scope Type"
+          },
+          "scope_key": {
+            "type": "string",
+            "title": "Scope Key"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "step_key": {
+            "type": "string",
+            "title": "Step Key"
+          },
+          "dependency_order": {
+            "type": "integer",
+            "title": "Dependency Order"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "skipped",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed"
+          },
+          "provider_call_count": {
+            "type": "integer",
+            "title": "Provider Call Count"
+          },
+          "rows_received": {
+            "type": "integer",
+            "title": "Rows Received"
+          },
+          "rows_written": {
+            "type": "integer",
+            "title": "Rows Written"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope_type",
+          "scope_key",
+          "symbol",
+          "step_key",
+          "dependency_order",
+          "status",
+          "attempt_count",
+          "changed",
+          "provider_call_count",
+          "rows_received",
+          "rows_written",
+          "duration_ms",
+          "error_code",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "AutomationStepView"
+      },
+      "AutomationTriggerResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "skipped",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "run_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "succeeded_with_warnings",
+              "partial",
+              "failed",
+              "blocked",
+              "skipped"
+            ],
+            "title": "Run Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "run_id",
+          "run_status"
+        ],
+        "title": "AutomationTriggerResponse"
       },
       "BackfillItemResponse": {
         "properties": {

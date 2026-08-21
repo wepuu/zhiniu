@@ -12,6 +12,7 @@ from zhaoniu_api.ai_research.models import AIResearchBuildResult
 from zhaoniu_api.composition import (
     build_access_control_service,
     build_ai_research_service,
+    build_automation_service,
     build_corporate_event_service,
     build_coverage_service,
     build_fundamental_service,
@@ -141,6 +142,13 @@ def _parser() -> argparse.ArgumentParser:
     revoke_operator.add_argument("--email", required=True)
     subcommands.add_parser("list-operators")
     subcommands.add_parser("check-production-readiness")
+    subcommands.add_parser("automation-tick")
+    automation_run = subcommands.add_parser("automation-run")
+    automation_run.add_argument("policy_key", nargs="?", default="priority_daily_refresh")
+    automation_resume = subcommands.add_parser("automation-resume")
+    automation_resume.add_argument("run_id", type=UUID)
+    automation_refresh = subcommands.add_parser("automation-refresh-stock")
+    automation_refresh.add_argument("symbol")
     return parser
 
 
@@ -318,6 +326,32 @@ async def _run(args: argparse.Namespace) -> None:
                         "status": "configuration_valid",
                         "environment": settings.app_env,
                     }
+            elif args.command == "automation-tick":
+                result = await build_automation_service(session).tick()
+            elif args.command == "automation-run":
+                automation = build_automation_service(session)
+                triggered = await automation.trigger_run(args.policy_key)
+                result = (
+                    await automation.execute_run(triggered.run_id)
+                    if triggered.status == "accepted"
+                    else triggered
+                )
+            elif args.command == "automation-resume":
+                automation = build_automation_service(session)
+                resumed = await automation.resume_run(args.run_id)
+                result = (
+                    await automation.execute_run(resumed.run_id)
+                    if resumed.status == "accepted"
+                    else resumed
+                )
+            elif args.command == "automation-refresh-stock":
+                automation = build_automation_service(session)
+                triggered = await automation.trigger_run(symbols=(args.symbol,))
+                result = (
+                    await automation.execute_run(triggered.run_id)
+                    if triggered.status == "accepted"
+                    else triggered
+                )
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of

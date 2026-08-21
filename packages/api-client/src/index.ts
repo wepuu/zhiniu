@@ -114,6 +114,17 @@ export type OperatorInviteBatchResponse =
   components["schemas"]["OperatorInviteBatchResponse"];
 export type OperatorAccessCodeResponse =
   components["schemas"]["OperatorAccessCodeResponse"];
+export type AutomationPolicyConfiguration =
+  components["schemas"]["AutomationPolicyConfiguration"];
+export type AutomationPolicyListResponse =
+  components["schemas"]["AutomationPolicyListResponse"];
+export type AutomationPolicyView =
+  components["schemas"]["AutomationPolicyView"];
+export type AutomationRunListResponse =
+  components["schemas"]["AutomationRunListResponse"];
+export type AutomationRunDetail = components["schemas"]["AutomationRunDetail"];
+export type AutomationTriggerResponse =
+  components["schemas"]["AutomationTriggerResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -616,6 +627,50 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     diagnoseProvider(provider: "deepseek" | "resend") {
       return request<ProviderStatusListResponse>(
         `/api/v1/admin/providers/${provider}/diagnose`,
+        { method: "POST" },
+      );
+    },
+    getAutomationPolicies() {
+      return request<AutomationPolicyListResponse>(
+        "/api/v1/admin/automation/policies",
+      );
+    },
+    updateAutomationPolicy(
+      policyKey: string,
+      enabled: boolean,
+      configuration: AutomationPolicyConfiguration,
+    ) {
+      return jsonRequest<AutomationPolicyView>(
+        `/api/v1/admin/automation/policies/${encodeURIComponent(policyKey)}`,
+        "PATCH",
+        { enabled, configuration },
+      );
+    },
+    getAutomationRuns() {
+      return request<AutomationRunListResponse>(
+        "/api/v1/admin/automation/runs?limit=50",
+      );
+    },
+    getAutomationRun(runId: string) {
+      return request<AutomationRunDetail>(
+        `/api/v1/admin/automation/runs/${encodeURIComponent(runId)}`,
+      );
+    },
+    runAutomationPolicy(policyKey: string) {
+      return request<AutomationTriggerResponse>(
+        `/api/v1/admin/automation/policies/${encodeURIComponent(policyKey)}/run`,
+        { method: "POST" },
+      );
+    },
+    resumeAutomationRun(runId: string) {
+      return request<AutomationTriggerResponse>(
+        `/api/v1/admin/automation/runs/${encodeURIComponent(runId)}/resume`,
+        { method: "POST" },
+      );
+    },
+    refreshAutomationStock(symbol: string) {
+      return request<AutomationTriggerResponse>(
+        `/api/v1/admin/automation/stocks/${encodeURIComponent(symbol)}/refresh`,
         { method: "POST" },
       );
     },

@@ -4,6 +4,7 @@ from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
+from zhaoniu_api.automation.service import AutomationService
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.normalizer import AKShareDisclosureNormalizer
 from zhaoniu_api.corporate_events.provider import AKShareDisclosureProvider
@@ -138,3 +139,7 @@ def build_natural_language_screening_service(
 
 def build_coverage_service(session: AsyncSession) -> ResearchCoverageService:
     return ResearchCoverageService(session, get_settings())
+
+
+def build_automation_service(session: AsyncSession) -> AutomationService:
+    return AutomationService(session, get_settings())

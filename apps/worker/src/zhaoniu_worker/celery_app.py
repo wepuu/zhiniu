@@ -22,6 +22,12 @@ celery_app.conf.update(
     task_track_started=True,
     worker_prefetch_multiplier=1,
     timezone="Asia/Shanghai",
+    beat_schedule={
+        "automation-tick": {
+            "task": "automation.tick",
+            "schedule": float(os.getenv("AUTOMATION_TICK_SECONDS", "60")),
+        }
+    },
 )
 
 
@@ -392,3 +398,38 @@ def parse_natural_language_screen(run_id: str) -> dict[str, object]:
     ) as client:
         text = client.getdel(key)
     return asyncio.run(_parse_natural_language_screen(run_id, text or ""))
+
+
+async def _automation_tick() -> dict[str, object]:
+    from zhaoniu_api.composition import build_automation_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_automation_service(session).tick()
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="automation.tick")  # type: ignore[untyped-decorator]
+def automation_tick() -> dict[str, object]:
+    """Single Beat entry point; the database decides whether a policy is due."""
+    result = asyncio.run(_automation_tick())
+    run_ids = result.get("run_ids")
+    if isinstance(run_ids, list):
+        for run_id in run_ids:
+            celery_app.send_task("automation.execute_run", args=[str(run_id)])
+    return result
+
+
+async def _execute_automation_run(run_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_automation_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_automation_service(session).execute_run(UUID(run_id))
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="automation.execute_run")  # type: ignore[untyped-decorator]
+def execute_automation_run(run_id: str) -> dict[str, object]:
+    """Execute an allow-listed pipeline from database-owned run state."""
+    return asyncio.run(_execute_automation_run(run_id))

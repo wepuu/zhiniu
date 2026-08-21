@@ -228,3 +228,17 @@ artifacts. They are a versioned operational projection over those retained sourc
   times. `llm_calls` adds requested model, provider-returned model and capability mode.
 - `user_sessions.operator_elevated_until` is a short-lived password-confirmed authorization fact;
   it does not create another session or weaken CSRF/origin enforcement.
+
+## Phase 15 automation operations tables
+
+- `automation_policies` stores the stable allow-listed policy identity and current revision pointer.
+- `automation_policy_revisions` stores immutable, hashed behavior documents without credentials.
+- `automation_runs` freezes the revision and priority-universe manifest, owns the run lease and
+  retains aggregate provider, row, signal, alert and AI counters.
+- `automation_run_steps` separates symbol, industry and run scopes and retains dependency order,
+  idempotency, fingerprints, leases, counters and redacted failure codes.
+- `automation_step_attempts` is append-only retry evidence; a resumed run never erases a previous
+  worker attempt.
+
+`scheduled_for` is intentionally separate from every source publication, ingestion, `known_at` and
+research `knowledge_cutoff` field.

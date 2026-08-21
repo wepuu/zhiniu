@@ -16,6 +16,10 @@ def test_worker_uses_loop_safe_database_connections() -> None:
     assert "screening.parse_natural_language" in celery_app.tasks
 
 
-def test_coverage_backfill_is_registered_without_a_schedule() -> None:
+def test_only_automation_tick_is_scheduled() -> None:
     assert "coverage.run_backfill" in celery_app.tasks
-    assert not celery_app.conf.beat_schedule
+    assert "automation.tick" in celery_app.tasks
+    assert "automation.execute_run" in celery_app.tasks
+    assert celery_app.conf.beat_schedule == {
+        "automation-tick": {"task": "automation.tick", "schedule": 60.0}
+    }

@@ -1963,6 +1963,162 @@ class CoverageBackfillItemRecord(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class AutomationPolicyRecord(Base):
+    __tablename__ = "automation_policies"
+    __table_args__ = (UniqueConstraint("policy_key", name="uq_automation_policy_key"),)
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    policy_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    current_revision_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    next_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class AutomationPolicyRevisionRecord(Base):
+    __tablename__ = "automation_policy_revisions"
+    __table_args__ = (
+        UniqueConstraint("policy_id", "revision", name="uq_automation_policy_revision"),
+        UniqueConstraint("policy_id", "configuration_hash", name="uq_automation_policy_hash"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    policy_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("automation_policies.id", ondelete="CASCADE")
+    )
+    revision: Mapped[int] = mapped_column(nullable=False)
+    configuration: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    configuration_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AutomationRunRecord(Base):
+    __tablename__ = "automation_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_automation_run_idempotency"),
+        Index("ix_automation_run_status_created", "status", "created_at"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'succeeded', 'succeeded_with_warnings', "
+            "'partial', 'failed', 'blocked', 'skipped')",
+            name="ck_automation_run_status",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    policy_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("automation_policies.id", ondelete="RESTRICT")
+    )
+    policy_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("automation_policy_revisions.id", ondelete="RESTRICT")
+    )
+    universe_snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("beta_research_universe_snapshots.id")
+    )
+    trigger_kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    policy_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    universe_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    universe_hash: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    total_steps: Mapped[int] = mapped_column(default=0, nullable=False)
+    succeeded_steps: Mapped[int] = mapped_column(default=0, nullable=False)
+    failed_steps: Mapped[int] = mapped_column(default=0, nullable=False)
+    skipped_steps: Mapped[int] = mapped_column(default=0, nullable=False)
+    warning_steps: Mapped[int] = mapped_column(default=0, nullable=False)
+    provider_call_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_received: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_written: Mapped[int] = mapped_column(default=0, nullable=False)
+    signal_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    alert_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    ai_output_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(120))
+    lease_owner: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AutomationRunStepRecord(Base):
+    __tablename__ = "automation_run_steps"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "scope_type", "scope_key", "step_key", name="uq_automation_run_step"
+        ),
+        Index("ix_automation_step_claim", "run_id", "status", "dependency_order"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'succeeded', 'failed', 'skipped', 'blocked')",
+            name="ck_automation_step_status",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("automation_runs.id", ondelete="CASCADE")
+    )
+    scope_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    scope_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    symbol: Mapped[str | None] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT")
+    )
+    step_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    dependency_order: Mapped[int] = mapped_column(nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    before_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    after_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    changed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    provider_call_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_received: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_written: Mapped[int] = mapped_column(default=0, nullable=False)
+    duration_ms: Mapped[int | None]
+    error_code: Mapped[str | None] = mapped_column(String(120))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AutomationStepAttemptRecord(Base):
+    __tablename__ = "automation_step_attempts"
+    __table_args__ = (
+        UniqueConstraint("step_id", "attempt_number", name="uq_automation_step_attempt"),
+        Index("ix_automation_step_attempt_started", "step_id", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    step_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("automation_run_steps.id", ondelete="CASCADE")
+    )
+    attempt_number: Mapped[int] = mapped_column(nullable=False)
+    worker_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    retryable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(120))
+    duration_ms: Mapped[int | None]
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class BetaFeedbackItemRecord(Base):
     __tablename__ = "beta_feedback_items"
     __table_args__ = (
