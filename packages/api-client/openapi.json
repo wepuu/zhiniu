@@ -3174,6 +3174,107 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/coverage": {
+      "get": {
+        "tags": [
+          "coverage"
+        ],
+        "summary": "Get Stock Coverage",
+        "operationId": "get_stock_coverage_api_v1_stocks__symbol__coverage_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockCoverageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/beta-feedback": {
+      "post": {
+        "tags": [
+          "beta"
+        ],
+        "summary": "Create Beta Feedback",
+        "operationId": "create_beta_feedback_api_v1_me_beta_feedback_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaFeedbackCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaFeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/livez": {
       "get": {
         "tags": [
@@ -3972,6 +4073,104 @@
         ],
         "title": "BalanceSheetResponse"
       },
+      "BetaFeedbackCreate": {
+        "properties": {
+          "feature_key": {
+            "type": "string",
+            "enum": [
+              "stock_research",
+              "research_feed",
+              "peer_research",
+              "event_radar",
+              "screening",
+              "account",
+              "other"
+            ],
+            "title": "Feature Key"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "bug",
+              "data_missing",
+              "hard_to_understand",
+              "feature_request",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 20,
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "feature_key",
+          "category",
+          "message"
+        ],
+        "title": "BetaFeedbackCreate"
+      },
+      "BetaFeedbackResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "feature_key": {
+            "type": "string",
+            "enum": [
+              "stock_research",
+              "research_feed",
+              "peer_research",
+              "event_radar",
+              "screening",
+              "account",
+              "other"
+            ],
+            "title": "Feature Key"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "bug",
+              "data_missing",
+              "hard_to_understand",
+              "feature_request",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "triaged",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "feature_key",
+          "category",
+          "status",
+          "created_at"
+        ],
+        "title": "BetaFeedbackResponse"
+      },
       "CalculationTrace": {
         "properties": {
           "method": {
@@ -4280,6 +4479,84 @@
           "field_lineage"
         ],
         "title": "CorporateEventResponse"
+      },
+      "CoverageDimension": {
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "market",
+              "financial",
+              "fundamental_research",
+              "industry",
+              "peer_research",
+              "event_radar",
+              "screening",
+              "ai_research"
+            ],
+            "title": "Dimension"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "partial",
+              "not_built",
+              "missing_source_data",
+              "unsupported",
+              "disabled",
+              "blocked_by_policy"
+            ],
+            "title": "Availability"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "current",
+              "stale",
+              "unknown"
+            ],
+            "title": "Freshness",
+            "default": "unknown"
+          },
+          "source_health": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "degraded",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Source Health",
+            "default": "unknown"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "latest_artifact_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Artifact At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dimension",
+          "availability"
+        ],
+        "title": "CoverageDimension"
       },
       "CoverageStatus": {
         "type": "string",
@@ -8565,6 +8842,79 @@
           "ai"
         ],
         "title": "SourceCoverage"
+      },
+      "StockCoverageResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          },
+          "coverage_schema_version": {
+            "type": "string",
+            "title": "Coverage Schema Version"
+          },
+          "evaluator_version": {
+            "type": "string",
+            "title": "Evaluator Version"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageDimension"
+            },
+            "type": "array",
+            "title": "Dimensions"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "knowledge_cutoff",
+          "evaluated_at",
+          "coverage_schema_version",
+          "evaluator_version",
+          "policy_version",
+          "dimensions"
+        ],
+        "title": "StockCoverageResponse"
       },
       "StockHealthResearchV1": {
         "properties": {

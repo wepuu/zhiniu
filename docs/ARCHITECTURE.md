@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 12 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 13 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -163,3 +163,7 @@ Corporate events are an API application module, not a frontend calculation. Exte
 the Provider -> Normalizer -> Canonical Model -> Repository boundary. Disclosures, staged source
 facts, immutable event versions and point-in-time radar snapshots remain separate persistence
 layers. Radar attention is deterministic and versioned; the frontend only renders API results.
+Phase 13 adds a coverage application module that reads retained global artifacts, writes immutable
+priority-universe and coverage snapshots, and coordinates only explicitly planned bounded backfill.
+It calls existing application services rather than vendor SDKs. The frontend reads the versioned
+coverage API and never computes coverage, freshness, source health, or learning aggregates.

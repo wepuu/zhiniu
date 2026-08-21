@@ -91,6 +91,12 @@ export type SavedScreenListResponse =
   components["schemas"]["SavedScreenListResponse"];
 export type ScreenExecutionListResponse =
   components["schemas"]["ScreenExecutionListResponse"];
+export type StockCoverageResponse =
+  components["schemas"]["StockCoverageResponse"];
+export type CoverageDimension = components["schemas"]["CoverageDimension"];
+export type BetaFeedbackCreate = components["schemas"]["BetaFeedbackCreate"];
+export type BetaFeedbackResponse =
+  components["schemas"]["BetaFeedbackResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -259,6 +265,11 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       });
       return request<DailyBarListResponse>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/daily-bars?${query}`,
+      );
+    },
+    getStockCoverage(symbol: string) {
+      return request<StockCoverageResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/coverage`,
       );
     },
     getFundamentals(symbol: string, asOf?: string) {
@@ -504,6 +515,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       return request<void>(
         `/api/v1/screens/saved/${encodeURIComponent(savedScreenId)}`,
         { method: "DELETE" },
+      );
+    },
+    createBetaFeedback(payload: BetaFeedbackCreate) {
+      return jsonRequest<BetaFeedbackResponse>(
+        "/api/v1/me/beta-feedback",
+        "POST",
+        payload,
       );
     },
   };

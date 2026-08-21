@@ -292,6 +292,21 @@ def execute_screen(execution_id: str) -> dict[str, object]:
     return asyncio.run(_execute_screen(execution_id))
 
 
+async def _run_coverage_backfill(run_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_coverage_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_coverage_service(session).run_backfill(UUID(run_id))
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="coverage.run_backfill")  # type: ignore[untyped-decorator]
+def run_coverage_backfill(run_id: str) -> dict[str, object]:
+    """Run one explicitly planned, bounded coverage backfill batch."""
+    return asyncio.run(_run_coverage_backfill(run_id))
+
+
 async def _parse_natural_language_screen(run_id: str, text: str) -> dict[str, object]:
     from zhaoniu_api.composition import build_natural_language_screening_service
     from zhaoniu_api.database import session_factory

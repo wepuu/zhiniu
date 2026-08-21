@@ -10,6 +10,7 @@ from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.composition import (
     build_ai_research_service,
     build_corporate_event_service,
+    build_coverage_service,
     build_fundamental_service,
     build_natural_language_screening_service,
     build_peer_research_service,
@@ -18,6 +19,7 @@ from zhaoniu_api.composition import (
 )
 from zhaoniu_api.config import Settings, get_settings
 from zhaoniu_api.corporate_events.service import CorporateEventService
+from zhaoniu_api.coverage.service import ResearchCoverageService
 from zhaoniu_api.database import get_session
 from zhaoniu_api.domain.models import UserAccount
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
@@ -141,6 +143,12 @@ def get_natural_language_screening_service(
     return build_natural_language_screening_service(session)
 
 
+def get_coverage_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ResearchCoverageService:
+    return build_coverage_service(session)
+
+
 async def require_csrf(
     request: Request,
     auth: Annotated[AuthService, Depends(get_auth_service)],
@@ -180,4 +188,5 @@ ScreeningDispatcherDependency = Annotated[ScreeningDispatcher, Depends(get_scree
 NaturalLanguageScreeningServiceDependency = Annotated[
     NaturalLanguageScreeningService, Depends(get_natural_language_screening_service)
 ]
+CoverageServiceDependency = Annotated[ResearchCoverageService, Depends(get_coverage_service)]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

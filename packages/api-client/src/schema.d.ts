@@ -911,6 +911,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stock Coverage */
+        get: operations["get_stock_coverage_api_v1_stocks__symbol__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/beta-feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Beta Feedback */
+        post: operations["create_beta_feedback_api_v1_me_beta_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/livez": {
         parameters: {
             query?: never;
@@ -1215,6 +1249,49 @@ export interface components {
             /** Goodwill */
             goodwill: string | null;
         };
+        /** BetaFeedbackCreate */
+        BetaFeedbackCreate: {
+            /**
+             * Feature Key
+             * @enum {string}
+             */
+            feature_key: "stock_research" | "research_feed" | "peer_research" | "event_radar" | "screening" | "account" | "other";
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "bug" | "data_missing" | "hard_to_understand" | "feature_request" | "other";
+            /** Message */
+            message: string;
+        };
+        /** BetaFeedbackResponse */
+        BetaFeedbackResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Feature Key
+             * @enum {string}
+             */
+            feature_key: "stock_research" | "research_feed" | "peer_research" | "event_radar" | "screening" | "account" | "other";
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "bug" | "data_missing" | "hard_to_understand" | "feature_request" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "triaged" | "resolved";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CalculationTrace */
         CalculationTrace: {
             /** Method */
@@ -1309,6 +1386,35 @@ export interface components {
             };
             /** Sources */
             sources?: components["schemas"]["EventSourceResponse"][];
+        };
+        /** CoverageDimension */
+        CoverageDimension: {
+            /**
+             * Dimension
+             * @enum {string}
+             */
+            dimension: "market" | "financial" | "fundamental_research" | "industry" | "peer_research" | "event_radar" | "screening" | "ai_research";
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "ready" | "partial" | "not_built" | "missing_source_data" | "unsupported" | "disabled" | "blocked_by_policy";
+            /**
+             * Freshness
+             * @default unknown
+             * @enum {string}
+             */
+            freshness: "current" | "stale" | "unknown";
+            /**
+             * Source Health
+             * @default unknown
+             * @enum {string}
+             */
+            source_health: "healthy" | "degraded" | "unavailable" | "unknown";
+            /** Reason Codes */
+            reason_codes?: string[];
+            /** Latest Artifact At */
+            latest_artifact_at?: string | null;
         };
         /**
          * CoverageStatus
@@ -2822,6 +2928,35 @@ export interface components {
             corporate_event: string;
             /** Ai */
             ai: string;
+        };
+        /** StockCoverageResponse */
+        StockCoverageResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Coverage Schema Version */
+            coverage_schema_version: string;
+            /** Evaluator Version */
+            evaluator_version: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Dimensions */
+            dimensions: components["schemas"]["CoverageDimension"][];
+            /** Limitations */
+            limitations?: string[];
         };
         /** StockHealthResearchV1 */
         StockHealthResearchV1: {
@@ -4886,6 +5021,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessActivationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_coverage_api_v1_stocks__symbol__coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockCoverageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_beta_feedback_api_v1_me_beta_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaFeedbackCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaFeedbackResponse"];
                 };
             };
             /** @description Validation Error */

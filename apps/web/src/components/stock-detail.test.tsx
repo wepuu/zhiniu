@@ -338,27 +338,83 @@ const eventRadar = {
   ],
 };
 
+const coverage = {
+  symbol: "600519",
+  canonical_symbol: "600519.SH",
+  snapshot_id: null,
+  knowledge_cutoff: "2026-08-16T00:00:00Z",
+  evaluated_at: "2026-08-16T00:00:00Z",
+  coverage_schema_version: "research-coverage-v1",
+  evaluator_version: "coverage-evaluator-v1",
+  policy_version: "coverage-policy-v1",
+  limitations: [],
+  dimensions: [
+    {
+      dimension: "financial",
+      availability: "ready",
+      freshness: "current",
+      source_health: "healthy",
+      reason_codes: [],
+      latest_artifact_at: "2026-08-16T00:00:00Z",
+    },
+    {
+      dimension: "fundamental_research",
+      availability: "ready",
+      freshness: "current",
+      source_health: "healthy",
+      reason_codes: [],
+      latest_artifact_at: "2026-08-16T00:00:00Z",
+    },
+    {
+      dimension: "peer_research",
+      availability: "ready",
+      freshness: "current",
+      source_health: "healthy",
+      reason_codes: [],
+      latest_artifact_at: "2026-08-16T00:00:00Z",
+    },
+    {
+      dimension: "event_radar",
+      availability: "ready",
+      freshness: "current",
+      source_health: "healthy",
+      reason_codes: [],
+      latest_artifact_at: "2026-08-16T00:00:00Z",
+    },
+    {
+      dimension: "ai_research",
+      availability: "ready",
+      freshness: "current",
+      source_health: "healthy",
+      reason_codes: [],
+      latest_artifact_at: "2026-08-16T00:00:00Z",
+    },
+  ],
+};
+
 function successfulFetch(input: RequestInfo | URL) {
   const url = String(input);
   const body = url.includes("daily-bars")
     ? emptyBars
-    : url.includes("event-radar")
-      ? eventRadar
-      : url.includes("peer-comparisons")
-        ? peerComparisons
-        : url.includes("ai-research")
-          ? aiResearch
-          : url.includes("research/observations/")
-            ? observation
-            : url.includes("research/snapshot")
-              ? snapshot
-              : url.includes("research/fundamentals")
-                ? fundamentals
-                : url.includes("financials/periods")
-                  ? periods
-                  : url.includes("valuations")
-                    ? valuations
-                    : stock;
+    : url.includes("/coverage")
+      ? coverage
+      : url.includes("event-radar")
+        ? eventRadar
+        : url.includes("peer-comparisons")
+          ? peerComparisons
+          : url.includes("ai-research")
+            ? aiResearch
+            : url.includes("research/observations/")
+              ? observation
+              : url.includes("research/snapshot")
+                ? snapshot
+                : url.includes("research/fundamentals")
+                  ? fundamentals
+                  : url.includes("financials/periods")
+                    ? periods
+                    : url.includes("valuations")
+                      ? valuations
+                      : stock;
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status: 200,

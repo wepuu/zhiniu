@@ -10,6 +10,8 @@ node_modules/
 .next/
 out/
 coverage/
+!apps/api/src/zhaoniu_api/coverage/
+!apps/api/src/zhaoniu_api/coverage/**
 *.tsbuildinfo
 
 # Python

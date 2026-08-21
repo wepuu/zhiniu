@@ -76,12 +76,20 @@ operator-issued user-bound activation codes, calendar validity, production appro
 desktop/mobile account-access states. Payment, checkout, public pricing, orders, refunds, webhooks,
 The product deliberately has no payment, price, order or checkout surface.
 
-## Phase 12 - Controlled Beta Production Readiness (current)
+## Phase 12 - Controlled Beta Production Readiness
 
 Email verification, password recovery with global session revocation, versioned legal acceptance,
 production-safe configuration, liveness/readiness probes, structured request logging, container
 packaging, backup/restore drills and an explicit controlled-Beta release gate. Automated data-rights
 workflows and public launch remain deferred.
+
+## Phase 13 - Beta Learning & Research Coverage Operations (current)
+
+Immutable priority-universe and research-coverage snapshots, explicit availability/freshness/source
+health axes, deterministic allow-listed gap planning, operator-triggered bounded backfill with
+leases and auditable item outcomes, structured in-product Beta feedback, and aggregate 7/30-day
+learning reports with small-cell suppression. There is no scheduled full-market backfill, automatic
+AI generation, behavioral telemetry, research score, or public launch expansion.
 
 ## Future - Factor / Backtest
 

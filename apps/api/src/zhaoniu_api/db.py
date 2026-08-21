@@ -1699,3 +1699,178 @@ class AccessActivationRedemptionRecord(Base):
     new_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     new_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     redeemed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class BetaResearchUniverseSnapshotRecord(Base):
+    __tablename__ = "beta_research_universe_snapshots"
+    __table_args__ = (
+        UniqueConstraint("universe_fingerprint", name="uq_beta_universe_fingerprint"),
+        Index("ix_beta_universe_cutoff", "knowledge_cutoff", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    universe_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class BetaResearchUniverseMemberRecord(Base):
+    __tablename__ = "beta_research_universe_members"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "symbol", name="uq_beta_universe_member"),
+        Index("ix_beta_universe_member_priority", "snapshot_id", "priority_rank", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("beta_research_universe_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    priority_rank: Mapped[int] = mapped_column(nullable=False)
+    reason_flags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ResearchCoverageSnapshotRecord(Base):
+    __tablename__ = "research_coverage_snapshots"
+    __table_args__ = (
+        UniqueConstraint("content_fingerprint", name="uq_research_coverage_fingerprint"),
+        Index("ix_research_coverage_cutoff", "knowledge_cutoff", "evaluated_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    universe_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("beta_research_universe_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    coverage_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    evaluator_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ResearchCoverageMemberRecord(Base):
+    __tablename__ = "research_coverage_members"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "symbol", name="uq_research_coverage_member"),
+        Index("ix_research_coverage_member_symbol", "symbol", "snapshot_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_coverage_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    dimension_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    limitations: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CoverageBackfillRunRecord(Base):
+    __tablename__ = "coverage_backfill_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_coverage_backfill_run_idempotency"),
+        Index("ix_coverage_backfill_run_status", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    universe_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("beta_research_universe_snapshots.id"), nullable=False
+    )
+    coverage_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("research_coverage_snapshots.id"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    planner_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    target_profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    planned_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    succeeded_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    failed_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    skipped_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    blocked_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CoverageBackfillItemRecord(Base):
+    __tablename__ = "coverage_backfill_items"
+    __table_args__ = (
+        UniqueConstraint("run_id", "symbol", "action_key", name="uq_coverage_backfill_item"),
+        Index("ix_coverage_backfill_item_claim", "run_id", "status", "dependency_order"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("coverage_backfill_runs.id", ondelete="CASCADE")
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    action_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(120), nullable=False)
+    dependency_order: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    before_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    after_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    changed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    provider_call_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_received: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_written: Mapped[int] = mapped_column(default=0, nullable=False)
+    rows_skipped: Mapped[int] = mapped_column(default=0, nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column()
+    error_code: Mapped[str | None] = mapped_column(String(120))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BetaFeedbackItemRecord(Base):
+    __tablename__ = "beta_feedback_items"
+    __table_args__ = (
+        Index("ix_beta_feedback_status_created", "status", "created_at"),
+        Index("ix_beta_feedback_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    feature_key: Mapped[str] = mapped_column(String(48), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), default="new", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

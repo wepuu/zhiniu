@@ -9,6 +9,7 @@ from zhaoniu_api.corporate_events.normalizer import AKShareDisclosureNormalizer
 from zhaoniu_api.corporate_events.provider import AKShareDisclosureProvider
 from zhaoniu_api.corporate_events.service import CorporateEventService
 from zhaoniu_api.corporate_events.sql_repository import SQLAlchemyCorporateEventRepository
+from zhaoniu_api.coverage.service import ResearchCoverageService
 from zhaoniu_api.fundamentals.akshare_provider import AKShareFinancialProvider
 from zhaoniu_api.fundamentals.normalizer import AKShareFinancialNormalizer
 from zhaoniu_api.fundamentals.service import FundamentalResearchService
@@ -123,3 +124,7 @@ def build_natural_language_screening_service(
         ),
         AccessControlService(session, settings),
     )
+
+
+def build_coverage_service(session: AsyncSession) -> ResearchCoverageService:
+    return ResearchCoverageService(session, get_settings())

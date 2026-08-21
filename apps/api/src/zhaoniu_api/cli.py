@@ -1,9 +1,10 @@
 import argparse
 import asyncio
 import json
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
 from pathlib import Path
+from uuid import UUID
 
 from sqlalchemy import select
 
@@ -12,6 +13,7 @@ from zhaoniu_api.composition import (
     build_access_control_service,
     build_ai_research_service,
     build_corporate_event_service,
+    build_coverage_service,
     build_fundamental_service,
     build_market_data_service,
     build_peer_research_service,
@@ -108,6 +110,27 @@ def _parser() -> argparse.ArgumentParser:
     inspect_access.add_argument("--user-email", required=True)
     subcommands.add_parser("check-beta-readiness")
     subcommands.add_parser("beta-status")
+    universe = subcommands.add_parser("build-beta-research-universe")
+    universe.add_argument("--symbol", action="append", dest="symbols")
+    coverage = subcommands.add_parser("build-research-coverage-snapshot")
+    coverage.add_argument("--universe-id", type=UUID)
+    stock_coverage = subcommands.add_parser("show-stock-coverage")
+    stock_coverage.add_argument("symbol")
+    backfill_plan = subcommands.add_parser("plan-coverage-backfill")
+    backfill_plan.add_argument("--coverage-snapshot-id", type=UUID)
+    backfill_run = subcommands.add_parser("run-coverage-backfill")
+    backfill_run.add_argument("run_id", type=UUID)
+    backfill_status = subcommands.add_parser("coverage-backfill-status")
+    backfill_status.add_argument("run_id", type=UUID)
+    backfill_recover = subcommands.add_parser("recover-coverage-backfill")
+    backfill_recover.add_argument("run_id", type=UUID)
+    learning = subcommands.add_parser("generate-beta-learning-report")
+    learning.add_argument("--days", type=int, choices=(7, 30), default=7)
+    feedback = subcommands.add_parser("list-beta-feedback")
+    feedback.add_argument("--limit", type=int, default=100)
+    feedback_status = subcommands.add_parser("update-beta-feedback-status")
+    feedback_status.add_argument("feedback_id", type=UUID)
+    feedback_status.add_argument("status", choices=("triaged", "resolved"))
     return parser
 
 
@@ -219,11 +242,50 @@ async def _run(args: argparse.Namespace) -> None:
                 result = await build_access_control_service(session).access_envelope(user_id)
             elif args.command in {"check-beta-readiness", "beta-status"}:
                 result = await evaluate_beta_readiness(session, get_settings())
+            elif args.command == "build-beta-research-universe":
+                result = await build_coverage_service(session).build_universe(
+                    operator_pinned=tuple(args.symbols) if args.symbols else None
+                )
+            elif args.command == "build-research-coverage-snapshot":
+                result = await build_coverage_service(session).build_coverage_snapshot(
+                    args.universe_id
+                )
+            elif args.command == "show-stock-coverage":
+                result = await build_coverage_service(session).stock_coverage(args.symbol)
+            elif args.command == "plan-coverage-backfill":
+                result = await build_coverage_service(session).plan_backfill(
+                    args.coverage_snapshot_id
+                )
+            elif args.command == "run-coverage-backfill":
+                result = await build_coverage_service(session).run_backfill(args.run_id)
+            elif args.command == "coverage-backfill-status":
+                result = await build_coverage_service(session).backfill_status(args.run_id)
+            elif args.command == "recover-coverage-backfill":
+                result = await build_coverage_service(session).recover_interrupted_backfill(
+                    args.run_id
+                )
+            elif args.command == "generate-beta-learning-report":
+                result = await build_coverage_service(session).learning_report(args.days)
+            elif args.command == "list-beta-feedback":
+                result = await build_coverage_service(session).list_feedback(args.limit)
+            elif args.command == "update-beta-feedback-status":
+                result = await build_coverage_service(session).update_feedback_status(
+                    args.feedback_id, args.status
+                )
             else:
                 result = await build_fundamental_service(session).compute_snapshot(
                     args.symbol, as_of=args.as_of
                 )
-            payload = result.model_dump() if hasattr(result, "model_dump") else asdict(result)
+            if hasattr(result, "model_dump"):
+                payload = result.model_dump()
+            elif is_dataclass(result):
+                payload = asdict(result)
+            elif isinstance(result, list):
+                payload = [
+                    item.model_dump() if hasattr(item, "model_dump") else item for item in result
+                ]
+            else:
+                payload = result
             print(json.dumps(payload, default=str, ensure_ascii=False))
     finally:
         await engine.dispose()

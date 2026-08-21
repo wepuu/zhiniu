@@ -383,6 +383,8 @@ class InMemoryAIResearchRepository:
         now = datetime.now(UTC)
         existing = self.runs.get(idempotency_key)
         if existing:
+            existing_id = existing["id"]
+            assert isinstance(existing_id, UUID)
             lease_expires_at = existing["lease_expires_at"]
             stale = (
                 existing["status"] == "running"
@@ -392,7 +394,7 @@ class InMemoryAIResearchRepository:
             retry = existing["status"] == "failed" and retry_failed
             if not stale and not retry:
                 return AIResearchRunLease(
-                    existing["id"], False, str(existing["status"])  # type: ignore[arg-type]
+                    existing_id, False, str(existing["status"])
                 )
             existing.update(
                 status="running",
@@ -400,7 +402,7 @@ class InMemoryAIResearchRepository:
                 started_at=now,
                 lease_expires_at=now + timedelta(minutes=30),
             )
-            return AIResearchRunLease(existing["id"], True, "running")  # type: ignore[arg-type]
+            return AIResearchRunLease(existing_id, True, "running")
         run_id = uuid4()
         self.runs[idempotency_key] = {
             "id": run_id,

@@ -56,6 +56,17 @@ class Settings(BaseSettings):
     screen_parser_run_deadline_seconds: float = Field(default=75, gt=0, le=120)
     screen_parser_hmac_secret: str = "development-only-change-me"
     screen_parser_input_ttl_seconds: int = Field(default=600, ge=60, le=1800)
+    coverage_usage_scope: Literal[
+        "development_evaluation", "internal_beta", "external_beta", "production"
+    ] = "development_evaluation"
+    coverage_policy_version: str = "coverage-policy-v1"
+    coverage_operator_pinned_symbols: str = "600519,300750,300376,000001"
+    coverage_acceptance_symbols: str = "600519,300750,300376,000001"
+    coverage_backfill_batch_size: int = Field(default=10, ge=1, le=50)
+    coverage_backfill_max_concurrency: int = Field(default=2, ge=1, le=8)
+    coverage_provider_rate_limit: int = Field(default=30, ge=1, le=600)
+    beta_feedback_rate_limit: int = Field(default=5, ge=1, le=30)
+    beta_learning_min_group_size: int = Field(default=3, ge=2, le=20)
 
     @property
     def llm_models(self) -> tuple[str, ...]:
@@ -65,6 +76,20 @@ class Settings(BaseSettings):
     def screen_parser_models(self) -> tuple[str, ...]:
         return tuple(
             item.strip() for item in self.screen_parser_model_chain.split(",") if item.strip()
+        )
+
+    @property
+    def coverage_pinned_symbols(self) -> tuple[str, ...]:
+        return tuple(
+            item.strip()
+            for item in self.coverage_operator_pinned_symbols.split(",")
+            if item.strip()
+        )
+
+    @property
+    def coverage_reference_symbols(self) -> tuple[str, ...]:
+        return tuple(
+            item.strip() for item in self.coverage_acceptance_symbols.split(",") if item.strip()
         )
 
     @property

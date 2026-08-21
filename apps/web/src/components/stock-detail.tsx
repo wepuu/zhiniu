@@ -10,6 +10,7 @@ import {
   type FundamentalResearchResponse,
   type PeerComparisonEnvelope,
   type ResearchSnapshotEnvelope,
+  type StockCoverageResponse,
   type StockResponse,
   type ValuationListResponse,
 } from "@zhaoniu/api-client";
@@ -51,6 +52,7 @@ import { AIResearchPanel } from "./ai-research-panel";
 import { PeerResearchPanel } from "./peer-research-panel";
 import { EventRadarPanel } from "./event-radar-panel";
 import { ResearchChanges } from "./research-changes";
+import { ResearchCoverageCard } from "./research-coverage-card";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
 
@@ -93,6 +95,9 @@ function ResearchWorkspace({
   eventPending,
   eventError,
   retryEvents,
+  coverage,
+  coveragePending,
+  coverageError,
   compact = false,
 }: {
   symbol: string;
@@ -106,6 +111,9 @@ function ResearchWorkspace({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  coverage?: StockCoverageResponse;
+  coveragePending: boolean;
+  coverageError: boolean;
   compact?: boolean;
 }) {
   const [view, setView] = useState<"changes" | "peers" | "events" | "ai">(
@@ -113,6 +121,11 @@ function ResearchWorkspace({
   );
   return (
     <div>
+      <ResearchCoverageCard
+        coverage={coverage}
+        pending={coveragePending}
+        error={coverageError}
+      />
       <div
         className="border-ink/10 bg-paper mb-4 flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1 [scrollbar-width:none] sm:inline-flex [&::-webkit-scrollbar]:hidden"
         role="tablist"
@@ -706,6 +719,9 @@ function DesktopStock({
   eventPending,
   eventError,
   retryEvents,
+  coverage,
+  coveragePending,
+  coverageError,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -721,6 +737,9 @@ function DesktopStock({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  coverage?: StockCoverageResponse;
+  coveragePending: boolean;
+  coverageError: boolean;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -764,6 +783,9 @@ function DesktopStock({
             eventPending={eventPending}
             eventError={eventError}
             retryEvents={retryEvents}
+            coverage={coverage}
+            coveragePending={coveragePending}
+            coverageError={coverageError}
           />
         )}
         {tab === "market" && (
@@ -815,6 +837,9 @@ function MobileStock({
   eventPending,
   eventError,
   retryEvents,
+  coverage,
+  coveragePending,
+  coverageError,
 }: {
   stock: StockResponse;
   bars: DailyBarResponse[];
@@ -830,6 +855,9 @@ function MobileStock({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  coverage?: StockCoverageResponse;
+  coveragePending: boolean;
+  coverageError: boolean;
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("changes");
   const latest = bars.at(-1);
@@ -874,6 +902,9 @@ function MobileStock({
             eventPending={eventPending}
             eventError={eventError}
             retryEvents={retryEvents}
+            coverage={coverage}
+            coveragePending={coveragePending}
+            coverageError={coverageError}
             compact
           />
         )}
@@ -955,6 +986,11 @@ export function StockDetail({ symbol }: { symbol: string }) {
     queryFn: async () => assertEventRadar(await api.getEventRadar(symbol)),
     retry: 1,
   });
+  const coverage = useQuery({
+    queryKey: ["stock", symbol, "coverage"],
+    queryFn: () => api.getStockCoverage(symbol),
+    retry: 1,
+  });
 
   if (market.isPending) {
     return (
@@ -1004,6 +1040,9 @@ export function StockDetail({ symbol }: { symbol: string }) {
     eventPending: eventRadar.isPending,
     eventError: eventRadar.isError,
     retryEvents: () => void eventRadar.refetch(),
+    coverage: coverage.data,
+    coveragePending: coverage.isPending,
+    coverageError: coverage.isError,
   };
   return (
     <>

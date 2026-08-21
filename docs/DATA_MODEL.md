@@ -1,4 +1,4 @@
-# Phase 12 Data Model
+# Phase 13 Data Model
 
 ## Entity relationships
 
@@ -199,3 +199,17 @@ historical rows, and the frontend is never the authorization boundary.
   categories; message bodies and tokens are never persisted.
 - `user_legal_acceptances` records user, document key, immutable document version/hash, timestamp
   and bounded request metadata. A unique identity prevents duplicate acceptance rows.
+
+## Phase 13 coverage and Beta learning tables
+
+- `beta_research_universe_snapshots` and `beta_research_universe_members` retain immutable,
+  fingerprinted priority universes without copying watchlist ownership.
+- `research_coverage_snapshots` and `research_coverage_members` retain point-in-time manifests for
+  availability, freshness, source health, reason codes, and evaluator/policy versions.
+- `coverage_backfill_runs` and `coverage_backfill_items` retain deterministic plans, bounded
+  execution state, leases, before/after fingerprints, provider/row counters, and redacted failures.
+- `beta_feedback_items` retains user-owned structured internal-Beta feedback and triage state. Every
+  query for a user's own feedback must include `user_id`; operator CLI views are explicit.
+
+Coverage snapshots never replace immutable financial, research, peer, event, screening, or AI
+artifacts. They are a versioned operational projection over those retained sources.

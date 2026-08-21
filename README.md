@@ -3,8 +3,8 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已完成 Phase 1-12。Phase 12 在邀请注册和版本化权益之上补齐邮箱验证、密码
-重置、法律文本版本接受、生产健康检查、受控 Beta 门禁以及 PostgreSQL 备份恢复演练。
+当前仓库已完成 Phase 1-13。Phase 13 在受控 Beta 基础上补齐优先研究池、统一研究覆盖
+快照、确定性缺口规划、有界人工回填、内测反馈和小样本抑制的学习报告。
 项目不包含支付、订单、公开价格或结算流程。AKShare 仍仅用于开发和技术评估；荐股、
 自动化个人信息权利门户和未经审批的公开生产发布仍不在当前范围内。
 
@@ -68,6 +68,11 @@ uv run python -m zhaoniu_api.cli generate-registration-invites --count 10 --expi
 uv run python -m zhaoniu_api.cli issue-access-code --user-email user@example.com --term month --expires-in-days 7
 uv run python -m zhaoniu_api.cli inspect-user-access --user-email user@example.com
 uv run python -m zhaoniu_api.cli check-beta-readiness
+uv run python -m zhaoniu_api.cli build-beta-research-universe
+uv run python -m zhaoniu_api.cli build-research-coverage-snapshot
+uv run python -m zhaoniu_api.cli plan-coverage-backfill
+uv run python -m zhaoniu_api.cli run-coverage-backfill RUN_ID
+uv run python -m zhaoniu_api.cli generate-beta-learning-report --days 7
 uv run python scripts/postgres_ops.py backup --output .local/backups/zhaoniu.dump
 uv run python scripts/postgres_ops.py verify --backup .local/backups/zhaoniu.dump
 ```
@@ -130,6 +135,8 @@ GET /api/v1/stocks/{symbol}/research/snapshot
 GET /api/v1/stocks/{symbol}/research/observations
 GET /api/v1/stocks/{symbol}/research/observations/{observation_id}
 GET /api/v1/stocks/{symbol}/ai-research
+GET /api/v1/stocks/{symbol}/coverage
+POST /api/v1/me/beta-feedback
 GET /api/v1/watchlists
 POST /api/v1/watchlists
 POST /api/v1/watchlists/{watchlist_id}/items
