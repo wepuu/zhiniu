@@ -53,7 +53,10 @@ class SQLAlchemyAIResearchRepository:
     async def latest_output(self, canonical_symbol: str) -> AIResearchOutputDocument | None:
         row = await self._session.scalar(
             select(AIResearchOutputRecord)
-            .where(AIResearchOutputRecord.symbol == canonical_symbol)
+            .where(
+                AIResearchOutputRecord.symbol == canonical_symbol,
+                AIResearchOutputRecord.research_type == "stock_health",
+            )
             .order_by(AIResearchOutputRecord.generated_at.desc())
             .limit(1)
         )
@@ -62,7 +65,10 @@ class SQLAlchemyAIResearchRepository:
     async def latest_run(self, canonical_symbol: str) -> AIResearchRunView | None:
         row = await self._session.scalar(
             select(AIResearchRunRecord)
-            .where(AIResearchRunRecord.symbol == canonical_symbol)
+            .where(
+                AIResearchRunRecord.symbol == canonical_symbol,
+                AIResearchRunRecord.research_type == "stock_health",
+            )
             .order_by(AIResearchRunRecord.started_at.desc())
             .limit(1)
         )

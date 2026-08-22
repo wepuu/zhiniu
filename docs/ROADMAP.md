@@ -107,13 +107,21 @@ leases and resumable failures, automatic signal and in-app alert projection, an 
 lane, and a desktop-first operations workspace. Full-market screening schedules, free-form cron,
 user schedules, exchange-calendar semantics and automated marketing email remain deferred.
 
-## Phase 16 - Company Research Timeline & Event Engine V2 (current)
+## Phase 16 - Company Research Timeline & Event Engine V2 (completed)
 
 A company-level, point-in-time research timeline over retained fundamental, peer and corporate-event
 signals; stable frozen cursors; separately hydrated upcoming events and event threads; explicit
 historical alert safety; and deterministic shareholder-change and litigation/arbitration event
 families. Timeline facts remain global projections with one upstream artifact. News, LLM fact
 extraction, event scoring, cross-domain event ratios and additional event families remain deferred.
+
+## Phase 17 - DeepSeek Production Enablement & Evidence-Grounded Research Assistant (current)
+
+A bounded DeepSeek production profile and four evidence-grounded research questions inside the
+existing AI interpretation experience. User-owned request wrappers, atomic daily entitlements,
+shared run/output deduplication, strict structured validation, explicit retry, provider diagnostics
+and desktop/mobile evidence navigation are included. Free-form chat, tools, streaming, price
+questions, automated full-market generation and personalized advice remain out of scope.
 
 ## Future - Factor / Backtest
 

@@ -63,6 +63,8 @@ class LiteLLMGateway:
         input_data: dict[str, object],
         response_schema: dict[str, Any],
         timeout_seconds: float,
+        max_output_tokens: int | None = None,
+        thinking_enabled: bool = False,
     ) -> LLMStructuredResponse:
         started = time.perf_counter()
         try:
@@ -83,6 +85,11 @@ class LiteLLMGateway:
                     },
                 }
             async with self._provider_budget(model, timeout_seconds):
+                extra_body = None
+                if model.startswith("deepseek/"):
+                    extra_body = {
+                        "thinking": {"type": "enabled" if thinking_enabled else "disabled"}
+                    }
                 response = await _litellm().acompletion(
                     model=model,
                     messages=[
@@ -101,6 +108,8 @@ class LiteLLMGateway:
                     timeout=timeout_seconds,
                     max_retries=0,
                     temperature=0,
+                    max_tokens=max_output_tokens,
+                    extra_body=extra_body,
                 )
         except LLMGatewayError:
             raise
@@ -204,6 +213,10 @@ def _safe_message(error: Exception) -> str:
 
 def _error_code(error: Exception) -> str:
     name = type(error).__name__.lower()
+    status_code = getattr(error, "status_code", None)
+    message = str(error).lower()
+    if status_code == 402 or "insufficient balance" in message:
+        return "provider_balance"
     if "authentication" in name or "permission" in name:
         return "provider_auth"
     if "ratelimit" in name or "quota" in name:

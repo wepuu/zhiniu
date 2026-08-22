@@ -40,3 +40,19 @@ uv run python -m zhaoniu_api.cli generate-ai-stock-health 600519 --retry-failed
 The stock page always labels generated content, identifies the actual provider/model and generation
 cutoff, and preserves direct evidence navigation. Older valid outputs remain readable and are marked
 `stale` when a newer deterministic research snapshot exists.
+
+## Phase 17 research assistant
+
+Phase 17 adds four fixed, server-owned research questions beside the existing stock health memo.
+The assistant accepts a `question_key`, never arbitrary user prose. Each request is owned by one
+authenticated user, while equivalent valid outputs remain global and are deduplicated by snapshot,
+question, context, prompt, schema and route identity.
+
+The context builder selects at most twelve retained research signals as of a frozen cutoff. It
+deduplicates semantic groups and exposes only stable evidence IDs, titles, summaries, attention and
+known-time metadata. The model cannot read provider payloads, private user data or database rows.
+
+`ResearchExplanationV1` is accepted only after Pydantic, citation, question-scope, numeric-claim and
+investment-language validation. DeepSeek runs non-streaming, without tools, with thinking disabled
+and a bounded output budget. Failed responses are not persisted. User retries are explicit and
+consume the versioned daily entitlement; concurrent equivalent requests attach to one global run.

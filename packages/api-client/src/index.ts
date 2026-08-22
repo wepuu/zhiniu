@@ -33,6 +33,13 @@ export type StockHealthResearchV1 =
   components["schemas"]["StockHealthResearchV1"];
 export type EvidenceIndexEntry = components["schemas"]["EvidenceIndexEntry"];
 export type CitedText = components["schemas"]["CitedText"];
+export type ExplanationQuestionCatalog =
+  components["schemas"]["ExplanationQuestionCatalog"];
+export type ExplanationRequestResponse =
+  components["schemas"]["ExplanationRequestResponse"];
+export type ExplanationRequestCreate =
+  components["schemas"]["ExplanationRequestCreate"];
+export type ExplanationEvidence = components["schemas"]["ExplanationEvidence"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
 export type MeResponse = components["schemas"]["MeResponse"];
 export type AccessEnvelope = components["schemas"]["AccessEnvelope"];
@@ -344,6 +351,33 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getAIResearch(symbol: string) {
       return request<AIResearchEnvelope>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/ai-research`,
+      );
+    },
+    getAIExplanationQuestions(symbol: string) {
+      return request<ExplanationQuestionCatalog>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/ai/questions`,
+      );
+    },
+    createAIExplanationRequest(
+      symbol: string,
+      payload: ExplanationRequestCreate,
+    ) {
+      return jsonRequest<ExplanationRequestResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/ai/explanation-requests`,
+        "POST",
+        payload,
+      );
+    },
+    getAIExplanationRequest(symbol: string, requestId: string) {
+      return request<ExplanationRequestResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/ai/explanation-requests/${encodeURIComponent(requestId)}`,
+      );
+    },
+    retryAIExplanationRequest(symbol: string, requestId: string) {
+      return jsonRequest<ExplanationRequestResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/ai/explanation-requests/${encodeURIComponent(requestId)}/retry`,
+        "POST",
+        {},
       );
     },
     getPeers(symbol: string) {

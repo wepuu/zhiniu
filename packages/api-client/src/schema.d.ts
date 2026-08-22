@@ -945,6 +945,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/ai/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Questions */
+        get: operations["questions_api_v1_stocks__symbol__ai_questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/ai/explanation-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Request */
+        post: operations["create_request_api_v1_stocks__symbol__ai_explanation_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/ai/explanation-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Request */
+        get: operations["get_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/ai/explanation-requests/{request_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Request */
+        post: operations["retry_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/coverage": {
         parameters: {
             query?: never;
@@ -2139,6 +2207,13 @@ export interface components {
             /** Ending Cash */
             ending_cash: string | null;
         };
+        /** CitedExplanationText */
+        CitedExplanationText: {
+            /** Text */
+            text: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
         /** CitedText */
         CitedText: {
             /** Text */
@@ -2694,6 +2769,168 @@ export interface components {
             event_type: string;
         } & {
             [key: string]: unknown;
+        };
+        /** ExplanationEvidence */
+        ExplanationEvidence: {
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "fundamental" | "corporate_event" | "peer";
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Attention Level */
+            attention_level: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+        };
+        /** ExplanationInterpretation */
+        ExplanationInterpretation: {
+            /** Focus Key */
+            focus_key: string;
+            explanation: components["schemas"]["CitedExplanationText"];
+        };
+        /** ExplanationOutput */
+        ExplanationOutput: {
+            /**
+             * Output Id
+             * Format: uuid
+             */
+            output_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Question Key
+             * @enum {string}
+             */
+            question_key: "recent_research_changes" | "fundamental_changes" | "corporate_event_context" | "peer_position_context";
+            /** Provider Display Name */
+            provider_display_name: string;
+            /** Model Display Name */
+            model_display_name: string;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Freshness
+             * @enum {string}
+             */
+            freshness: "current" | "stale";
+            content: components["schemas"]["ResearchExplanationV1"];
+            /** Evidence Index */
+            evidence_index: components["schemas"]["ExplanationEvidence"][];
+            /** Limitations */
+            limitations: string[];
+            /**
+             * Ai Generated
+             * @default true
+             * @constant
+             */
+            ai_generated: true;
+        };
+        /** ExplanationQuestion */
+        ExplanationQuestion: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "recent_research_changes" | "fundamental_changes" | "corporate_event_context" | "peer_position_context";
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+            /**
+             * Coverage
+             * @enum {string}
+             */
+            coverage: "available" | "insufficient";
+        };
+        /** ExplanationQuestionCatalog */
+        ExplanationQuestionCatalog: {
+            /** Symbol */
+            symbol: string;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Access
+             * @enum {string}
+             */
+            access: "available" | "contact_support" | "disabled";
+            /** Remaining Today */
+            remaining_today: number;
+            /** Daily Limit */
+            daily_limit: number;
+            /** Support Contact Url */
+            support_contact_url?: string | null;
+            /** Questions */
+            questions: components["schemas"]["ExplanationQuestion"][];
+        };
+        /** ExplanationRequestCreate */
+        ExplanationRequestCreate: {
+            /**
+             * Question Key
+             * @enum {string}
+             */
+            question_key: "recent_research_changes" | "fundamental_changes" | "corporate_event_context" | "peer_position_context";
+            /**
+             * Client Request Id
+             * Format: uuid
+             */
+            client_request_id: string;
+        };
+        /** ExplanationRequestResponse */
+        ExplanationRequestResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Question Key
+             * @enum {string}
+             */
+            question_key: "recent_research_changes" | "fundamental_changes" | "corporate_event_context" | "peer_position_context";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "building" | "ready" | "failed";
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            output?: components["schemas"]["ExplanationOutput"] | null;
         };
         /** FeedSection */
         FeedSection: {
@@ -3681,6 +3918,26 @@ export interface components {
             status: components["schemas"]["CoverageStatus"];
             /** Reason */
             reason?: string | null;
+        };
+        /** ResearchExplanationV1 */
+        ResearchExplanationV1: {
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "research-explanation-v1";
+            /**
+             * Question Key
+             * @enum {string}
+             */
+            question_key: "recent_research_changes" | "fundamental_changes" | "corporate_event_context" | "peer_position_context";
+            headline: components["schemas"]["CitedExplanationText"];
+            /** Summary */
+            summary: components["schemas"]["CitedExplanationText"][];
+            /** Interpretations */
+            interpretations: components["schemas"]["ExplanationInterpretation"][];
+            /** Attention Items */
+            attention_items?: components["schemas"]["CitedExplanationText"][];
         };
         /** ResearchFeedResponse */
         ResearchFeedResponse: {
@@ -6500,6 +6757,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessActivationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    questions_api_v1_stocks__symbol__ai_questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplanationQuestionCatalog"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_request_api_v1_stocks__symbol__ai_explanation_requests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplanationRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplanationRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                request_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplanationRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                request_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplanationRequestResponse"];
                 };
             };
             /** @description Validation Error */

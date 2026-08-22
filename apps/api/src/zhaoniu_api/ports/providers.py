@@ -94,4 +94,6 @@ class LLMGateway(Protocol):
         input_data: dict[str, object],
         response_schema: dict[str, Any],
         timeout_seconds: float,
+        max_output_tokens: int | None = None,
+        thinking_enabled: bool = False,
     ) -> LLMStructuredResponse: ...

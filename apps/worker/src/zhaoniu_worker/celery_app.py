@@ -245,6 +245,25 @@ def generate_ai_stock_health(symbol: str, retry_failed: bool = False) -> dict[st
     return asyncio.run(_generate_ai_stock_health(symbol, retry_failed))
 
 
+async def _generate_ai_explanation(request_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_ai_explanation_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_ai_explanation_service(session).execute(UUID(request_id))
+        return {
+            "status": result.status,
+            "request_id": str(result.id),
+            "output_id": str(result.output.output_id) if result.output else None,
+        }
+
+
+@celery_app.task(name="ai_research.generate_explanation")  # type: ignore[untyped-decorator]
+def generate_ai_explanation(request_id: str) -> dict[str, object]:
+    """Generate one shared DeepSeek explanation for a user-owned request wrapper."""
+    return asyncio.run(_generate_ai_explanation(request_id))
+
+
 async def _event_task(command: str, symbol: str, **kwargs: object) -> dict[str, object]:
     from zhaoniu_api.composition import build_corporate_event_service
     from zhaoniu_api.database import session_factory

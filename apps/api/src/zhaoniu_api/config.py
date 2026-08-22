@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     llm_structured_output_mode: Literal["json_schema", "json_object"] = "json_schema"
     llm_provider_max_concurrency: int = Field(default=2, ge=1, le=16)
     llm_provider_daily_call_limit: int = Field(default=100, ge=1, le=10000)
+    ai_explanation_enabled: bool = False
+    ai_explanation_model_chain: str = "deepseek/deepseek-v4-flash"
+    ai_explanation_max_attempts: int = Field(default=1, ge=1, le=1)
+    ai_explanation_timeout_seconds: float = Field(default=60, gt=0, le=90)
+    ai_explanation_run_deadline_seconds: float = Field(default=90, gt=0, le=120)
+    ai_explanation_max_output_tokens: int = Field(default=1200, ge=256, le=2000)
+    deepseek_api_key: str = ""
     screen_parser_enabled: bool = False
     screen_parser_model_chain: str = ""
     screen_parser_max_attempts: int = Field(default=2, ge=1, le=2)
@@ -96,6 +103,14 @@ class Settings(BaseSettings):
     def screen_parser_models(self) -> tuple[str, ...]:
         return tuple(
             item.strip() for item in self.screen_parser_model_chain.split(",") if item.strip()
+        )
+
+    @property
+    def ai_explanation_models(self) -> tuple[str, ...]:
+        return tuple(
+            item.strip()
+            for item in self.ai_explanation_model_chain.split(",")
+            if item.strip()
         )
 
     @property
@@ -164,6 +179,15 @@ class Settings(BaseSettings):
             or self.screen_parser_hmac_secret == "development-only-change-me"
         ):
             raise ValueError("production_screen_parser_secret_is_unsafe")
+        if self.ai_explanation_enabled:
+            if not self.llm_enabled or not self.ai_explanation_models or not self.deepseek_api_key:
+                raise ValueError("production_ai_explanation_configuration_incomplete")
+            if any(model != "deepseek/deepseek-v4-flash" for model in self.ai_explanation_models):
+                raise ValueError("production_ai_explanation_model_not_approved")
+            if self.llm_structured_output_mode != "json_object":
+                raise ValueError("production_deepseek_requires_json_object_mode")
+            if self.legal_review_status != "approved" or self.data_use_status != "approved":
+                raise ValueError("production_ai_explanation_requires_approval")
 
 
 @lru_cache

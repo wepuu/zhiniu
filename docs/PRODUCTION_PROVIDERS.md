@@ -14,12 +14,25 @@ for submitted, delivered, delayed, bounced, failed, complained and suppressed st
 
 ## DeepSeek through LiteLLM
 
-Model identifiers remain deployment configuration. `LLM_STRUCTURED_OUTPUT_MODE=json_schema` uses
-strict response schema when the configured model supports it. `json_object` uses provider JSON mode
-and still runs the existing Pydantic, citation, coverage, numeric-claim and language validators.
+Stock-health model identifiers remain deployment configuration. The Phase 17 explanation lane is
+separately fail-closed and allows `deepseek/deepseek-v4-flash` only. It uses provider JSON-object
+mode and then runs Pydantic, citation, scope, numeric-claim and language validators.
 Requested model, provider-returned actual model and capability mode are stored with call audit.
 
 The console diagnostic performs one minimal structured-output request and records only status,
 latency and a redacted reason code. It does not persist the probe response, prompt, credentials or
 reasoning. Keep per-provider concurrency and daily call limits low until real usage measurements
 justify changes.
+
+Required explanation configuration:
+
+```text
+LLM_ENABLED=true
+LLM_STRUCTURED_OUTPUT_MODE=json_object
+AI_EXPLANATION_ENABLED=true
+AI_EXPLANATION_MODEL_CHAIN=deepseek/deepseek-v4-flash
+DEEPSEEK_API_KEY=<secret manager value>
+```
+
+The diagnostic and explanation request both disable thinking, tools, streaming and SDK retries.
+Production activation remains subject to legal and financial-data approval gates.

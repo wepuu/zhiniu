@@ -14,6 +14,8 @@ from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
     AccessActivationCodeRecord,
+    AIExplanationRequestRecord,
+    AIResearchOutputRecord,
     BetaFeedbackItemRecord,
     CoverageBackfillRunRecord,
     LLMCallRecord,
@@ -306,6 +308,34 @@ class OperatorService:
             )
             or 0
         )
+        explanation_requests = int(
+            await self._session.scalar(
+                select(func.count())
+                .select_from(AIExplanationRequestRecord)
+                .where(AIExplanationRequestRecord.created_at >= since)
+            )
+            or 0
+        )
+        explanation_outputs = int(
+            await self._session.scalar(
+                select(func.count())
+                .select_from(AIResearchOutputRecord)
+                .where(
+                    AIResearchOutputRecord.generated_at >= since,
+                    AIResearchOutputRecord.research_type == "stock_explanation",
+                )
+            )
+            or 0
+        )
+        explanation_tokens = int(
+            await self._session.scalar(
+                select(func.coalesce(func.sum(LLMCallRecord.output_tokens), 0)).where(
+                    LLMCallRecord.created_at >= since,
+                    LLMCallRecord.task_type == "research_explanation",
+                )
+            )
+            or 0
+        )
         email_submitted = int(
             await self._session.scalar(
                 select(func.count())
@@ -362,6 +392,13 @@ class OperatorService:
                 "enabled": str(self._settings.llm_enabled).lower(),
                 "calls_24h": llm_calls,
                 "failures_24h": llm_failures,
+                "explanation_enabled": str(self._settings.ai_explanation_enabled).lower(),
+                "explanation_requests_24h": explanation_requests,
+                "explanation_outputs_24h": explanation_outputs,
+                "explanation_cache_attachments_24h": max(
+                    0, explanation_requests - explanation_outputs
+                ),
+                "explanation_output_tokens_24h": explanation_tokens,
             },
             email={
                 "provider": self._settings.email_delivery_mode,
@@ -546,7 +583,8 @@ class OperatorService:
     async def provider_statuses(self) -> list[ProviderStatusView]:
         configured = {
             "deepseek": self._settings.llm_enabled
-            and any(item.startswith("deepseek/") for item in self._settings.llm_models),
+            and self._settings.ai_explanation_enabled
+            and bool(self._settings.ai_explanation_models),
             "resend": self._settings.email_delivery_mode == "resend",
             "market_data": True,
             "disclosure": True,
@@ -590,16 +628,22 @@ class OperatorService:
         if provider == "deepseek":
             capability = "structured_generation"
             model = next(
-                (item for item in self._settings.llm_models if item.startswith("deepseek/")),
+                (
+                    item
+                    for item in self._settings.ai_explanation_models
+                    if item.startswith("deepseek/")
+                ),
                 None,
             )
-            configured = bool(self._settings.llm_enabled and model)
+            configured = bool(
+                self._settings.llm_enabled and self._settings.ai_explanation_enabled and model
+            )
             if not configured or model is None:
                 status = "disabled"
             else:
                 try:
                     gateway = LiteLLMGateway(
-                        self._settings.llm_structured_output_mode,
+                        "json_object",
                         redis_url=self._settings.redis_url,
                         max_concurrency=self._settings.llm_provider_max_concurrency,
                         daily_call_limit=self._settings.llm_provider_daily_call_limit,
@@ -618,6 +662,8 @@ class OperatorService:
                             "additionalProperties": False,
                         },
                         timeout_seconds=min(self._settings.llm_per_model_timeout_seconds, 30),
+                        max_output_tokens=128,
+                        thinking_enabled=False,
                     )
                     status = "healthy"
                 except LLMGatewayError as error:

@@ -252,3 +252,14 @@ research `knowledge_cutoff` field.
 - `corporate_events` continues to store immutable versions for all six event families. New
   shareholder and litigation events use the existing typed payload, lineage, input and thread
   fields rather than family-specific tables.
+
+## Phase 17 AI explanation requests
+
+- `ai_explanation_requests` is a user-owned idempotent wrapper linking one user and fixed question
+  to a shared AI run/output. Every public lookup includes `user_id`.
+- `ai_explanation_daily_usage` provides an atomic per-user UTC-day counter for versioned limits.
+- `ai_research_runs` and `ai_research_outputs` add nullable `question_key`. Explanations use
+  `research_type=stock_explanation`; stock-health repository reads explicitly filter
+  `research_type=stock_health`.
+- Valid explanation outputs remain global and immutable. Full prompts, raw provider responses,
+  reasoning traces, credentials and private user data are not stored.

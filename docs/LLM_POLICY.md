@@ -16,6 +16,19 @@
 - Public UI must carry an explicit AI-generated label and continue to prohibit buy/sell language,
   target prices, return probabilities, ratings and personalized securities advice.
 
+## DeepSeek research explanation profile
+
+- The production profile is `deepseek/deepseek-v4-flash`, explicitly configured per deployment.
+- DeepSeek uses provider `json_object` mode followed by strict Pydantic validation; JSON Schema is
+  not claimed as a provider capability.
+- Requests are non-streaming, tool-free, capped at 1,200 output tokens and explicitly disable
+  thinking. Raw responses and reasoning content are never stored.
+- There is one application attempt and no hidden SDK retry. HTTP 402 is classified as
+  `provider_balance`; public users receive only a temporary-unavailability category.
+- No custom production base URL is accepted. Credentials remain in `DEEPSEEK_API_KEY` only.
+- The four fixed question keys are the entire public input contract. Unknown keys and free text are
+  rejected before quota consumption and before any provider call.
+
 ## Natural-language screening parser
 
 - The parser authors a candidate allow-listed DSL document; it never executes screening or decides

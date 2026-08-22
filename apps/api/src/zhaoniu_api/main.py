@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from zhaoniu_api.access_control.routes import router as access_control_router
+from zhaoniu_api.ai_explanations.routes import router as ai_explanation_router
 from zhaoniu_api.auth.webhook_routes import router as webhook_router
 from zhaoniu_api.automation.routes import router as automation_router
 from zhaoniu_api.company_timeline.routes import router as company_timeline_router
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(research_feed_router)
     app.include_router(screening_router)
     app.include_router(access_control_router)
+    app.include_router(ai_explanation_router)
     app.include_router(coverage_router)
     app.include_router(operations_console_router)
     app.include_router(automation_router)

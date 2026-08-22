@@ -5,8 +5,10 @@ import {
   type AIResearchEnvelope,
   type CitedText,
   type EvidenceIndexEntry,
+  type ExplanationEvidence,
+  type ExplanationRequestResponse,
 } from "@zhaoniu/api-client";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Bot,
   CalendarClock,
@@ -15,9 +17,11 @@ import {
   FileSearch,
   Link2,
   LockKeyhole,
+  MessageSquareText,
   RefreshCw,
   ShieldAlert,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -144,7 +148,7 @@ function CitationLinks({
   );
 }
 
-export function AIResearchPanel({
+function StockHealthPanel({
   symbol,
   envelope,
   compact = false,
@@ -377,6 +381,396 @@ export function AIResearchPanel({
           onRetry={() => void detail.refetch()}
           onClose={closeEvidence}
         />
+      )}
+    </div>
+  );
+}
+
+function AssistantCitation({
+  references,
+  evidence,
+  onOpen,
+}: {
+  references: string[];
+  evidence: Map<string, ExplanationEvidence>;
+  onOpen: (item: ExplanationEvidence) => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {references.map((reference) => {
+        const item = evidence.get(reference);
+        return item ? (
+          <button
+            key={reference}
+            type="button"
+            onClick={() => onOpen(item)}
+            className="border-ink/10 bg-mist/60 text-blue hover:border-blue/40 min-h-8 rounded-full border px-2.5 py-1 font-mono text-[10px] transition"
+          >
+            {reference}
+          </button>
+        ) : null;
+      })}
+    </div>
+  );
+}
+
+function AssistantEvidencePanel({
+  item,
+  compact,
+  onClose,
+}: {
+  item: ExplanationEvidence;
+  compact: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <aside
+      className={
+        compact
+          ? "bg-paper fixed inset-x-0 bottom-0 z-50 max-h-[72vh] overflow-y-auto rounded-t-3xl border-t border-black/10 p-5 shadow-2xl"
+          : "border-ink/10 bg-paper sticky top-24 rounded-2xl border p-5"
+      }
+      aria-label="引用证据详情"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-data text-blue text-[10px] uppercase tracking-[0.15em]">
+            {item.evidence_id}
+          </p>
+          <h3 className="font-display mt-2 text-lg font-semibold">
+            {item.title}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="border-ink/10 grid size-9 shrink-0 place-items-center rounded-full border"
+          aria-label="关闭证据"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <p className="text-slate mt-4 text-sm leading-7">{item.summary}</p>
+      <dl className="border-ink/8 mt-5 space-y-3 border-t pt-4 text-xs">
+        <div className="flex justify-between gap-4">
+          <dt className="text-slate">证据类型</dt>
+          <dd>{item.source_kind}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt className="text-slate">系统已知时间</dt>
+          <dd className="font-data text-right">
+            {new Date(item.known_at).toLocaleString("zh-CN")}
+          </dd>
+        </div>
+      </dl>
+    </aside>
+  );
+}
+
+function ResearchAssistant({
+  symbol,
+  compact,
+}: {
+  symbol: string;
+  compact: boolean;
+}) {
+  const [request, setRequest] = useState<ExplanationRequestResponse>();
+  const [selected, setSelected] = useState<ExplanationEvidence>();
+  const catalog = useQuery({
+    queryKey: ["stock", symbol, "ai-explanation-questions"],
+    queryFn: () => api.getAIExplanationQuestions(symbol),
+    retry: false,
+  });
+  const requestQuery = useQuery({
+    queryKey: ["stock", symbol, "ai-explanation-request", request?.id],
+    queryFn: () => api.getAIExplanationRequest(symbol, request!.id),
+    enabled: Boolean(
+      request && ["pending", "building"].includes(request.status),
+    ),
+    refetchInterval: 2000,
+  });
+  const currentRequest = requestQuery.data ?? request;
+  const create = useMutation({
+    mutationFn: (questionKey: string) =>
+      api.createAIExplanationRequest(symbol, {
+        question_key: questionKey as
+          | "recent_research_changes"
+          | "fundamental_changes"
+          | "corporate_event_context"
+          | "peer_position_context",
+        client_request_id: crypto.randomUUID(),
+      }),
+    onSuccess: setRequest,
+  });
+  const retry = useMutation({
+    mutationFn: () => api.retryAIExplanationRequest(symbol, currentRequest!.id),
+    onSuccess: setRequest,
+  });
+
+  if (catalog.isPending) {
+    return (
+      <Card className="grid min-h-64 place-items-center p-8" role="status">
+        <RefreshCw className="text-blue size-6 animate-spin" />
+      </Card>
+    );
+  }
+  if (catalog.isError || !catalog.data) {
+    return (
+      <Card className="p-6">
+        <AILabel />
+        <h2 className="font-display mt-5 text-xl font-semibold">
+          登录后使用研究助手
+        </h2>
+        <p className="text-slate mt-2 text-sm leading-6">
+          研究助手会保存你的请求状态，但共享同一份不含私人数据的研究结果。
+        </p>
+      </Card>
+    );
+  }
+  const data = catalog.data;
+  if (!data.enabled) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="border-ink/8 flex items-center justify-between border-b px-5 py-4">
+          <AILabel />
+          <span className="font-data text-slate text-[10px] uppercase">
+            {data.access}
+          </span>
+        </div>
+        <div className="px-6 py-10 text-center">
+          <LockKeyhole className="text-slate mx-auto size-7" />
+          <h2 className="font-display mt-4 text-2xl font-semibold">
+            {data.access === "contact_support"
+              ? "研究助手属于高级功能"
+              : "研究助手暂未启用"}
+          </h2>
+          <p className="text-slate mx-auto mt-2 max-w-lg text-sm leading-6">
+            {data.access === "contact_support"
+              ? "请联系客服获取激活码，页面不会展示订阅价格或支付入口。"
+              : "DeepSeek 服务尚未通过当前部署的启用门禁，确定性研究仍可正常使用。"}
+          </p>
+          {data.support_contact_url && data.access === "contact_support" && (
+            <a
+              className="bg-ink mt-5 inline-flex rounded-xl px-4 py-2 text-sm text-white"
+              href={data.support_contact_url}
+            >
+              联系客服
+            </a>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  const output = currentRequest?.output;
+  const evidence = new Map(
+    (output?.evidence_index ?? []).map((item) => [item.evidence_id, item]),
+  );
+  return (
+    <div>
+      <Card className="overflow-hidden">
+        <div className="bg-ink px-5 py-5 text-white">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <AILabel />
+              <h2 className="font-display mt-4 text-2xl font-semibold">
+                选择一个研究问题
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
+                固定问题会锁定证据范围；不接收自由文本，也不回答价格与交易问题。
+              </p>
+            </div>
+            <span className="rounded-full bg-white/10 px-3 py-1 text-[10px]">
+              今日剩余 {data.remaining_today} 次
+            </span>
+          </div>
+        </div>
+        <div
+          className={`grid gap-px bg-black/10 ${compact ? "grid-cols-1" : "sm:grid-cols-2"}`}
+        >
+          {data.questions.map((question) => (
+            <button
+              key={question.key}
+              type="button"
+              disabled={
+                question.coverage !== "available" ||
+                create.isPending ||
+                data.remaining_today === 0
+              }
+              onClick={() => create.mutate(question.key)}
+              className="bg-paper hover:bg-mist/70 disabled:text-slate group min-h-32 p-5 text-left transition disabled:cursor-not-allowed"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <MessageSquareText className="text-blue size-4" />
+                <span className="text-slate text-[10px]">
+                  {question.coverage === "available" ? "证据可用" : "证据不足"}
+                </span>
+              </div>
+              <p className="mt-4 text-sm font-semibold">{question.label}</p>
+              <p className="text-slate mt-1 text-xs leading-5">
+                {question.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {(create.isPending ||
+        currentRequest?.status === "pending" ||
+        currentRequest?.status === "building") && (
+        <Card className="mt-4 flex items-center gap-4 p-5" role="status">
+          <RefreshCw className="text-blue size-5 animate-spin" />
+          <div>
+            <p className="text-sm font-semibold">正在核对证据并生成解释</p>
+            <p className="text-slate mt-1 text-xs">
+              可以离开页面，任务状态会被保留。
+            </p>
+          </div>
+        </Card>
+      )}
+      {(create.isError || currentRequest?.status === "failed") && (
+        <Card className="border-risk/25 mt-4 p-5" role="alert">
+          <p className="text-sm font-semibold">研究解释暂时不可用</p>
+          <p className="text-slate mt-1 text-xs">
+            系统没有保存未通过校验的内容。
+          </p>
+          {currentRequest?.status === "failed" && (
+            <button
+              type="button"
+              disabled={retry.isPending}
+              onClick={() => retry.mutate()}
+              className="bg-ink mt-4 rounded-xl px-4 py-2 text-xs text-white"
+            >
+              显式重试
+            </button>
+          )}
+        </Card>
+      )}
+      {output && (
+        <div
+          className={`mt-4 grid gap-4 ${selected && !compact ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : "grid-cols-1"}`}
+        >
+          <Card className="overflow-hidden">
+            <div className="border-ink/8 border-b px-5 py-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <AILabel />
+                <span className="bg-mist rounded-full px-3 py-1 text-[10px]">
+                  {output.freshness === "stale"
+                    ? "已有新证据 · 内容陈旧"
+                    : "证据仍为当前"}
+                </span>
+              </div>
+              <h2 className="font-display mt-4 text-2xl font-semibold leading-tight">
+                {output.content.headline.text}
+              </h2>
+              <AssistantCitation
+                references={output.content.headline.evidence_refs}
+                evidence={evidence}
+                onOpen={setSelected}
+              />
+              <p className="text-slate mt-4 text-[10px]">
+                {output.provider_display_name} · {output.model_display_name} ·
+                数据截止{" "}
+                {new Date(output.knowledge_cutoff).toLocaleString("zh-CN")}
+              </p>
+            </div>
+            <div className="space-y-5 px-5 py-5">
+              {output.content.summary.map((item, index) => (
+                <div
+                  key={`${item.text}-${index}`}
+                  className="border-blue/25 border-l-2 pl-4"
+                >
+                  <p className="text-sm leading-7">{item.text}</p>
+                  <AssistantCitation
+                    references={item.evidence_refs}
+                    evidence={evidence}
+                    onOpen={setSelected}
+                  />
+                </div>
+              ))}
+              {output.content.interpretations.map((item) => (
+                <div
+                  key={item.focus_key}
+                  className="bg-mist/60 rounded-2xl p-4"
+                >
+                  <p className="text-slate text-[10px] uppercase tracking-[0.14em]">
+                    {item.focus_key}
+                  </p>
+                  <p className="mt-2 text-sm leading-7">
+                    {item.explanation.text}
+                  </p>
+                  <AssistantCitation
+                    references={item.explanation.evidence_refs}
+                    evidence={evidence}
+                    onOpen={setSelected}
+                  />
+                </div>
+              ))}
+              <div className="border-ink/8 border-t pt-4">
+                {output.limitations.map((item) => (
+                  <p key={item} className="text-slate text-xs leading-6">
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </Card>
+          {selected && (
+            <AssistantEvidencePanel
+              item={selected}
+              compact={compact}
+              onClose={() => setSelected(undefined)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AIResearchPanel({
+  symbol,
+  envelope,
+  compact = false,
+}: {
+  symbol: string;
+  envelope: AIResearchEnvelope;
+  compact?: boolean;
+}) {
+  const [mode, setMode] = useState<"health" | "assistant">("health");
+  return (
+    <div>
+      <div
+        className="bg-mist mb-4 inline-flex rounded-xl p-1"
+        role="tablist"
+        aria-label="AI 研究模式"
+      >
+        {(
+          [
+            ["health", "股票体检"],
+            ["assistant", "研究助手"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={mode === key}
+            onClick={() => setMode(key)}
+            className={`min-h-10 rounded-lg px-4 text-sm font-medium transition ${mode === key ? "bg-paper text-ink shadow-sm" : "text-slate"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "health" ? (
+        <StockHealthPanel
+          symbol={symbol}
+          envelope={envelope}
+          compact={compact}
+        />
+      ) : (
+        <ResearchAssistant symbol={symbol} compact={compact} />
       )}
     </div>
   );

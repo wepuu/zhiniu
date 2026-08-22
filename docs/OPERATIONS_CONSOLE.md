@@ -31,6 +31,11 @@ Policy changes, immediate runs, single-stock refresh and failed-run resume requi
 produce operator audit events. Mobile keeps this view read-only. See
 `docs/AUTOMATED_RESEARCH_OPERATIONS.md` for enablement and emergency-stop order.
 
+The AI dashboard also reports explanation requests, shared outputs, cache attachments, output
+tokens and failures for the previous day. It never exposes prompts, provider responses, reasoning
+or user-private request content. DeepSeek diagnostics use the Phase 17 JSON-object profile with
+thinking disabled.
+
 The audit stream stores action keys, actor role, bounded target identity, outcome and safe metadata.
 It must never contain passwords, plaintext activation/invitation codes, session tokens, API keys,
 full email bodies, provider responses, model prompts or natural-language screening input.

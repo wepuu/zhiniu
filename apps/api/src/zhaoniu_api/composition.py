@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.access_control.service import AccessControlService
+from zhaoniu_api.ai_explanations.service import AIExplanationService
 from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
@@ -94,6 +95,10 @@ def build_ai_research_service(session: AsyncSession) -> AIResearchService:
             run_deadline_seconds=settings.llm_run_deadline_seconds,
         ),
     )
+
+
+def build_ai_explanation_service(session: AsyncSession) -> AIExplanationService:
+    return AIExplanationService(session, get_settings())
 
 
 def build_corporate_event_service(session: AsyncSession) -> CorporateEventService:

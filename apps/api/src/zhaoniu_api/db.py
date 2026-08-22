@@ -1001,6 +1001,7 @@ class AIResearchRunRecord(Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     research_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    question_key: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
     context_version: Mapped[str] = mapped_column(String(40), nullable=False)
     context_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -1044,6 +1045,7 @@ class AIResearchOutputRecord(Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     research_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    question_key: Mapped[str | None] = mapped_column(String(64))
     provider: Mapped[str] = mapped_column(String(40), nullable=False)
     model: Mapped[str] = mapped_column(String(160), nullable=False)
     context_version: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -1058,6 +1060,59 @@ class AIResearchOutputRecord(Base):
     coverage_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AIExplanationRequestRecord(Base):
+    __tablename__ = "ai_explanation_requests"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_request_id", name="uq_ai_explanation_user_client"),
+        CheckConstraint(
+            "status IN ('pending', 'building', 'ready', 'failed')",
+            name="ck_ai_explanation_request_status",
+        ),
+        Index("ix_ai_explanation_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="CASCADE"), nullable=False
+    )
+    question_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_request_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ai_research_runs.id", ondelete="SET NULL")
+    )
+    output_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ai_research_outputs.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    quota_day: Mapped[date] = mapped_column(Date, nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AIExplanationDailyUsageRecord(Base):
+    __tablename__ = "ai_explanation_daily_usage"
+    __table_args__ = (
+        UniqueConstraint("user_id", "quota_day", name="uq_ai_explanation_usage_day"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    quota_day: Mapped[date] = mapped_column(Date, nullable=False)
+    used_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class LLMCallRecord(Base):

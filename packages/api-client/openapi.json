@@ -3338,6 +3338,268 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/ai/questions": {
+      "get": {
+        "tags": [
+          "ai-explanations"
+        ],
+        "summary": "Questions",
+        "operationId": "questions_api_v1_stocks__symbol__ai_questions_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationQuestionCatalog"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/ai/explanation-requests": {
+      "post": {
+        "tags": [
+          "ai-explanations"
+        ],
+        "summary": "Create Request",
+        "operationId": "create_request_api_v1_stocks__symbol__ai_explanation_requests_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplanationRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/ai/explanation-requests/{request_id}": {
+      "get": {
+        "tags": [
+          "ai-explanations"
+        ],
+        "summary": "Get Request",
+        "operationId": "get_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/ai/explanation-requests/{request_id}/retry": {
+      "post": {
+        "tags": [
+          "ai-explanations"
+        ],
+        "summary": "Retry Request",
+        "operationId": "retry_request_api_v1_stocks__symbol__ai_explanation_requests__request_id__retry_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}/coverage": {
       "get": {
         "tags": [
@@ -6832,6 +7094,32 @@
         ],
         "title": "CashFlowStatementResponse"
       },
+      "CitedExplanationText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "evidence_refs"
+        ],
+        "title": "CitedExplanationText"
+      },
       "CitedText": {
         "properties": {
           "text": {
@@ -8270,6 +8558,370 @@
           "event_type"
         ],
         "title": "ExistingEventPayload"
+      },
+      "ExplanationEvidence": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "fundamental",
+              "corporate_event",
+              "peer"
+            ],
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "attention_level": {
+            "type": "string",
+            "title": "Attention Level"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "source_kind",
+          "source_id",
+          "title",
+          "summary",
+          "attention_level",
+          "known_at"
+        ],
+        "title": "ExplanationEvidence"
+      },
+      "ExplanationInterpretation": {
+        "properties": {
+          "focus_key": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Focus Key"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/CitedExplanationText"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "focus_key",
+          "explanation"
+        ],
+        "title": "ExplanationInterpretation"
+      },
+      "ExplanationOutput": {
+        "properties": {
+          "output_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Output Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "question_key": {
+            "type": "string",
+            "enum": [
+              "recent_research_changes",
+              "fundamental_changes",
+              "corporate_event_context",
+              "peer_position_context"
+            ],
+            "title": "Question Key"
+          },
+          "provider_display_name": {
+            "type": "string",
+            "title": "Provider Display Name"
+          },
+          "model_display_name": {
+            "type": "string",
+            "title": "Model Display Name"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Freshness"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ResearchExplanationV1"
+          },
+          "evidence_index": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationEvidence"
+            },
+            "type": "array",
+            "title": "Evidence Index"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "ai_generated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ai Generated",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "output_id",
+          "run_id",
+          "symbol",
+          "question_key",
+          "provider_display_name",
+          "model_display_name",
+          "knowledge_cutoff",
+          "generated_at",
+          "freshness",
+          "content",
+          "evidence_index",
+          "limitations"
+        ],
+        "title": "ExplanationOutput"
+      },
+      "ExplanationQuestion": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "recent_research_changes",
+              "fundamental_changes",
+              "corporate_event_context",
+              "peer_position_context"
+            ],
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "coverage": {
+            "type": "string",
+            "enum": [
+              "available",
+              "insufficient"
+            ],
+            "title": "Coverage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "description",
+          "coverage"
+        ],
+        "title": "ExplanationQuestion"
+      },
+      "ExplanationQuestionCatalog": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "available",
+              "contact_support",
+              "disabled"
+            ],
+            "title": "Access"
+          },
+          "remaining_today": {
+            "type": "integer",
+            "title": "Remaining Today"
+          },
+          "daily_limit": {
+            "type": "integer",
+            "title": "Daily Limit"
+          },
+          "support_contact_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Contact Url"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationQuestion"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "enabled",
+          "access",
+          "remaining_today",
+          "daily_limit",
+          "questions"
+        ],
+        "title": "ExplanationQuestionCatalog"
+      },
+      "ExplanationRequestCreate": {
+        "properties": {
+          "question_key": {
+            "type": "string",
+            "enum": [
+              "recent_research_changes",
+              "fundamental_changes",
+              "corporate_event_context",
+              "peer_position_context"
+            ],
+            "title": "Question Key"
+          },
+          "client_request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_key",
+          "client_request_id"
+        ],
+        "title": "ExplanationRequestCreate"
+      },
+      "ExplanationRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "question_key": {
+            "type": "string",
+            "enum": [
+              "recent_research_changes",
+              "fundamental_changes",
+              "corporate_event_context",
+              "peer_position_context"
+            ],
+            "title": "Question Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "building",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExplanationOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "question_key",
+          "status",
+          "created_at"
+        ],
+        "title": "ExplanationRequestResponse"
       },
       "FeedSection": {
         "properties": {
@@ -11132,6 +11784,64 @@
           "status"
         ],
         "title": "ResearchCoverage"
+      },
+      "ResearchExplanationV1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "research-explanation-v1",
+            "title": "Schema Version"
+          },
+          "question_key": {
+            "type": "string",
+            "enum": [
+              "recent_research_changes",
+              "fundamental_changes",
+              "corporate_event_context",
+              "peer_position_context"
+            ],
+            "title": "Question Key"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/CitedExplanationText"
+          },
+          "summary": {
+            "items": {
+              "$ref": "#/components/schemas/CitedExplanationText"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Summary"
+          },
+          "interpretations": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationInterpretation"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Interpretations"
+          },
+          "attention_items": {
+            "items": {
+              "$ref": "#/components/schemas/CitedExplanationText"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Attention Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "question_key",
+          "headline",
+          "summary",
+          "interpretations"
+        ],
+        "title": "ResearchExplanationV1"
       },
       "ResearchFeedResponse": {
         "properties": {

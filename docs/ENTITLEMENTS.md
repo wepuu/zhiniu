@@ -20,6 +20,11 @@ machine-oriented compatibility endpoint. The UI may use these responses for pres
 API repeats authorization checks on protected operations.
 
 Natural-language research parsing and the larger saved-research limits require advanced access.
+The Phase 17 research assistant uses the versioned `ai_research_explanation` feature and
+`ai_explanations_daily` limit. Basic is disabled with zero daily requests; advanced allows ten UTC
+day requests. Existing legacy Beta accounts retain their historical evaluation access. Each new or
+explicitly retried user request consumes quota atomically; cache attachment still counts as a user
+request so concurrency cannot bypass the limit.
 Core deterministic research, watchlists and existing legacy-beta behavior remain available under
 their resolved limits. A denied request uses the stable `advanced_access_required` error code and
 does not reveal operator or grant metadata.

@@ -22,4 +22,21 @@ describe("browser API gateway", () => {
       expect.objectContaining({ credentials: "include" }),
     );
   });
+
+  it("routes authenticated explanation catalogs through the same-origin gateway", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ questions: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+
+    await createZhaoniuClient().getAIExplanationQuestions("600519");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/gateway/api/v1/stocks/600519/ai/questions",
+      expect.objectContaining({ credentials: "include" }),
+    );
+  });
 });
