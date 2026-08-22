@@ -156,13 +156,9 @@ class ResearchRepository(Protocol):
 
 
 class AIResearchRepository(Protocol):
-    async def find_output_by_key(
-        self, idempotency_key: str
-    ) -> AIResearchOutputDocument | None: ...
+    async def find_output_by_key(self, idempotency_key: str) -> AIResearchOutputDocument | None: ...
 
-    async def latest_output(
-        self, canonical_symbol: str
-    ) -> AIResearchOutputDocument | None: ...
+    async def latest_output(self, canonical_symbol: str) -> AIResearchOutputDocument | None: ...
 
     async def latest_run(self, canonical_symbol: str) -> AIResearchRunView | None: ...
 
@@ -196,6 +192,7 @@ class AIResearchRepository(Protocol):
         error_summary: str,
         finished_at: datetime,
     ) -> None: ...
+
 
 class WatchlistRepository(Protocol):
     async def list_for_user(self, user_id: UUID) -> list[Watchlist]: ...

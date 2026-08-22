@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -11,6 +12,7 @@ from zhaoniu_api.corporate_events.models import (
     EventType,
     RawDisclosure,
     RawEventFact,
+    SourceFact,
 )
 from zhaoniu_api.corporate_events.normalizer import (
     AKShareDisclosureNormalizer,
@@ -48,6 +50,47 @@ def test_classifier_covers_four_phase_seven_families() -> None:
         classification = classify_title(title)
         assert classification.status == "classified"
         assert classification.event_family == expected
+
+
+def test_classifier_covers_phase_sixteen_families_and_exclusions() -> None:
+    decrease = classify_title("关于股东减持计划的公告")
+    litigation = classify_title("关于新增诉讼事项的公告")
+    assert decrease.event_family == EventFamily.SHAREHOLDER_CHANGE
+    assert decrease.event_type == EventType.SHAREHOLDING_CHANGE_PLAN
+    assert litigation.event_family == EventFamily.LITIGATION_ARBITRATION
+    assert litigation.event_type == EventType.CASE_FILED
+    assert classify_title("关于股东不减持承诺的公告").status == "unsupported"
+
+
+def test_new_event_families_fail_safe_when_thread_identity_is_missing() -> None:
+    first = _document("关于股东减持计划的公告")
+    second = replace(first, id=uuid4(), source_document_id="doc-2")
+    first_candidate = extract_candidate(first, classify_title(first.title))
+    second_candidate = extract_candidate(second, classify_title(second.title))
+    assert first_candidate is not None and second_candidate is not None
+    assert first_candidate.typed_payload["direction"] == "decrease"
+    assert first_candidate.event_thread_key != second_candidate.event_thread_key
+    assert first_candidate.identity_basis == "source_document_fallback"
+
+
+def test_litigation_case_reference_links_immutable_versions() -> None:
+    first = _document("关于新增诉讼事项的公告")
+    second = replace(first, id=uuid4(), source_document_id="doc-2")
+    source = SourceFact(
+        symbol="600519.SH",
+        source_owner="cninfo",
+        source_fact_id="case-fact",
+        event_family=EventFamily.LITIGATION_ARBITRATION,
+        raw_payload={"case_reference": "（2026）黔01民初1号"},
+        source_published_at=first.source_published_at,
+        known_at=first.known_at,
+        ingested_at=first.ingested_at,
+    )
+    a = extract_candidate(first, classify_title(first.title), source)
+    b = extract_candidate(second, classify_title(second.title), source)
+    assert a is not None and b is not None
+    assert a.event_thread_key == b.event_thread_key
+    assert a.event_version_fingerprint != b.event_version_fingerprint
 
 
 def test_classifier_is_fail_closed_for_ambiguous_and_unknown_titles() -> None:

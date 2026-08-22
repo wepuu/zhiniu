@@ -16,5 +16,9 @@ event always has at least one `corporate_event_inputs` link to source evidence. 
 immutable version idempotent. `previous_event_id` provides explicit version lineage. Radar builds
 select the latest known version in each thread at the requested cutoff.
 
+V2 source-fact matching requires an exact retained source-document identity. Time proximity may be
+used for diagnostics but is not a publication match. Shareholder and case progress is linked only
+when a stable plan or case identity exists; otherwise a standalone thread is retained.
+
 CLI and Celery call the same application service. Provider retries are limited to transient
 provider errors; classification, validation, database, and unknown application errors fail closed.

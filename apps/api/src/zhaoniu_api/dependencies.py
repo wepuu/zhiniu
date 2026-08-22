@@ -8,6 +8,7 @@ from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_research.service import AIResearchService
 from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.automation.service import AutomationService
+from zhaoniu_api.company_timeline.service import CompanyTimelineQueryService
 from zhaoniu_api.composition import (
     build_ai_research_service,
     build_automation_service,
@@ -129,6 +130,12 @@ def get_research_feed_service(
     return ResearchFeedService(session, settings)
 
 
+def get_company_timeline_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CompanyTimelineQueryService:
+    return CompanyTimelineQueryService(session)
+
+
 def get_screening_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ScreeningService:
@@ -214,6 +221,9 @@ CorporateEventServiceDependency = Annotated[
     CorporateEventService, Depends(get_corporate_event_service)
 ]
 ResearchFeedServiceDependency = Annotated[ResearchFeedService, Depends(get_research_feed_service)]
+CompanyTimelineServiceDependency = Annotated[
+    CompanyTimelineQueryService, Depends(get_company_timeline_service)
+]
 ScreeningServiceDependency = Annotated[ScreeningService, Depends(get_screening_service)]
 ScreeningDispatcherDependency = Annotated[ScreeningDispatcher, Depends(get_screening_dispatcher)]
 NaturalLanguageScreeningServiceDependency = Annotated[

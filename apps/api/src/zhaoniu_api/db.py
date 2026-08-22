@@ -98,7 +98,15 @@ class PasswordResetTokenRecord(Base):
 
 class TransactionalEmailDeliveryRecord(Base):
     __tablename__ = "transactional_email_deliveries"
-    __table_args__ = (Index("ix_transactional_email_user_created", "user_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_transactional_email_user_created", "user_id", "created_at"),
+        Index(
+            "ix_transactional_email_logical_key",
+            "logical_delivery_key",
+            unique=True,
+            postgresql_where=text("logical_delivery_key IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID | None] = mapped_column(
@@ -171,6 +179,18 @@ class OperatorMembershipRecord(Base):
         CheckConstraint(
             "role IN ('viewer', 'support', 'operations', 'security_admin')",
             name="ck_operator_membership_role",
+        ),
+        Index(
+            "uq_operator_membership_active_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        Index(
+            "ix_operator_membership_role_active",
+            "role",
+            "created_at",
+            postgresql_where=text("revoked_at IS NULL"),
         ),
     )
 
@@ -1079,6 +1099,7 @@ class DisclosureDocumentRecord(Base):
             "source_owner", "source_document_id", name="uq_disclosure_source_identity"
         ),
         Index("ix_disclosure_symbol_published", "symbol", "source_published_at"),
+        Index("ix_disclosure_symbol_known", "symbol", text("known_at DESC")),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -1145,6 +1166,7 @@ class CorporateEventBuildRunRecord(Base):
     __table_args__ = (
         UniqueConstraint("idempotency_key", name="uq_corporate_event_build_run"),
         Index("ix_corporate_event_build_run_symbol", "symbol", "started_at"),
+        Index("ix_corporate_event_build_runs_status", "status"),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -1168,6 +1190,13 @@ class CorporateEventRecord(Base):
         UniqueConstraint("event_version_fingerprint", name="uq_corporate_event_version"),
         Index("ix_corporate_event_symbol_known", "symbol", "known_at"),
         Index("ix_corporate_event_thread", "event_thread_key", "known_at"),
+        Index(
+            "ix_corporate_event_symbol_family_known",
+            "symbol",
+            "event_family",
+            text("known_at DESC"),
+            text("id DESC"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -1270,7 +1299,12 @@ class ResearchSignalRecord(Base):
             name="ck_research_signal_one_source",
         ),
         UniqueConstraint("source_kind", "semantic_fingerprint", name="uq_research_signal_semantic"),
-        Index("ix_research_signal_symbol_known", "symbol", "known_at"),
+        Index(
+            "ix_research_signal_symbol_known",
+            "symbol",
+            text("known_at DESC"),
+            text("id DESC"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -1297,6 +1331,10 @@ class ResearchSignalRecord(Base):
     semantic_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     projection_version: Mapped[str] = mapped_column(String(40), nullable=False)
     schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    projection_mode: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="historical_backfill"
+    )
+    alert_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     summary: Mapped[str] = mapped_column(String(800), nullable=False)
     display_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -1712,7 +1750,7 @@ class RegistrationInviteBatchRecord(Base):
 class RegistrationInviteRecord(Base):
     __tablename__ = "registration_invites"
     __table_args__ = (
-        UniqueConstraint("code_hmac", name="uq_registration_invites_code_hmac"),
+        UniqueConstraint("code_hmac", name="registration_invites_code_hmac_key"),
         Index("ix_registration_invites_prefix", "code_prefix"),
     )
 
@@ -1758,7 +1796,7 @@ class AccessActivationBatchRecord(Base):
 class AccessActivationCodeRecord(Base):
     __tablename__ = "access_activation_codes"
     __table_args__ = (
-        UniqueConstraint("code_hmac", name="uq_access_activation_codes_code_hmac"),
+        UniqueConstraint("code_hmac", name="access_activation_codes_code_hmac_key"),
         Index("ix_access_activation_codes_prefix", "code_prefix"),
         Index("ix_access_activation_codes_user", "assigned_user_id"),
     )
@@ -1788,7 +1826,10 @@ class AccessActivationCodeRecord(Base):
 class AccessActivationRedemptionRecord(Base):
     __tablename__ = "access_activation_redemptions"
     __table_args__ = (
-        UniqueConstraint("activation_code_id", name="uq_access_redemptions_code"),
+        UniqueConstraint(
+            "activation_code_id",
+            name="access_activation_redemptions_activation_code_id_key",
+        ),
         CheckConstraint("term_kind IN ('month', 'year')", name="ck_access_redemption_term"),
         CheckConstraint("new_period_end > new_period_start", name="ck_access_redemption_period"),
         Index("ix_access_activation_redemptions_user", "user_id", "redeemed_at"),
@@ -1814,7 +1855,10 @@ class AccessActivationRedemptionRecord(Base):
 class BetaResearchUniverseSnapshotRecord(Base):
     __tablename__ = "beta_research_universe_snapshots"
     __table_args__ = (
-        UniqueConstraint("universe_fingerprint", name="uq_beta_universe_fingerprint"),
+        UniqueConstraint(
+            "universe_fingerprint",
+            name="beta_research_universe_snapshots_universe_fingerprint_key",
+        ),
         Index("ix_beta_universe_cutoff", "knowledge_cutoff", "created_at"),
     )
 
@@ -1854,7 +1898,10 @@ class BetaResearchUniverseMemberRecord(Base):
 class ResearchCoverageSnapshotRecord(Base):
     __tablename__ = "research_coverage_snapshots"
     __table_args__ = (
-        UniqueConstraint("content_fingerprint", name="uq_research_coverage_fingerprint"),
+        UniqueConstraint(
+            "content_fingerprint",
+            name="research_coverage_snapshots_content_fingerprint_key",
+        ),
         Index("ix_research_coverage_cutoff", "knowledge_cutoff", "evaluated_at"),
     )
 
@@ -1902,7 +1949,9 @@ class ResearchCoverageMemberRecord(Base):
 class CoverageBackfillRunRecord(Base):
     __tablename__ = "coverage_backfill_runs"
     __table_args__ = (
-        UniqueConstraint("idempotency_key", name="uq_coverage_backfill_run_idempotency"),
+        UniqueConstraint(
+            "idempotency_key", name="coverage_backfill_runs_idempotency_key_key"
+        ),
         Index("ix_coverage_backfill_run_status", "status", "created_at"),
     )
 
@@ -1971,7 +2020,15 @@ class AutomationPolicyRecord(Base):
     policy_key: Mapped[str] = mapped_column(String(80), nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    current_revision_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    current_revision_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(
+            "automation_policy_revisions.id",
+            name="fk_automation_policy_current_revision",
+            ondelete="RESTRICT",
+            use_alter=True,
+        ),
+    )
     next_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

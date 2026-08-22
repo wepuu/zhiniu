@@ -188,7 +188,7 @@ class ProductionAutomationExecutor:
             )
         if step_key == "signal_projection":
             feed = build_research_feed_service(self._session)
-            projected = await feed.project_symbol(symbol)
+            projected = await feed.project_symbol(symbol, projection_mode="live_incremental")
             alerts = 0
             for signal_id in projected.projected_signal_ids:
                 alerts += (await feed.dispatch(signal_id)).delivery_count

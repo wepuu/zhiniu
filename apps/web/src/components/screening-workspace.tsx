@@ -56,7 +56,9 @@ type EventDraft = {
     | "share_repurchase"
     | "share_pledge"
     | "share_unlock"
-    | "regulatory_action";
+    | "regulatory_action"
+    | "shareholder_change"
+    | "litigation_arbitration";
   mode: "exists" | "not_exists";
   withinDays: string;
 };
@@ -739,6 +741,8 @@ function FilterBuilder({
                       <option value="share_pledge">股权质押</option>
                       <option value="share_unlock">股份解禁</option>
                       <option value="share_repurchase">股份回购</option>
+                      <option value="shareholder_change">股东增减持</option>
+                      <option value="litigation_arbitration">诉讼仲裁</option>
                     </select>
                   </label>
                   <div className="mt-2 grid grid-cols-2 gap-2">

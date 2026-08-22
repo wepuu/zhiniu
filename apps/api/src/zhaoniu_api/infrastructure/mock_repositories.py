@@ -339,14 +339,10 @@ class InMemoryAIResearchRepository:
         self.runs: dict[str, dict[str, object]] = {}
         self.calls: list[LLMCallAudit] = []
 
-    async def find_output_by_key(
-        self, idempotency_key: str
-    ) -> AIResearchOutputDocument | None:
+    async def find_output_by_key(self, idempotency_key: str) -> AIResearchOutputDocument | None:
         return self.outputs.get(idempotency_key)
 
-    async def latest_output(
-        self, canonical_symbol: str
-    ) -> AIResearchOutputDocument | None:
+    async def latest_output(self, canonical_symbol: str) -> AIResearchOutputDocument | None:
         return max(
             (item for item in self.outputs.values() if item.symbol == canonical_symbol),
             key=lambda item: item.generated_at,
@@ -393,9 +389,7 @@ class InMemoryAIResearchRepository:
             )
             retry = existing["status"] == "failed" and retry_failed
             if not stale and not retry:
-                return AIResearchRunLease(
-                    existing_id, False, str(existing["status"])
-                )
+                return AIResearchRunLease(existing_id, False, str(existing["status"]))
             existing.update(
                 status="running",
                 error_code=None,
@@ -418,9 +412,7 @@ class InMemoryAIResearchRepository:
     async def record_call(self, audit: LLMCallAudit) -> None:
         self.calls.append(audit)
 
-    async def complete_run(
-        self, output: AIResearchOutputDocument, *, idempotency_key: str
-    ) -> None:
+    async def complete_run(self, output: AIResearchOutputDocument, *, idempotency_key: str) -> None:
         self.outputs.setdefault(idempotency_key, output)
         self.runs[idempotency_key]["status"] = "succeeded"
 

@@ -7,6 +7,7 @@ from zhaoniu_api.corporate_events.models import (
     CorporateEventListResponse,
     CorporateEventResponse,
     EventRadarEnvelope,
+    EventThreadResponse,
 )
 from zhaoniu_api.dependencies import CorporateEventServiceDependency
 
@@ -41,6 +42,26 @@ async def get_event(
 ) -> CorporateEventResponse:
     try:
         result = await service.get_event(symbol, event_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found"
+        ) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    return result
+
+
+@router.get(
+    "/stocks/{symbol}/events/{event_id}/thread",
+    response_model=EventThreadResponse,
+)
+async def get_event_thread(
+    symbol: str,
+    event_id: UUID,
+    service: CorporateEventServiceDependency,
+) -> EventThreadResponse:
+    try:
+        result = await service.get_event_thread(symbol, event_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found"

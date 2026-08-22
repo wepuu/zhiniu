@@ -47,9 +47,11 @@ VALUATION_CODES = ("pe_ttm", "pb", "pcf", "market_cap")
 def percentile_rank(values: list[Decimal], target: Decimal) -> Decimal:
     count_less = sum(1 for item in values if item < target)
     count_equal = sum(1 for item in values if item == target)
-    return (Decimal(count_less) + Decimal("0.5") * Decimal(count_equal)) / Decimal(
-        len(values)
-    ) * Decimal("100")
+    return (
+        (Decimal(count_less) + Decimal("0.5") * Decimal(count_equal))
+        / Decimal(len(values))
+        * Decimal("100")
+    )
 
 
 def numeric_rank_desc(values: list[Decimal], target: Decimal) -> int:

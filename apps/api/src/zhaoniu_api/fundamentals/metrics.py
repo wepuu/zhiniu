@@ -472,9 +472,7 @@ def compute_fundamental_metrics(reports: list[FinancialReport]) -> tuple[Fundame
             latest,
             _growth(ocf, prior_ocf) if prior_ocf is not None and prior_ocf > 0 else None,
             status=(
-                MetricStatus.INVALID_INPUT
-                if prior_ocf is not None and prior_ocf <= 0
-                else None
+                MetricStatus.INVALID_INPUT if prior_ocf is not None and prior_ocf <= 0 else None
             ),
             inputs=prior_inputs,
         )

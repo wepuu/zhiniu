@@ -45,6 +45,7 @@ Zhaoniu is a production-oriented, multi-user A-share research SaaS. Keep it a mo
 39. Scheduled automation uses a single fixed tick; database policies and leases own business state.
 40. Scheduler timestamps are orchestration metadata and must never replace source `known_at`.
 41. Historical research backfills must never create retroactive user alerts.
+42. Company timeline views consume research signals and must never become a new research-fact source.
 
 ## Standard commands
 

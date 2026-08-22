@@ -111,35 +111,24 @@ async def test_ai_run_claim_output_and_call_audit_are_idempotent() -> None:
 
     async def clean_up() -> None:
         async with sessions() as session:
-            run_ids = select(AIResearchRunRecord.id).where(
-                AIResearchRunRecord.symbol == symbol
-            )
+            run_ids = select(AIResearchRunRecord.id).where(AIResearchRunRecord.symbol == symbol)
+            await session.execute(delete(LLMCallRecord).where(LLMCallRecord.ai_run_id.in_(run_ids)))
             await session.execute(
-                delete(LLMCallRecord).where(LLMCallRecord.ai_run_id.in_(run_ids))
-            )
-            await session.execute(
-                delete(AIResearchOutputRecord).where(
-                    AIResearchOutputRecord.symbol == symbol
-                )
+                delete(AIResearchOutputRecord).where(AIResearchOutputRecord.symbol == symbol)
             )
             await session.execute(
                 delete(AIResearchRunRecord).where(AIResearchRunRecord.symbol == symbol)
             )
             await session.execute(
                 delete(ResearchObservationInputRecord).where(
-                    ResearchObservationInputRecord.observation_id
-                    == snapshot.observations[0].id
+                    ResearchObservationInputRecord.observation_id == snapshot.observations[0].id
                 )
             )
             await session.execute(
-                delete(ResearchObservationRecord).where(
-                    ResearchObservationRecord.symbol == symbol
-                )
+                delete(ResearchObservationRecord).where(ResearchObservationRecord.symbol == symbol)
             )
             await session.execute(
-                delete(ResearchSnapshotRecord).where(
-                    ResearchSnapshotRecord.symbol == symbol
-                )
+                delete(ResearchSnapshotRecord).where(ResearchSnapshotRecord.symbol == symbol)
             )
             await session.execute(delete(StockRecord).where(StockRecord.symbol == symbol))
             await session.commit()

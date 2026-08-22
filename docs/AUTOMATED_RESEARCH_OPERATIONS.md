@@ -16,6 +16,9 @@ pipeline. It is deliberately not a general workflow engine.
   task names, commands, SQL, URLs or provider credentials.
 - Historical signal rules stay unchanged: a watchlist membership created after a signal's real
   `known_at` cannot receive an alert for that signal.
+- Signal projection additionally records `live_incremental`, `historical_backfill`, or `replay`.
+  Historical/replay projections are never alert eligible, even for a user whose watchlist predates
+  the source artifact.
 
 ## Default policy
 

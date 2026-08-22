@@ -32,6 +32,19 @@ def test_historical_signal_is_not_backfilled_to_new_watchlist_membership() -> No
     )
 
 
+def test_historical_projection_is_never_alert_eligible() -> None:
+    membership_at = datetime(2026, 8, 1, tzinfo=UTC)
+    assert not should_deliver_alert(
+        signal_known_at=membership_at + timedelta(minutes=1),
+        membership_added_at=membership_at,
+        signal_attention="important",
+        minimum_attention="info",
+        enabled=True,
+        source_enabled=True,
+        alert_eligible=False,
+    )
+
+
 def test_new_signal_after_membership_creates_a_deterministic_match() -> None:
     membership_at = datetime(2026, 8, 18, 9, tzinfo=UTC)
     assert should_deliver_alert(

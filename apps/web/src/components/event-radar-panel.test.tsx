@@ -34,7 +34,10 @@ const ready = {
         source_published_at: "2026-08-18T00:00:00Z",
         known_at: "2026-08-19T00:00:00Z",
         extraction_status: "partial",
-        typed_payload: { kind: "share_repurchase" },
+        typed_payload: {
+          kind: "share_repurchase",
+          event_type: "repurchase_completed",
+        },
         field_lineage: {},
         sources: [
           {

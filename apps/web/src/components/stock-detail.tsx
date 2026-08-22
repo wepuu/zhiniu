@@ -3,6 +3,7 @@
 import {
   createZhaoniuClient,
   type AIResearchEnvelope,
+  type CompanyTimelineEnvelope,
   type DailyBarResponse,
   type EventRadarEnvelope,
   type FinancialPeriodListResponse,
@@ -46,11 +47,13 @@ import {
 import { assertPeerComparisons } from "@/lib/peer-research";
 import { assertResearchSnapshot } from "@/lib/research";
 import { assertEventRadar } from "@/lib/event-radar";
+import { assertCompanyTimeline } from "@/lib/company-timeline";
 
 import { StockChart } from "./stock-chart";
 import { AIResearchPanel } from "./ai-research-panel";
 import { PeerResearchPanel } from "./peer-research-panel";
 import { EventRadarPanel } from "./event-radar-panel";
+import { CompanyTimelinePanel } from "./company-timeline-panel";
 import { ResearchChanges } from "./research-changes";
 import { ResearchCoverageCard } from "./research-coverage-card";
 import { Card } from "./ui/card";
@@ -95,6 +98,10 @@ function ResearchWorkspace({
   eventPending,
   eventError,
   retryEvents,
+  timeline,
+  timelinePending,
+  timelineError,
+  retryTimeline,
   coverage,
   coveragePending,
   coverageError,
@@ -111,14 +118,18 @@ function ResearchWorkspace({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  timeline?: CompanyTimelineEnvelope;
+  timelinePending: boolean;
+  timelineError: boolean;
+  retryTimeline: () => void;
   coverage?: StockCoverageResponse;
   coveragePending: boolean;
   coverageError: boolean;
   compact?: boolean;
 }) {
-  const [view, setView] = useState<"changes" | "peers" | "events" | "ai">(
-    "changes",
-  );
+  const [view, setView] = useState<
+    "timeline" | "changes" | "peers" | "events" | "ai"
+  >("timeline");
   return (
     <div>
       <ResearchCoverageCard
@@ -132,6 +143,7 @@ function ResearchWorkspace({
         aria-label="研究内容"
       >
         {[
+          ["timeline", "研究时间线"],
           ["changes", "关键变化"],
           ["peers", "同行位置"],
           ["events", "事件雷达"],
@@ -143,7 +155,9 @@ function ResearchWorkspace({
             role="tab"
             aria-selected={view === code}
             onClick={() =>
-              setView(code as "changes" | "peers" | "events" | "ai")
+              setView(
+                code as "timeline" | "changes" | "peers" | "events" | "ai",
+              )
             }
             className={`min-h-9 shrink-0 rounded-lg px-4 text-sm transition ${view === code ? "bg-ink text-white" : "text-slate hover:text-ink"}`}
           >
@@ -151,6 +165,25 @@ function ResearchWorkspace({
           </button>
         ))}
       </div>
+      {view === "timeline" && (
+        <CompanyTimelinePanel
+          symbol={symbol}
+          envelope={timeline}
+          pending={timelinePending}
+          error={timelineError}
+          onRetry={retryTimeline}
+          compact={compact}
+          onNavigate={(source) =>
+            setView(
+              source === "fundamental"
+                ? "changes"
+                : source === "peer"
+                  ? "peers"
+                  : "events",
+            )
+          }
+        />
+      )}
       {view === "changes" && (
         <ResearchChanges
           symbol={symbol}
@@ -719,6 +752,10 @@ function DesktopStock({
   eventPending,
   eventError,
   retryEvents,
+  timeline,
+  timelinePending,
+  timelineError,
+  retryTimeline,
   coverage,
   coveragePending,
   coverageError,
@@ -737,6 +774,10 @@ function DesktopStock({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  timeline?: CompanyTimelineEnvelope;
+  timelinePending: boolean;
+  timelineError: boolean;
+  retryTimeline: () => void;
   coverage?: StockCoverageResponse;
   coveragePending: boolean;
   coverageError: boolean;
@@ -783,6 +824,10 @@ function DesktopStock({
             eventPending={eventPending}
             eventError={eventError}
             retryEvents={retryEvents}
+            timeline={timeline}
+            timelinePending={timelinePending}
+            timelineError={timelineError}
+            retryTimeline={retryTimeline}
             coverage={coverage}
             coveragePending={coveragePending}
             coverageError={coverageError}
@@ -837,6 +882,10 @@ function MobileStock({
   eventPending,
   eventError,
   retryEvents,
+  timeline,
+  timelinePending,
+  timelineError,
+  retryTimeline,
   coverage,
   coveragePending,
   coverageError,
@@ -855,6 +904,10 @@ function MobileStock({
   eventPending: boolean;
   eventError: boolean;
   retryEvents: () => void;
+  timeline?: CompanyTimelineEnvelope;
+  timelinePending: boolean;
+  timelineError: boolean;
+  retryTimeline: () => void;
   coverage?: StockCoverageResponse;
   coveragePending: boolean;
   coverageError: boolean;
@@ -902,6 +955,10 @@ function MobileStock({
             eventPending={eventPending}
             eventError={eventError}
             retryEvents={retryEvents}
+            timeline={timeline}
+            timelinePending={timelinePending}
+            timelineError={timelineError}
+            retryTimeline={retryTimeline}
             coverage={coverage}
             coveragePending={coveragePending}
             coverageError={coverageError}
@@ -986,6 +1043,12 @@ export function StockDetail({ symbol }: { symbol: string }) {
     queryFn: async () => assertEventRadar(await api.getEventRadar(symbol)),
     retry: 1,
   });
+  const timeline = useQuery({
+    queryKey: ["stock", symbol, "company-timeline"],
+    queryFn: async () =>
+      assertCompanyTimeline(await api.getCompanyTimeline(symbol)),
+    retry: 1,
+  });
   const coverage = useQuery({
     queryKey: ["stock", symbol, "coverage"],
     queryFn: () => api.getStockCoverage(symbol),
@@ -1040,6 +1103,10 @@ export function StockDetail({ symbol }: { symbol: string }) {
     eventPending: eventRadar.isPending,
     eventError: eventRadar.isError,
     retryEvents: () => void eventRadar.refetch(),
+    timeline: timeline.data,
+    timelinePending: timeline.isPending,
+    timelineError: timeline.isError,
+    retryTimeline: () => void timeline.refetch(),
     coverage: coverage.data,
     coveragePending: coverage.isPending,
     coverageError: coverage.isError,

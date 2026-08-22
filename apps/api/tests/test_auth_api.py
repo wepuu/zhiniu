@@ -103,9 +103,7 @@ class FakeAuthService:
             raise AuthenticationError("password_reset_invalid")
         self.password_reset_confirmed = True
 
-    async def accept_legal_documents(
-        self, user_id: UUID, acceptances: dict[str, str]
-    ) -> list[str]:
+    async def accept_legal_documents(self, user_id: UUID, acceptances: dict[str, str]) -> list[str]:
         return []
 
 
@@ -198,9 +196,7 @@ def test_account_recovery_routes_use_generic_request_and_single_use_contract() -
     assert requested.json() == {"status": "accepted"}
     assert fake.password_reset_requested is True
 
-    verified = client.post(
-        "/api/v1/auth/email-verification/verify", json={"token": "x" * 48}
-    )
+    verified = client.post("/api/v1/auth/email-verification/verify", json={"token": "x" * 48})
     assert verified.status_code == 200
     assert verified.json() == {"status": "verified"}
 

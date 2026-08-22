@@ -63,7 +63,14 @@ class EventCriterion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["event"] = "event"
-    event_family: Literal["share_repurchase", "share_pledge", "share_unlock", "regulatory_action"]
+    event_family: Literal[
+        "share_repurchase",
+        "share_pledge",
+        "share_unlock",
+        "regulatory_action",
+        "shareholder_change",
+        "litigation_arbitration",
+    ]
     mode: Literal["exists", "not_exists"]
     within_days: int = Field(ge=1, le=730)
 

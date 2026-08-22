@@ -330,7 +330,7 @@ const eventRadar = {
         source_published_at: "2026-08-15T00:00:00Z",
         known_at: "2026-08-16T00:00:00Z",
         extraction_status: "partial",
-        typed_payload: { kind: "share_pledge" },
+        typed_payload: { kind: "share_pledge", event_type: "pledge_created" },
         field_lineage: {},
         sources: [],
       },
@@ -483,6 +483,9 @@ describe("StockDetail states and responsive compositions", () => {
         <StockDetail symbol="600519" />
       </Providers>,
     );
+    const changeTabs = await screen.findAllByRole("tab", { name: "关键变化" });
+    fireEvent.click(changeTabs[0]);
+    fireEvent.click(changeTabs[1]);
     expect(await screen.findAllByText("收入单季增速连续改善")).toHaveLength(2);
     const evidenceButtons = screen.getAllByRole("button", {
       name: "查看证据：收入单季增速连续改善",

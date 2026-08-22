@@ -99,13 +99,21 @@ Resend background delivery/webhook lifecycle, and explicit DeepSeek structured-o
 modes. The console is not a general admin CRUD system and does not expose provider secrets,
 passwords, tokens, raw prompts, private screening text, or unrestricted database access.
 
-## Phase 15 - Automated Research Operations & Scheduling (current)
+## Phase 15 - Automated Research Operations & Scheduling
 
 Database-owned automation policies and immutable revisions, a single Celery Beat tick, frozen
 priority-universe runs, allow-listed symbol/industry/run steps, change-aware downstream rebuilds,
 leases and resumable failures, automatic signal and in-app alert projection, an optional bounded AI
 lane, and a desktop-first operations workspace. Full-market screening schedules, free-form cron,
 user schedules, exchange-calendar semantics and automated marketing email remain deferred.
+
+## Phase 16 - Company Research Timeline & Event Engine V2 (current)
+
+A company-level, point-in-time research timeline over retained fundamental, peer and corporate-event
+signals; stable frozen cursors; separately hydrated upcoming events and event threads; explicit
+historical alert safety; and deterministic shareholder-change and litigation/arbitration event
+families. Timeline facts remain global projections with one upstream artifact. News, LLM fact
+extraction, event scoring, cross-domain event ratios and additional event families remain deferred.
 
 ## Future - Factor / Backtest
 

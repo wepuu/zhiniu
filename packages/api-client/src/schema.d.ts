@@ -532,6 +532,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/{symbol}/events/{event_id}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event Thread */
+        get: operations["get_event_thread_api_v1_stocks__symbol__events__event_id__thread_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}/event-radar": {
         parameters: {
             query?: never;
@@ -541,6 +558,23 @@ export interface paths {
         };
         /** Get Event Radar */
         get: operations["get_event_radar_api_v1_stocks__symbol__event_radar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Company Timeline */
+        get: operations["get_company_timeline_api_v1_stocks__symbol__timeline_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2112,6 +2146,123 @@ export interface components {
             /** Evidence Refs */
             evidence_refs: string[];
         };
+        /** CompanyTimelineCoverage */
+        CompanyTimelineCoverage: {
+            /**
+             * Fundamental
+             * @enum {string}
+             */
+            fundamental: "ready" | "not_built";
+            /**
+             * Peer
+             * @enum {string}
+             */
+            peer: "ready" | "not_built";
+            /**
+             * Corporate Event
+             * @enum {string}
+             */
+            corporate_event: "ready" | "not_built";
+        };
+        /** CompanyTimelineEnvelope */
+        CompanyTimelineEnvelope: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "empty" | "partial" | "not_built";
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /**
+             * Query Cutoff
+             * Format: date-time
+             */
+            query_cutoff: string;
+            /** Latest Known At */
+            latest_known_at?: string | null;
+            summary: components["schemas"]["CompanyTimelineSummary"];
+            /** Items */
+            items?: components["schemas"]["CompanyTimelineItem"][];
+            /** Upcoming Events */
+            upcoming_events?: components["schemas"]["TimelineUpcomingEvent"][];
+            coverage: components["schemas"]["CompanyTimelineCoverage"];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CompanyTimelineItem */
+        CompanyTimelineItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "fundamental" | "peer" | "corporate_event";
+            /** Signal Family */
+            signal_family: string;
+            /** Signal Type */
+            signal_type: string;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "info" | "notice" | "important";
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Effective On */
+            effective_on?: string | null;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Display Values */
+            display_values?: components["schemas"]["TimelineDisplayValue"][];
+            source_artifact: components["schemas"]["TimelineSourceArtifact"];
+            event_thread?: components["schemas"]["EventThreadSummary"] | null;
+        };
+        /** CompanyTimelineSummary */
+        CompanyTimelineSummary: {
+            /**
+             * Recent 30D Total
+             * @default 0
+             */
+            recent_30d_total: number;
+            /**
+             * Fundamental Count
+             * @default 0
+             */
+            fundamental_count: number;
+            /**
+             * Peer Count
+             * @default 0
+             */
+            peer_count: number;
+            /**
+             * Corporate Event Count
+             * @default 0
+             */
+            corporate_event_count: number;
+            /**
+             * Important Count
+             * @default 0
+             */
+            important_count: number;
+            /**
+             * Upcoming Count
+             * @default 0
+             */
+            upcoming_count: number;
+        };
         /** CorporateEventListResponse */
         CorporateEventListResponse: {
             /** Symbol */
@@ -2166,9 +2317,7 @@ export interface components {
              */
             extraction_status: "complete" | "partial" | "invalid";
             /** Typed Payload */
-            typed_payload: {
-                [key: string]: unknown;
-            };
+            typed_payload: components["schemas"]["ExistingEventPayload"] | components["schemas"]["ShareholderChangePayload"] | components["schemas"]["LitigationArbitrationPayload"];
             /** Field Lineage */
             field_lineage: {
                 [key: string]: unknown;
@@ -2330,7 +2479,7 @@ export interface components {
              * Event Family
              * @enum {string}
              */
-            event_family: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action";
+            event_family: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action" | "shareholder_change" | "litigation_arbitration";
             /**
              * Mode
              * @enum {string}
@@ -2343,7 +2492,7 @@ export interface components {
          * EventFamily
          * @enum {string}
          */
-        EventFamily: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action";
+        EventFamily: "share_repurchase" | "share_pledge" | "share_unlock" | "regulatory_action" | "shareholder_change" | "litigation_arbitration";
         /** EventRadarEnvelope */
         EventRadarEnvelope: {
             /**
@@ -2418,11 +2567,29 @@ export interface components {
             /** Source Published Precision */
             source_published_precision: string;
         };
+        /** EventThreadResponse */
+        EventThreadResponse: {
+            /** Event Thread Key */
+            event_thread_key: string;
+            /** Items */
+            items: components["schemas"]["CorporateEventResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** EventThreadSummary */
+        EventThreadSummary: {
+            /** Thread Key */
+            thread_key: string;
+            /** Version Count */
+            version_count: number;
+            /** Current Index */
+            current_index: number;
+        };
         /**
          * EventType
          * @enum {string}
          */
-        EventType: "repurchase_plan" | "repurchase_progress" | "repurchase_completed" | "repurchase_adjusted" | "repurchase_cancelled" | "pledge_created" | "pledge_released" | "pledge_changed" | "unlock_scheduled" | "unlock_completed" | "regulatory_inquiry" | "investigation_opened" | "warning_letter" | "administrative_penalty" | "disciplinary_action" | "regulatory_measure";
+        EventType: "repurchase_plan" | "repurchase_progress" | "repurchase_completed" | "repurchase_adjusted" | "repurchase_cancelled" | "pledge_created" | "pledge_released" | "pledge_changed" | "unlock_scheduled" | "unlock_completed" | "regulatory_inquiry" | "investigation_opened" | "warning_letter" | "administrative_penalty" | "disciplinary_action" | "regulatory_measure" | "shareholding_change_plan" | "shareholding_change_progress" | "shareholding_change_completed" | "shareholding_change_cancelled" | "case_filed" | "case_progress" | "judgment_or_award" | "case_closed";
         /** EvidenceIndexEntry */
         EvidenceIndexEntry: {
             /** Evidence Id */
@@ -2515,6 +2682,18 @@ export interface components {
              * Format: date-time
              */
             known_at: string;
+        };
+        /** ExistingEventPayload */
+        ExistingEventPayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "regulatory_action" | "share_pledge" | "share_repurchase" | "share_unlock";
+            /** Event Type */
+            event_type: string;
+        } & {
+            [key: string]: unknown;
         };
         /** FeedSection */
         FeedSection: {
@@ -2796,6 +2975,43 @@ export interface components {
             content_hash: string;
             /** Required At Registration */
             required_at_registration: boolean;
+        };
+        /** LitigationArbitrationPayload */
+        LitigationArbitrationPayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "litigation_arbitration";
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "case_filed" | "case_progress" | "judgment_or_award" | "case_closed";
+            /**
+             * Case Kind
+             * @enum {string}
+             */
+            case_kind: "litigation" | "arbitration";
+            /**
+             * Case Stage
+             * @enum {string}
+             */
+            case_stage: "filed" | "progress" | "judgment_or_award" | "closed";
+            /** Case Reference */
+            case_reference?: string | null;
+            /** Company Role */
+            company_role?: string | null;
+            /** Counterparty */
+            counterparty?: string | null;
+            /** Court Or Body */
+            court_or_body?: string | null;
+            /** Amount */
+            amount?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Judgment Amount */
+            judgment_amount?: string | null;
         };
         /** MeResponse */
         MeResponse: {
@@ -4020,6 +4236,45 @@ export interface components {
             /** Is Current */
             is_current: boolean;
         };
+        /** ShareholderChangePayload */
+        ShareholderChangePayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shareholder_change";
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "shareholding_change_plan" | "shareholding_change_progress" | "shareholding_change_completed" | "shareholding_change_cancelled";
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "increase" | "decrease";
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "plan" | "progress" | "completed" | "cancelled";
+            /** Holder Name */
+            holder_name?: string | null;
+            /** Shareholder Name */
+            shareholder_name?: string | null;
+            /** Holder Type */
+            holder_type?: string | null;
+            /** Plan Reference */
+            plan_reference?: string | null;
+            /** Planned Shares */
+            planned_shares?: string | null;
+            /** Planned Ratio Total */
+            planned_ratio_total?: string | null;
+            /** Completed Shares */
+            completed_shares?: string | null;
+            /** Completed Ratio Total */
+            completed_ratio_total?: string | null;
+        };
         /** SourceCoverage */
         SourceCoverage: {
             /** Fundamental */
@@ -4115,6 +4370,55 @@ export interface components {
             items: components["schemas"]["StockResponse"][];
             /** Total */
             total: number;
+        };
+        /** TimelineDisplayValue */
+        TimelineDisplayValue: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** TimelineSourceArtifact */
+        TimelineSourceArtifact: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "fundamental" | "peer" | "corporate_event";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Evidence Path */
+            evidence_path: string;
+        };
+        /** TimelineUpcomingEvent */
+        TimelineUpcomingEvent: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Title */
+            title: string;
+            /** Event Family */
+            event_family: string;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "info" | "notice" | "important";
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /**
+             * Effective On
+             * Format: date
+             */
+            effective_on: string;
         };
         /** UserResponse */
         UserResponse: {
@@ -5278,6 +5582,38 @@ export interface operations {
             };
         };
     };
+    get_event_thread_api_v1_stocks__symbol__events__event_id__thread_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventThreadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_event_radar_api_v1_stocks__symbol__event_radar_get: {
         parameters: {
             query?: never;
@@ -5296,6 +5632,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventRadarEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_company_timeline_api_v1_stocks__symbol__timeline_get: {
+        parameters: {
+            query?: {
+                source_kind?: ("fundamental" | "peer" | "corporate_event") | null;
+                minimum_attention?: ("info" | "notice" | "important") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyTimelineEnvelope"];
                 };
             };
             /** @description Validation Error */

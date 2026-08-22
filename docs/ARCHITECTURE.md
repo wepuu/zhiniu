@@ -1,6 +1,6 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 14 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 16 remains a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -17,6 +17,10 @@ Next.js web -> FastAPI modular monolith -> PostgreSQL
 ```
 
 ## Frontend
+
+Browser requests use the same-origin `/gateway/api/v1/*` development proxy, which maps to the
+unchanged public `/api/v1/*` REST contract. This avoids embedded-browser localhost security
+blocks while preserving cookie, CSRF, and frontend/database boundaries.
 
 `apps/web` uses Next.js App Router, strict TypeScript, Tailwind, TanStack Query, ECharts and
 Lightweight Charts. Desktop and mobile stock research pages are separately composed while sharing
@@ -170,3 +174,10 @@ Phase 13 adds a coverage application module that reads retained global artifacts
 priority-universe and coverage snapshots, and coordinates only explicitly planned bounded backfill.
 It calls existing application services rather than vendor SDKs. The frontend reads the versioned
 coverage API and never computes coverage, freshness, source health, or learning aggregates.
+
+## Company research timeline
+
+Phase 16 adds a query-only `company_timeline` application module over global `research_signals`.
+It does not recalculate metrics, classify disclosures, mutate source artifacts, or create a worker.
+Known-time ordering and upcoming effective-time ordering remain separate. Event Thread hydration
+reads immutable event versions in ascending known-time order.

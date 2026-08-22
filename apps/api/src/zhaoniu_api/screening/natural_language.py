@@ -72,6 +72,8 @@ EVENT_ALIASES: dict[str, tuple[str, ...]] = {
     "share_pledge": ("质押",),
     "share_unlock": ("解禁",),
     "regulatory_action": ("监管", "处罚", "立案"),
+    "shareholder_change": ("股东增持", "股东减持", "增减持"),
+    "litigation_arbitration": ("诉讼", "仲裁", "判决"),
 }
 
 

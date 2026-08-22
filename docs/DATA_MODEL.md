@@ -242,3 +242,13 @@ artifacts. They are a versioned operational projection over those retained sourc
 
 `scheduled_for` is intentionally separate from every source publication, ingestion, `known_at` and
 research `knowledge_cutoff` field.
+
+## Phase 16 timeline and event V2
+
+- `research_signals.projection_mode` distinguishes live incremental production from historical
+  backfill and replay; `alert_eligible` is immutable delivery eligibility at projection time.
+- No timeline table is introduced. Timeline pages query `research_signals` using a frozen cutoff and
+  `(symbol, known_at DESC, id DESC)` keyset order.
+- `corporate_events` continues to store immutable versions for all six event families. New
+  shareholder and litigation events use the existing typed payload, lineage, input and thread
+  fields rather than family-specific tables.

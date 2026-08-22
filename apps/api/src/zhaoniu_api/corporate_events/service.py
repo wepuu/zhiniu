@@ -9,12 +9,14 @@ from zhaoniu_api.corporate_events.engine import attention_for, classify_title, e
 from zhaoniu_api.corporate_events.models import (
     ATTENTION_RULE_VERSION,
     CLASSIFIER_VERSION,
+    EXTRACTOR_VERSION,
     RADAR_SCHEMA_VERSION,
     CorporateEventListResponse,
     CorporateEventResponse,
     DisclosureDocument,
     EventBuildResult,
     EventRadarEnvelope,
+    EventThreadResponse,
     EventType,
     SourceFact,
 )
@@ -93,6 +95,7 @@ class CorporateEventService:
                 "documents": [item.content_fingerprint for item in documents],
                 "facts": [item.source_fact_id for item in facts],
                 "classifier": CLASSIFIER_VERSION,
+                "extractor": EXTRACTOR_VERSION,
             }
         )
         key = _hash(("build-corporate-events", canonical, fingerprint))
@@ -192,6 +195,10 @@ class CorporateEventService:
         canonical = await self._known_symbol(symbol)
         return await self._events.detail_response(canonical, event_id)
 
+    async def get_event_thread(self, symbol: str, event_id: UUID) -> EventThreadResponse | None:
+        canonical = await self._known_symbol(symbol)
+        return await self._events.thread_response(canonical, event_id)
+
     async def get_radar(self, symbol: str) -> EventRadarEnvelope:
         canonical = await self._known_symbol(symbol)
         return await self._events.radar_response(canonical)
@@ -210,24 +217,24 @@ def _match_fact(
 ) -> SourceFact | None:
     if not family:
         return None
-    candidates = [
-        fact
-        for fact in facts
-        if fact.event_family.value == family
-        and fact.source_published_at is not None
-        and abs((fact.source_published_at - document.source_published_at).days) <= 180
-    ]
-    return min(
-        candidates,
-        key=lambda item: _fact_distance(item, document),
-        default=None,
+    identity_keys = (
+        "source_document_id",
+        "document_id",
+        "announcement_id",
+        "公告ID",
+        "公告编号",
     )
-
-
-def _fact_distance(fact: SourceFact, document: DisclosureDocument) -> float:
-    if fact.source_published_at is None:
-        return float("inf")
-    return abs((fact.source_published_at - document.source_published_at).total_seconds())
+    for fact in facts:
+        if fact.event_family.value != family:
+            continue
+        identities = {
+            str(fact.raw_payload[key]).strip()
+            for key in identity_keys
+            if fact.raw_payload.get(key) not in (None, "")
+        }
+        if document.source_document_id in identities:
+            return fact
+    return None
 
 
 def _hash(payload: object) -> str:

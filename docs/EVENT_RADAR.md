@@ -18,3 +18,7 @@ coverage. A source or radar failure is isolated from fundamental, peer and AI re
 Desktop opens evidence in a side sheet. Mobile uses the same accessible dialog as a bottom sheet.
 Both views show source owner, source publication time, knowledge time and a link to the retained
 source document.
+
+Phase 16 expands the taxonomy to shareholder changes and litigation/arbitration. The radar remains
+a point-in-time latest-thread view; the company timeline may show each immutable version that
+previously entered a retained radar snapshot.

@@ -16,9 +16,7 @@ class BetaReadinessReport:
     blocking_reasons: list[str]
 
 
-async def evaluate_beta_readiness(
-    session: AsyncSession, settings: Settings
-) -> BetaReadinessReport:
+async def evaluate_beta_readiness(session: AsyncSession, settings: Settings) -> BetaReadinessReport:
     blocking: list[str] = []
     current = await session.scalar(text("SELECT version_num FROM alembic_version LIMIT 1"))
     if current != MIGRATION_HEAD:

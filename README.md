@@ -136,6 +136,8 @@ GET /api/v1/stocks/{symbol}/research/observations
 GET /api/v1/stocks/{symbol}/research/observations/{observation_id}
 GET /api/v1/stocks/{symbol}/ai-research
 GET /api/v1/stocks/{symbol}/coverage
+GET /api/v1/stocks/{symbol}/timeline
+GET /api/v1/stocks/{symbol}/events/{event_id}/thread
 POST /api/v1/me/beta-feedback
 GET /api/v1/watchlists
 POST /api/v1/watchlists
@@ -158,5 +160,7 @@ Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [Financial metrics](docs/FINANCIAL_METRICS.md), [Change rules](docs/CHANGE_RULES.md),
 [Research snapshots](docs/RESEARCH_SNAPSHOT.md), [AI research](docs/AI_RESEARCH.md),
 [LLM policy](docs/LLM_POLICY.md), [screening engine](docs/SCREENING_ENGINE.md),
+[company research timeline](docs/COMPANY_RESEARCH_TIMELINE.md),
+[event engine V2](docs/EVENT_ENGINE_V2.md),
 [screen query DSL](docs/SCREEN_QUERY_DSL.md), and [Engineering rules](AGENTS.md) before extending
 the system.

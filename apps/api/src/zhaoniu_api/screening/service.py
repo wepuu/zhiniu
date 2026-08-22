@@ -102,6 +102,8 @@ EVENT_FAMILIES = (
     "share_pledge",
     "share_unlock",
     "regulatory_action",
+    "shareholder_change",
+    "litigation_arbitration",
 )
 DISPLAY_NAMES = {
     "revenue_yoy": "营业收入同比",

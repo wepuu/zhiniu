@@ -24,6 +24,8 @@ const familyLabels: Record<string, string> = {
   share_pledge: "股份质押",
   share_unlock: "限售解禁",
   regulatory_action: "监管行动",
+  shareholder_change: "股东增减持",
+  litigation_arbitration: "诉讼仲裁",
 };
 
 const levelLabels: Record<string, string> = {

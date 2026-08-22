@@ -472,8 +472,7 @@ class SQLAlchemyPeerResearchRepository:
             for index, item in enumerate(result.peer_inputs):
                 await self._insert_input(metric_result_id, item, "peer", index)
             await self._session.execute(
-                insert(CompanyPeerMetricPositionRecord)
-                .values(
+                insert(CompanyPeerMetricPositionRecord).values(
                     symbol=canonical_symbol,
                     benchmark_snapshot_id=snapshot_id,
                     benchmark_metric_result_id=metric_result_id,
@@ -732,9 +731,9 @@ def latest_target_and_peers(
 async def existing_position_count(session: AsyncSession, canonical_symbol: str) -> int:
     return int(
         await session.scalar(
-            select(func.count()).select_from(CompanyPeerMetricPositionRecord).where(
-                CompanyPeerMetricPositionRecord.symbol == canonical_symbol
-            )
+            select(func.count())
+            .select_from(CompanyPeerMetricPositionRecord)
+            .where(CompanyPeerMetricPositionRecord.symbol == canonical_symbol)
         )
         or 0
     )

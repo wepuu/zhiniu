@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
         source: "/api/v1/:path*",
         destination: `${apiOrigin}/api/v1/:path*`,
       },
+      {
+        // Some embedded browsers block localhost paths beginning with /api.
+        // Keep the public REST contract unchanged and expose a same-origin UI gateway.
+        source: "/gateway/api/v1/:path*",
+        destination: `${apiOrigin}/api/v1/:path*`,
+      },
     ];
   },
 };

@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from zhaoniu_api.ai_research.models import AIResearchBuildResult
+from zhaoniu_api.company_timeline.service import CompanyTimelineQueryService
 from zhaoniu_api.composition import (
     build_access_control_service,
     build_ai_research_service,
@@ -91,6 +92,8 @@ def _parser() -> argparse.ArgumentParser:
     event_research.add_argument("symbol")
     signal_projection = subcommands.add_parser("project-research-signals")
     signal_projection.add_argument("symbol")
+    timeline = subcommands.add_parser("inspect-company-timeline")
+    timeline.add_argument("symbol")
     dispatch_alert = subcommands.add_parser("dispatch-research-alert")
     dispatch_alert.add_argument("signal_id")
     screening_snapshot = subcommands.add_parser("build-screening-snapshot")
@@ -217,7 +220,17 @@ async def _run(args: argparse.Namespace) -> None:
                     args.symbol
                 )
             elif args.command == "project-research-signals":
-                result = await build_research_feed_service(session).project_symbol(args.symbol)
+                result = await build_research_feed_service(session).project_symbol(
+                    args.symbol, projection_mode="historical_backfill"
+                )
+            elif args.command == "inspect-company-timeline":
+                result = await CompanyTimelineQueryService(session).get(
+                    args.symbol,
+                    source_kind=None,
+                    minimum_attention=None,
+                    limit=20,
+                    cursor=None,
+                )
             elif args.command == "dispatch-research-alert":
                 from uuid import UUID
 

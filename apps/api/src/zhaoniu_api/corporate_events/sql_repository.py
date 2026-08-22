@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Literal, cast
 from uuid import UUID
 
+from pydantic import TypeAdapter
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,8 +20,10 @@ from zhaoniu_api.corporate_events.models import (
     EventRadarEnvelope,
     EventRadarItemResponse,
     EventSourceResponse,
+    EventThreadResponse,
     EventType,
     SourceFact,
+    TypedEventPayload,
 )
 from zhaoniu_api.db import (
     CorporateEventBuildRunRecord,
@@ -32,6 +35,8 @@ from zhaoniu_api.db import (
     EventRadarSnapshotItemRecord,
     EventRadarSnapshotRecord,
 )
+
+TYPED_EVENT_PAYLOAD_ADAPTER: TypeAdapter[TypedEventPayload] = TypeAdapter(TypedEventPayload)
 
 
 class SQLAlchemyCorporateEventRepository:
@@ -372,6 +377,32 @@ class SQLAlchemyCorporateEventRepository:
         ).scalar_one_or_none()
         return await self._event_response(row) if row else None
 
+    async def thread_response(self, symbol: str, event_id: UUID) -> EventThreadResponse | None:
+        selected = await self._session.scalar(
+            select(CorporateEventRecord).where(
+                CorporateEventRecord.id == event_id,
+                CorporateEventRecord.symbol == symbol,
+            )
+        )
+        if selected is None:
+            return None
+        rows = (
+            await self._session.scalars(
+                select(CorporateEventRecord)
+                .where(
+                    CorporateEventRecord.symbol == symbol,
+                    CorporateEventRecord.event_thread_key == selected.event_thread_key,
+                )
+                .order_by(CorporateEventRecord.known_at.asc(), CorporateEventRecord.id.asc())
+            )
+        ).all()
+        items = [await self._event_response(row) for row in rows]
+        return EventThreadResponse(
+            event_thread_key=selected.event_thread_key,
+            items=items,
+            total=len(items),
+        )
+
     async def radar_response(self, symbol: str) -> EventRadarEnvelope:
         snapshot = (
             await self._session.execute(
@@ -477,7 +508,7 @@ class SQLAlchemyCorporateEventRepository:
             extraction_status=cast(
                 Literal["complete", "partial", "invalid"], row.extraction_status
             ),
-            typed_payload=row.typed_payload,
+            typed_payload=TYPED_EVENT_PAYLOAD_ADAPTER.validate_python(row.typed_payload),
             field_lineage=row.field_lineage,
             sources=[
                 EventSourceResponse(

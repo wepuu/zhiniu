@@ -1709,6 +1709,58 @@
         }
       }
     },
+    "/api/v1/stocks/{symbol}/events/{event_id}/thread": {
+      "get": {
+        "tags": [
+          "corporate-events"
+        ],
+        "summary": "Get Event Thread",
+        "operationId": "get_event_thread_api_v1_stocks__symbol__events__event_id__thread_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventThreadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}/event-radar": {
       "get": {
         "tags": [
@@ -1734,6 +1786,118 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EventRadarEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/timeline": {
+      "get": {
+        "tags": [
+          "company-timeline"
+        ],
+        "summary": "Get Company Timeline",
+        "operationId": "get_company_timeline_api_v1_stocks__symbol__timeline_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "source_kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "fundamental",
+                    "peer",
+                    "corporate_event"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Kind"
+            }
+          },
+          {
+            "name": "minimum_attention",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "info",
+                    "notice",
+                    "important"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum Attention"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyTimelineEnvelope"
                 }
               }
             }
@@ -6694,6 +6858,259 @@
         ],
         "title": "CitedText"
       },
+      "CompanyTimelineCoverage": {
+        "properties": {
+          "fundamental": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_built"
+            ],
+            "title": "Fundamental"
+          },
+          "peer": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_built"
+            ],
+            "title": "Peer"
+          },
+          "corporate_event": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_built"
+            ],
+            "title": "Corporate Event"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fundamental",
+          "peer",
+          "corporate_event"
+        ],
+        "title": "CompanyTimelineCoverage"
+      },
+      "CompanyTimelineEnvelope": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "empty",
+              "partial",
+              "not_built"
+            ],
+            "title": "Status"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "query_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Query Cutoff"
+          },
+          "latest_known_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Known At"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CompanyTimelineSummary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTimelineItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "upcoming_events": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineUpcomingEvent"
+            },
+            "type": "array",
+            "title": "Upcoming Events"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CompanyTimelineCoverage"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "symbol",
+          "canonical_symbol",
+          "query_cutoff",
+          "summary",
+          "coverage"
+        ],
+        "title": "CompanyTimelineEnvelope"
+      },
+      "CompanyTimelineItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "fundamental",
+              "peer",
+              "corporate_event"
+            ],
+            "title": "Source Kind"
+          },
+          "signal_family": {
+            "type": "string",
+            "title": "Signal Family"
+          },
+          "signal_type": {
+            "type": "string",
+            "title": "Signal Type"
+          },
+          "attention_level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Attention Level"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "effective_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective On"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "display_values": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineDisplayValue"
+            },
+            "type": "array",
+            "title": "Display Values"
+          },
+          "source_artifact": {
+            "$ref": "#/components/schemas/TimelineSourceArtifact"
+          },
+          "event_thread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventThreadSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "source_kind",
+          "signal_family",
+          "signal_type",
+          "attention_level",
+          "known_at",
+          "title",
+          "summary",
+          "source_artifact"
+        ],
+        "title": "CompanyTimelineItem"
+      },
+      "CompanyTimelineSummary": {
+        "properties": {
+          "recent_30d_total": {
+            "type": "integer",
+            "title": "Recent 30D Total",
+            "default": 0
+          },
+          "fundamental_count": {
+            "type": "integer",
+            "title": "Fundamental Count",
+            "default": 0
+          },
+          "peer_count": {
+            "type": "integer",
+            "title": "Peer Count",
+            "default": 0
+          },
+          "corporate_event_count": {
+            "type": "integer",
+            "title": "Corporate Event Count",
+            "default": 0
+          },
+          "important_count": {
+            "type": "integer",
+            "title": "Important Count",
+            "default": 0
+          },
+          "upcoming_count": {
+            "type": "integer",
+            "title": "Upcoming Count",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompanyTimelineSummary"
+      },
       "CorporateEventListResponse": {
         "properties": {
           "symbol": {
@@ -6826,9 +7243,29 @@
             "title": "Extraction Status"
           },
           "typed_payload": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Typed Payload"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExistingEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/ShareholderChangePayload"
+              },
+              {
+                "$ref": "#/components/schemas/LitigationArbitrationPayload"
+              }
+            ],
+            "title": "Typed Payload",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "litigation_arbitration": "#/components/schemas/LitigationArbitrationPayload",
+                "regulatory_action": "#/components/schemas/ExistingEventPayload",
+                "share_pledge": "#/components/schemas/ExistingEventPayload",
+                "share_repurchase": "#/components/schemas/ExistingEventPayload",
+                "share_unlock": "#/components/schemas/ExistingEventPayload",
+                "shareholder_change": "#/components/schemas/ShareholderChangePayload"
+              }
+            }
           },
           "field_lineage": {
             "additionalProperties": true,
@@ -7265,7 +7702,9 @@
               "share_repurchase",
               "share_pledge",
               "share_unlock",
-              "regulatory_action"
+              "regulatory_action",
+              "shareholder_change",
+              "litigation_arbitration"
             ],
             "title": "Event Family"
           },
@@ -7299,7 +7738,9 @@
           "share_repurchase",
           "share_pledge",
           "share_unlock",
-          "regulatory_action"
+          "regulatory_action",
+          "shareholder_change",
+          "litigation_arbitration"
         ],
         "title": "EventFamily"
       },
@@ -7518,6 +7959,59 @@
         ],
         "title": "EventSourceResponse"
       },
+      "EventThreadResponse": {
+        "properties": {
+          "event_thread_key": {
+            "type": "string",
+            "title": "Event Thread Key"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateEventResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_thread_key",
+          "items",
+          "total"
+        ],
+        "title": "EventThreadResponse"
+      },
+      "EventThreadSummary": {
+        "properties": {
+          "thread_key": {
+            "type": "string",
+            "title": "Thread Key"
+          },
+          "version_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version Count"
+          },
+          "current_index": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Current Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "thread_key",
+          "version_count",
+          "current_index"
+        ],
+        "title": "EventThreadSummary"
+      },
       "EventType": {
         "type": "string",
         "enum": [
@@ -7536,7 +8030,15 @@
           "warning_letter",
           "administrative_penalty",
           "disciplinary_action",
-          "regulatory_measure"
+          "regulatory_measure",
+          "shareholding_change_plan",
+          "shareholding_change_progress",
+          "shareholding_change_completed",
+          "shareholding_change_cancelled",
+          "case_filed",
+          "case_progress",
+          "judgment_or_award",
+          "case_closed"
         ],
         "title": "EventType"
       },
@@ -7743,6 +8245,31 @@
           "known_at"
         ],
         "title": "EvidenceSource"
+      },
+      "ExistingEventPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "share_repurchase",
+              "share_pledge",
+              "share_unlock",
+              "regulatory_action"
+            ],
+            "title": "Kind"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "kind",
+          "event_type"
+        ],
+        "title": "ExistingEventPayload"
       },
       "FeedSection": {
         "properties": {
@@ -8564,6 +9091,129 @@
           "required_at_registration"
         ],
         "title": "LegalDocumentResponse"
+      },
+      "LitigationArbitrationPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "litigation_arbitration",
+            "title": "Kind"
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "case_filed",
+              "case_progress",
+              "judgment_or_award",
+              "case_closed"
+            ],
+            "title": "Event Type"
+          },
+          "case_kind": {
+            "type": "string",
+            "enum": [
+              "litigation",
+              "arbitration"
+            ],
+            "title": "Case Kind"
+          },
+          "case_stage": {
+            "type": "string",
+            "enum": [
+              "filed",
+              "progress",
+              "judgment_or_award",
+              "closed"
+            ],
+            "title": "Case Stage"
+          },
+          "case_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Reference"
+          },
+          "company_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Role"
+          },
+          "counterparty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterparty"
+          },
+          "court_or_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Court Or Body"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "judgment_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judgment Amount"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "event_type",
+          "case_kind",
+          "case_stage"
+        ],
+        "title": "LitigationArbitrationPayload"
       },
       "MeResponse": {
         "properties": {
@@ -11979,6 +12629,140 @@
         ],
         "title": "SessionResponse"
       },
+      "ShareholderChangePayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "shareholder_change",
+            "title": "Kind"
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "shareholding_change_plan",
+              "shareholding_change_progress",
+              "shareholding_change_completed",
+              "shareholding_change_cancelled"
+            ],
+            "title": "Event Type"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "increase",
+              "decrease"
+            ],
+            "title": "Direction"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "progress",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Stage"
+          },
+          "holder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder Name"
+          },
+          "shareholder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shareholder Name"
+          },
+          "holder_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder Type"
+          },
+          "plan_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Reference"
+          },
+          "planned_shares": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Shares"
+          },
+          "planned_ratio_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Ratio Total"
+          },
+          "completed_shares": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Shares"
+          },
+          "completed_ratio_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Ratio Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "event_type",
+          "direction",
+          "stage"
+        ],
+        "title": "ShareholderChangePayload"
+      },
       "SourceCoverage": {
         "properties": {
           "fundamental": {
@@ -12284,6 +13068,102 @@
           "total"
         ],
         "title": "StockSearchResponse"
+      },
+      "TimelineDisplayValue": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "TimelineDisplayValue"
+      },
+      "TimelineSourceArtifact": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "fundamental",
+              "peer",
+              "corporate_event"
+            ],
+            "title": "Type"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "evidence_path": {
+            "type": "string",
+            "title": "Evidence Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "evidence_path"
+        ],
+        "title": "TimelineSourceArtifact"
+      },
+      "TimelineUpcomingEvent": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "event_family": {
+            "type": "string",
+            "title": "Event Family"
+          },
+          "attention_level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "notice",
+              "important"
+            ],
+            "title": "Attention Level"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "effective_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective On"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "title",
+          "event_family",
+          "attention_level",
+          "known_at",
+          "effective_on"
+        ],
+        "title": "TimelineUpcomingEvent"
       },
       "UserResponse": {
         "properties": {

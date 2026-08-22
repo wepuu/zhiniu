@@ -10,6 +10,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from zhaoniu_api.access_control.routes import router as access_control_router
 from zhaoniu_api.auth.webhook_routes import router as webhook_router
 from zhaoniu_api.automation.routes import router as automation_router
+from zhaoniu_api.company_timeline.routes import router as company_timeline_router
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.coverage.routes import router as coverage_router
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.trusted_host_list))
     app.include_router(router)
     app.include_router(corporate_event_router)
+    app.include_router(company_timeline_router)
     app.include_router(research_feed_router)
     app.include_router(screening_router)
     app.include_router(access_control_router)

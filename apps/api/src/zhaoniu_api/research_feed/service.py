@@ -50,10 +50,11 @@ from zhaoniu_api.research_feed.models import (
     WatchlistCoverageResponse,
 )
 
-PROJECTION_VERSION = "research-signal-v1"
-SIGNAL_SCHEMA_VERSION = "research-signal-schema-v1"
+PROJECTION_VERSION = "research-signal-v2"
+SIGNAL_SCHEMA_VERSION = "research-signal-schema-v2"
 PEER_RULE_VERSION = "peer-position-band-v1"
-MATCHER_VERSION = "watchlist-alert-v1"
+MATCHER_VERSION = "watchlist-alert-v2"
+ALERT_LATE_ARRIVAL_WINDOW = timedelta(hours=72)
 ATTENTION_RANK = {"info": 1, "notice": 2, "important": 3}
 
 
@@ -65,10 +66,12 @@ def should_deliver_alert(
     minimum_attention: str,
     enabled: bool,
     source_enabled: bool,
+    alert_eligible: bool = True,
 ) -> bool:
     """Pure deterministic matcher; historical signals are intentionally never backfilled."""
     return (
-        enabled
+        alert_eligible
+        and enabled
         and source_enabled
         and membership_added_at < signal_known_at
         and ATTENTION_RANK[signal_attention] >= ATTENTION_RANK[minimum_attention]
@@ -110,13 +113,17 @@ class ResearchFeedService:
         self._session = session
         self._settings = settings
 
-    async def project_symbol(self, symbol: str) -> ProjectionResult:
+    async def project_symbol(
+        self, symbol: str, *, projection_mode: str = "historical_backfill"
+    ) -> ProjectionResult:
+        if projection_mode not in {"live_incremental", "historical_backfill", "replay"}:
+            raise ValueError("invalid_projection_mode")
         canonical = resolve_symbol(symbol).canonical
         peer_count = await self._build_peer_observations(canonical)
         ids: list[UUID] = []
-        ids.extend(await self._project_fundamental(canonical))
-        ids.extend(await self._project_peer(canonical))
-        ids.extend(await self._project_events(canonical))
+        ids.extend(await self._project_fundamental(canonical, projection_mode))
+        ids.extend(await self._project_peer(canonical, projection_mode))
+        ids.extend(await self._project_events(canonical, projection_mode))
         await self._session.commit()
         return ProjectionResult(
             status="succeeded" if ids or peer_count else "skipped",
@@ -193,7 +200,7 @@ class ResearchFeedService:
             await self._session.flush()
         return written
 
-    async def _project_fundamental(self, symbol: str) -> list[UUID]:
+    async def _project_fundamental(self, symbol: str, projection_mode: str) -> list[UUID]:
         rows = (
             await self._session.execute(
                 select(ResearchObservationRecord, ResearchSnapshotRecord)
@@ -207,6 +214,7 @@ class ResearchFeedService:
         return await self._project_rows(
             "fundamental",
             rows,
+            projection_mode,
             lambda pair: pair[0].content_fingerprint,
             lambda pair: dict(
                 source_id=pair[0].id,
@@ -223,7 +231,7 @@ class ResearchFeedService:
             ),
         )
 
-    async def _project_peer(self, symbol: str) -> list[UUID]:
+    async def _project_peer(self, symbol: str, projection_mode: str) -> list[UUID]:
         rows = (
             await self._session.scalars(
                 select(PeerPositionObservationRecord).where(
@@ -234,6 +242,7 @@ class ResearchFeedService:
         return await self._project_rows(
             "peer",
             rows,
+            projection_mode,
             lambda row: row.content_fingerprint,
             lambda row: dict(
                 source_id=row.id,
@@ -250,41 +259,57 @@ class ResearchFeedService:
             ),
         )
 
-    async def _project_events(self, symbol: str) -> list[UUID]:
-        latest = await self._session.scalar(
-            select(EventRadarSnapshotRecord)
-            .where(EventRadarSnapshotRecord.symbol == symbol)
-            .order_by(EventRadarSnapshotRecord.knowledge_cutoff.desc())
-            .limit(1)
-        )
-        if latest is None:
-            return []
-        rows = (
+    async def _project_events(self, symbol: str, projection_mode: str) -> list[UUID]:
+        radar_rows = (
             await self._session.execute(
-                select(CorporateEventRecord, EventRadarSnapshotItemRecord)
+                select(
+                    CorporateEventRecord,
+                    EventRadarSnapshotItemRecord,
+                    EventRadarSnapshotRecord,
+                )
                 .join(
                     EventRadarSnapshotItemRecord,
                     EventRadarSnapshotItemRecord.event_id == CorporateEventRecord.id,
                 )
-                .where(EventRadarSnapshotItemRecord.snapshot_id == latest.id)
+                .join(
+                    EventRadarSnapshotRecord,
+                    EventRadarSnapshotRecord.id == EventRadarSnapshotItemRecord.snapshot_id,
+                )
+                .where(
+                    CorporateEventRecord.symbol == symbol,
+                    EventRadarSnapshotRecord.symbol == symbol,
+                )
+                .order_by(
+                    EventRadarSnapshotRecord.knowledge_cutoff.asc(),
+                    EventRadarSnapshotItemRecord.ordinal.asc(),
+                )
             )
         ).all()
+        first_by_event: dict[UUID, Any] = {}
+        for event, item, snapshot in radar_rows:
+            first_by_event.setdefault(event.id, (event, item, snapshot))
+        rows = list(first_by_event.values())
         return await self._project_rows(
             "corporate_event",
             rows,
-            lambda pair: pair[0].event_version_fingerprint,
-            lambda pair: dict(
-                source_id=pair[0].id,
-                symbol=pair[0].symbol,
-                family=pair[0].event_family,
-                signal_type=pair[0].event_type,
-                attention=pair[1].attention_level,
-                known_at=pair[0].known_at,
-                effective_on=pair[0].event_effective_from,
-                dedup=pair[0].event_thread_key,
-                title=pair[0].title,
-                summary=pair[1].attention_reason,
-                payload={"section": pair[1].section, "attention_reason": pair[1].attention_reason},
+            projection_mode,
+            lambda triple: triple[0].event_version_fingerprint,
+            lambda triple: dict(
+                source_id=triple[0].id,
+                symbol=triple[0].symbol,
+                family=triple[0].event_family,
+                signal_type=triple[0].event_type,
+                attention=triple[1].attention_level,
+                known_at=triple[0].known_at,
+                effective_on=triple[0].event_effective_from,
+                dedup=triple[0].event_thread_key,
+                title=triple[0].title,
+                summary=triple[1].attention_reason,
+                payload={
+                    "section": triple[1].section,
+                    "attention_reason": triple[1].attention_reason,
+                    "radar_snapshot_id": str(triple[2].id),
+                },
             ),
         )
 
@@ -292,6 +317,7 @@ class ResearchFeedService:
         self,
         kind: str,
         rows: Sequence[Any],
+        projection_mode: str,
         fingerprint: Callable[[Any], str],
         adapt: Callable[[Any], dict[str, Any]],
     ) -> list[UUID]:
@@ -306,6 +332,11 @@ class ResearchFeedService:
             ):
                 continue
             data = adapt(source)
+            projected_at = datetime.now(UTC)
+            alert_eligible = (
+                projection_mode == "live_incremental"
+                and data["known_at"] >= projected_at - ALERT_LATE_ARRIVAL_WINDOW
+            )
             signal_id = uuid4()
             foreign = {
                 "research_observation_id": None,
@@ -334,6 +365,8 @@ class ResearchFeedService:
                     semantic_fingerprint=semantic,
                     projection_version=PROJECTION_VERSION,
                     schema_version=SIGNAL_SCHEMA_VERSION,
+                    projection_mode=projection_mode,
+                    alert_eligible=alert_eligible,
                     title=data["title"],
                     summary=data["summary"],
                     display_payload=data["payload"],
@@ -679,6 +712,7 @@ class ResearchFeedService:
                 minimum_attention=settings.minimum_attention,
                 enabled=settings.enabled,
                 source_enabled=getattr(settings, f"{signal.source_kind}_enabled"),
+                alert_eligible=signal.alert_eligible,
             ):
                 continue
             matched += 1

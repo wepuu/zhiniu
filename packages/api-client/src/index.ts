@@ -57,6 +57,10 @@ export type CorporateEventListResponse =
 export type EventRadarEnvelope = components["schemas"]["EventRadarEnvelope"];
 export type EventRadarItemResponse =
   components["schemas"]["EventRadarItemResponse"];
+export type EventThreadResponse = components["schemas"]["EventThreadResponse"];
+export type CompanyTimelineEnvelope =
+  components["schemas"]["CompanyTimelineEnvelope"];
+export type CompanyTimelineItem = components["schemas"]["CompanyTimelineItem"];
 export type ResearchFeedResponse =
   components["schemas"]["ResearchFeedResponse"];
 export type FeedSignalResponse = components["schemas"]["FeedSignalResponse"];
@@ -143,7 +147,7 @@ export interface ZhaoniuClientOptions {
 
 export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
   const defaultBaseUrl =
-    typeof window === "undefined" ? "http://127.0.0.1:8000" : "";
+    typeof window === "undefined" ? "http://127.0.0.1:8000" : "/gateway";
   const baseUrl = (options.baseUrl ?? defaultBaseUrl)
     .replace(/\/$/, "")
     .replace(/\/api\/v1$/, "");
@@ -369,6 +373,29 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getEventRadar(symbol: string) {
       return request<EventRadarEnvelope>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/event-radar`,
+      );
+    },
+    getEventThread(symbol: string, eventId: string) {
+      return request<EventThreadResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/events/${encodeURIComponent(eventId)}/thread`,
+      );
+    },
+    getCompanyTimeline(
+      symbol: string,
+      options: {
+        cursor?: string;
+        limit?: number;
+        sourceKind?: "fundamental" | "peer" | "corporate_event";
+        minimumAttention?: "info" | "notice" | "important";
+      } = {},
+    ) {
+      const query = new URLSearchParams({ limit: String(options.limit ?? 20) });
+      if (options.cursor) query.set("cursor", options.cursor);
+      if (options.sourceKind) query.set("source_kind", options.sourceKind);
+      if (options.minimumAttention)
+        query.set("minimum_attention", options.minimumAttention);
+      return request<CompanyTimelineEnvelope>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/timeline?${query}`,
       );
     },
     getWatchlists() {
