@@ -3181,6 +3181,392 @@
         }
       }
     },
+    "/api/v1/comparisons/catalog": {
+      "get": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Catalog",
+        "operationId": "catalog_api_v1_comparisons_catalog_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonCatalogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparisons": {
+      "post": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Create Comparison",
+        "operationId": "create_comparison_api_v1_comparisons_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparisonCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "List Comparisons",
+        "operationId": "list_comparisons_api_v1_comparisons_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparisons/saved": {
+      "post": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Save Comparison",
+        "operationId": "save_comparison_api_v1_comparisons_saved_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedComparisonCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedComparisonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparisons/saved/list": {
+      "get": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "List Saved Comparisons",
+        "operationId": "list_saved_comparisons_api_v1_comparisons_saved_list_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedComparisonListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparisons/saved/{saved_id}": {
+      "delete": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Delete Saved Comparison",
+        "operationId": "delete_saved_comparison_api_v1_comparisons_saved__saved_id__delete",
+        "parameters": [
+          {
+            "name": "saved_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Saved Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparisons/{request_id}": {
+      "get": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Get Comparison",
+        "operationId": "get_comparison_api_v1_comparisons__request_id__get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/access": {
       "get": {
         "tags": [
@@ -7940,6 +8326,637 @@
         "type": "object",
         "title": "CompanyTimelineSummary"
       },
+      "ComparisonAIOutput": {
+        "properties": {
+          "output_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Output Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ComparisonAIResearchV1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "output_id",
+          "provider",
+          "model",
+          "generated_at",
+          "content"
+        ],
+        "title": "ComparisonAIOutput"
+      },
+      "ComparisonAIResearchV1": {
+        "properties": {
+          "headline": {
+            "$ref": "#/components/schemas/ComparisonCitedText"
+          },
+          "common_ground": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCitedText"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Common Ground"
+          },
+          "differences": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCitedText"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Differences"
+          },
+          "attention_items": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCitedText"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Attention Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "headline",
+          "common_ground",
+          "differences"
+        ],
+        "title": "ComparisonAIResearchV1"
+      },
+      "ComparisonCatalogResponse": {
+        "properties": {
+          "profile_version": {
+            "type": "string",
+            "title": "Profile Version",
+            "default": "standard-v1"
+          },
+          "supported_issuer_type": {
+            "type": "string",
+            "title": "Supported Issuer Type",
+            "default": "general"
+          },
+          "dimensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dimensions"
+          },
+          "ai_available": {
+            "type": "boolean",
+            "title": "Ai Available"
+          },
+          "saved_limit": {
+            "type": "integer",
+            "title": "Saved Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dimensions",
+          "ai_available",
+          "saved_limit"
+        ],
+        "title": "ComparisonCatalogResponse"
+      },
+      "ComparisonCitedText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 360,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Evidence Refs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "evidence_refs"
+        ],
+        "title": "ComparisonCitedText"
+      },
+      "ComparisonCompany": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "industry_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "ticker",
+          "name",
+          "exchange",
+          "board"
+        ],
+        "title": "ComparisonCompany"
+      },
+      "ComparisonCreate": {
+        "properties": {
+          "left_symbol": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 6,
+            "title": "Left Symbol"
+          },
+          "right_symbol": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 6,
+            "title": "Right Symbol"
+          },
+          "include_ai": {
+            "type": "boolean",
+            "title": "Include Ai",
+            "default": false
+          },
+          "client_request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "left_symbol",
+          "right_symbol"
+        ],
+        "title": "ComparisonCreate"
+      },
+      "ComparisonEvidence": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "shared"
+            ],
+            "title": "Side"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "metric",
+              "valuation",
+              "industry",
+              "peer",
+              "signal"
+            ],
+            "title": "Source Kind"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "evidence_path": {
+            "type": "string",
+            "title": "Evidence Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "side",
+          "source_kind",
+          "source_id",
+          "title",
+          "known_at",
+          "evidence_path"
+        ],
+        "title": "ComparisonEvidence"
+      },
+      "ComparisonListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ComparisonListResponse"
+      },
+      "ComparisonMetric": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "comparability": {
+            "type": "string",
+            "enum": [
+              "comparable",
+              "not_comparable",
+              "missing"
+            ],
+            "title": "Comparability"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "left": {
+            "$ref": "#/components/schemas/ComparisonValue"
+          },
+          "right": {
+            "$ref": "#/components/schemas/ComparisonValue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "label",
+          "dimension",
+          "comparability",
+          "left",
+          "right"
+        ],
+        "title": "ComparisonMetric"
+      },
+      "ComparisonResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "left_symbol": {
+            "type": "string",
+            "title": "Left Symbol"
+          },
+          "right_symbol": {
+            "type": "string",
+            "title": "Right Symbol"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "building",
+              "ready",
+              "partial",
+              "failed",
+              "unsupported"
+            ],
+            "title": "Status"
+          },
+          "include_ai": {
+            "type": "boolean",
+            "title": "Include Ai"
+          },
+          "ai_status": {
+            "type": "string",
+            "enum": [
+              "not_requested",
+              "building",
+              "ready",
+              "disabled",
+              "failed"
+            ],
+            "title": "Ai Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "requested_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested Cutoff"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparisonSnapshotDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonEvidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "ai_output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparisonAIOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "left_symbol",
+          "right_symbol",
+          "status",
+          "include_ai",
+          "ai_status",
+          "requested_cutoff",
+          "created_at"
+        ],
+        "title": "ComparisonResponse"
+      },
+      "ComparisonSignal": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "title": "Side"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "attention_level": {
+            "type": "string",
+            "title": "Attention Level"
+          },
+          "known_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Known At"
+          },
+          "evidence_ref": {
+            "type": "string",
+            "title": "Evidence Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "side",
+          "title",
+          "summary",
+          "attention_level",
+          "known_at",
+          "evidence_ref"
+        ],
+        "title": "ComparisonSignal"
+      },
+      "ComparisonSnapshotDocument": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "company-comparison-v1",
+            "title": "Schema Version",
+            "default": "company-comparison-v1"
+          },
+          "profile_version": {
+            "type": "string",
+            "const": "standard-v1",
+            "title": "Profile Version",
+            "default": "standard-v1"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "left": {
+            "$ref": "#/components/schemas/ComparisonCompany"
+          },
+          "right": {
+            "$ref": "#/components/schemas/ComparisonCompany"
+          },
+          "same_industry": {
+            "type": "boolean",
+            "title": "Same Industry"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonMetric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "recent_signals": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSignal"
+            },
+            "type": "array",
+            "title": "Recent Signals"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "knowledge_cutoff",
+          "left",
+          "right",
+          "same_industry",
+          "metrics",
+          "recent_signals",
+          "limitations"
+        ],
+        "title": "ComparisonSnapshotDocument"
+      },
+      "ComparisonValue": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "evidence_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "unit",
+          "status"
+        ],
+        "title": "ComparisonValue"
+      },
       "CorporateEventListResponse": {
         "properties": {
           "symbol": {
@@ -8388,6 +9405,9 @@
             "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
           },
           "research_assistant": {
+            "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
+          },
+          "comparison_explanation": {
             "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
           }
         },
@@ -13141,6 +14161,110 @@
           "configuration"
         ],
         "title": "ResendDraftUpdate"
+      },
+      "SavedComparisonCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "left_symbol": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 6,
+            "title": "Left Symbol"
+          },
+          "right_symbol": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 6,
+            "title": "Right Symbol"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "left_symbol",
+          "right_symbol"
+        ],
+        "title": "SavedComparisonCreate"
+      },
+      "SavedComparisonListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SavedComparisonResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit"
+        ],
+        "title": "SavedComparisonListResponse"
+      },
+      "SavedComparisonResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "left_symbol": {
+            "type": "string",
+            "title": "Left Symbol"
+          },
+          "right_symbol": {
+            "type": "string",
+            "title": "Right Symbol"
+          },
+          "latest_request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Request Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "left_symbol",
+          "right_symbol",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SavedComparisonResponse"
       },
       "SavedScreenCreate": {
         "properties": {

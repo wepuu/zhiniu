@@ -8,6 +8,7 @@
 node_modules/
 .pnpm-store/
 .next/
+.next-phase*/
 out/
 coverage/
 !apps/api/src/zhaoniu_api/coverage/

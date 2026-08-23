@@ -5,6 +5,7 @@ from zhaoniu_api.ai_explanations.service import AIExplanationService
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
 from zhaoniu_api.automation.service import AutomationService
+from zhaoniu_api.comparisons.service import ComparisonService
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.normalizer import AKShareDisclosureNormalizer
 from zhaoniu_api.corporate_events.provider import AKShareDisclosureProvider
@@ -176,3 +177,7 @@ def build_coverage_service(session: AsyncSession) -> ResearchCoverageService:
 
 def build_automation_service(session: AsyncSession) -> AutomationService:
     return AutomationService(session, get_settings())
+
+
+def build_comparison_service(session: AsyncSession) -> ComparisonService:
+    return ComparisonService(session, get_settings())

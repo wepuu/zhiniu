@@ -9,9 +9,12 @@ from zhaoniu_api.ai_research.service import AIResearchService
 from zhaoniu_api.auth.service import AuthService
 from zhaoniu_api.automation.service import AutomationService
 from zhaoniu_api.company_timeline.service import CompanyTimelineQueryService
+from zhaoniu_api.comparisons.dispatch import ComparisonDispatcher
+from zhaoniu_api.comparisons.service import ComparisonService
 from zhaoniu_api.composition import (
     build_ai_research_service,
     build_automation_service,
+    build_comparison_service,
     build_corporate_event_service,
     build_coverage_service,
     build_fundamental_service,
@@ -181,6 +184,18 @@ def get_automation_service(
     return build_automation_service(session)
 
 
+def get_comparison_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ComparisonService:
+    return build_comparison_service(session)
+
+
+def get_comparison_dispatcher(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ComparisonDispatcher:
+    return ComparisonDispatcher(settings)
+
+
 async def get_operator_context(
     request: Request,
     user: Annotated[UserAccount, Depends(get_current_user)],
@@ -243,5 +258,7 @@ ProviderConfigurationServiceDependency = Annotated[
     ProviderConfigurationService, Depends(get_provider_configuration_service)
 ]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
+ComparisonServiceDependency = Annotated[ComparisonService, Depends(get_comparison_service)]
+ComparisonDispatcherDependency = Annotated[ComparisonDispatcher, Depends(get_comparison_dispatcher)]
 OperatorContextDependency = Annotated[OperatorContext, Depends(get_operator_context)]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

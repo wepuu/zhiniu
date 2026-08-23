@@ -263,3 +263,20 @@ research `knowledge_cutoff` field.
   `research_type=stock_health`.
 - Valid explanation outputs remain global and immutable. Full prompts, raw provider responses,
   reasoning traces, credentials and private user data are not stored.
+
+## Phase 18 company comparison
+
+- `comparison_requests` is the user-owned, client-idempotent request wrapper. Every public read is
+  filtered by `user_id`.
+- `comparison_build_runs` leases and deduplicates deterministic work by pair, profile, rules and
+  retained input manifest.
+- `comparison_snapshots` stores one global immutable pair document, evidence manifest, coverage and
+  limitations. Decimal values remain strings in the API contract.
+- `comparison_ai_runs` and `comparison_ai_outputs` isolate pairwise AI lifecycle from single-stock
+  health and question explanations. `llm_calls.comparison_ai_run_id` retains redacted call audit.
+- `saved_comparisons` stores only a user's named pair definition and optional latest request link;
+  shared research facts are never duplicated per user.
+
+Comparability requires the same metric code, period, fiscal period, basis, unit and metric version.
+Valuation observations additionally require the same observation date and unit. A missing match is
+displayed as unavailable or not comparable and is never normalized by the frontend or an LLM.

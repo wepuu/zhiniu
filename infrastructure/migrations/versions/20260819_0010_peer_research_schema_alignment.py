@@ -59,4 +59,3 @@ def downgrade() -> None:
                 existing_type=sa.DateTime(timezone=True),
                 nullable=True,
             )
-

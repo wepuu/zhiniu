@@ -146,6 +146,18 @@ export type AutomationRunListResponse =
 export type AutomationRunDetail = components["schemas"]["AutomationRunDetail"];
 export type AutomationTriggerResponse =
   components["schemas"]["AutomationTriggerResponse"];
+export type ComparisonCatalogResponse =
+  components["schemas"]["ComparisonCatalogResponse"];
+export type ComparisonCreate = components["schemas"]["ComparisonCreate"];
+export type ComparisonResponse = components["schemas"]["ComparisonResponse"];
+export type ComparisonListResponse =
+  components["schemas"]["ComparisonListResponse"];
+export type SavedComparisonCreate =
+  components["schemas"]["SavedComparisonCreate"];
+export type SavedComparisonResponse =
+  components["schemas"]["SavedComparisonResponse"];
+export type SavedComparisonListResponse =
+  components["schemas"]["SavedComparisonListResponse"];
 
 export class ApiError extends Error {
   constructor(
@@ -319,6 +331,44 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getStockCoverage(symbol: string) {
       return request<StockCoverageResponse>(
         `/api/v1/stocks/${encodeURIComponent(symbol)}/coverage`,
+      );
+    },
+    getComparisonCatalog() {
+      return request<ComparisonCatalogResponse>("/api/v1/comparisons/catalog");
+    },
+    createComparison(payload: ComparisonCreate) {
+      return jsonRequest<ComparisonResponse>(
+        "/api/v1/comparisons",
+        "POST",
+        payload,
+      );
+    },
+    getComparison(requestId: string) {
+      return request<ComparisonResponse>(
+        `/api/v1/comparisons/${encodeURIComponent(requestId)}`,
+      );
+    },
+    listComparisons(limit = 20) {
+      return request<ComparisonListResponse>(
+        `/api/v1/comparisons?limit=${limit}`,
+      );
+    },
+    saveComparison(payload: SavedComparisonCreate) {
+      return jsonRequest<SavedComparisonResponse>(
+        "/api/v1/comparisons/saved",
+        "POST",
+        payload,
+      );
+    },
+    listSavedComparisons() {
+      return request<SavedComparisonListResponse>(
+        "/api/v1/comparisons/saved/list",
+      );
+    },
+    deleteSavedComparison(savedId: string) {
+      return request<void>(
+        `/api/v1/comparisons/saved/${encodeURIComponent(savedId)}`,
+        { method: "DELETE" },
       );
     },
     getFundamentals(symbol: string, asOf?: string) {

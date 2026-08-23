@@ -40,6 +40,7 @@ type DeepSeekConfiguration = {
   stock_health: RouteConfiguration;
   screen_parser: RouteConfiguration;
   research_assistant: RouteConfiguration;
+  comparison_explanation: RouteConfiguration;
 };
 type ResendConfiguration = {
   enabled: boolean;
@@ -68,6 +69,11 @@ const deepSeekDefault = (): DeepSeekConfiguration => ({
     deadline_seconds: 75,
   },
   research_assistant: { ...routeDefault(), models: [FLASH], max_attempts: 1 },
+  comparison_explanation: {
+    ...routeDefault(),
+    models: [FLASH],
+    max_attempts: 1,
+  },
 });
 
 function currentConfiguration(view: ProviderConfigurationView) {
@@ -87,6 +93,12 @@ function deepSeekConfiguration(
     research_assistant: {
       ...fallback.research_assistant,
       ...(raw.research_assistant ?? {}),
+      models: [FLASH],
+      max_attempts: 1,
+    },
+    comparison_explanation: {
+      ...fallback.comparison_explanation,
+      ...(raw.comparison_explanation ?? {}),
       models: [FLASH],
       max_attempts: 1,
     },
@@ -300,7 +312,7 @@ function DeepSeekEditor({
           disabled={!editable}
           onChange={setApiKey}
         />
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-4 xl:grid-cols-2">
           <RouteEditor
             title="AI 股票体检"
             detail="结构化解释与证据引用"
@@ -326,6 +338,16 @@ function DeepSeekEditor({
             disabled
             locked
             onChange={() => undefined}
+          />
+          <RouteEditor
+            title="公司对比解读"
+            detail="固定 Flash、证据引用、禁止评分与胜负判断"
+            value={configuration.comparison_explanation}
+            disabled={!editable}
+            locked
+            onChange={(comparison_explanation) =>
+              setConfiguration({ ...configuration, comparison_explanation })
+            }
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

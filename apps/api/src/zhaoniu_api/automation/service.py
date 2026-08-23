@@ -638,13 +638,9 @@ class AutomationService:
                     universe_snapshot_id=universe_snapshot_id,
                     scope_key=scope_key,
                 )
-                after_fingerprint = await self._artifact_fingerprint(
-                    step_key, symbol, scope_key
-                )
+                after_fingerprint = await self._artifact_fingerprint(step_key, symbol, scope_key)
                 persisted_step = await self._session.get(AutomationRunStepRecord, step_id)
-                persisted_attempt = await self._session.get(
-                    AutomationStepAttemptRecord, attempt_id
-                )
+                persisted_attempt = await self._session.get(AutomationStepAttemptRecord, attempt_id)
                 persisted_run = await self._session.get(AutomationRunRecord, run_id)
                 assert (
                     persisted_step is not None

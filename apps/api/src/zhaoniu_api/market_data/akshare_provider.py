@@ -48,15 +48,18 @@ class AKShareProvider:
                     return await asyncio.to_thread(function)
                 except Exception as exc:
                     classified = self._classify_exception(exc)
-                    if not isinstance(
-                        classified,
-                        (
-                            ProviderProxyUnavailableError,
-                            ProviderTimeoutError,
-                            ProviderConnectionError,
-                            ProviderRateLimitedError,
-                        ),
-                    ) or attempt == self._max_attempts:
+                    if (
+                        not isinstance(
+                            classified,
+                            (
+                                ProviderProxyUnavailableError,
+                                ProviderTimeoutError,
+                                ProviderConnectionError,
+                                ProviderRateLimitedError,
+                            ),
+                        )
+                        or attempt == self._max_attempts
+                    ):
                         raise classified from None
                     await asyncio.sleep(self._retry_backoff_seconds)
         raise AssertionError("AKShare retry loop exhausted without a result")

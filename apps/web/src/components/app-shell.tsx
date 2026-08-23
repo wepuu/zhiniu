@@ -26,7 +26,8 @@ function isActive(pathname: string, href: string) {
   return href === "/"
     ? pathname === "/" ||
         pathname.startsWith("/screens") ||
-        pathname.startsWith("/saved-screens")
+        pathname.startsWith("/saved-screens") ||
+        pathname.startsWith("/comparisons")
     : pathname.startsWith(href);
 }
 

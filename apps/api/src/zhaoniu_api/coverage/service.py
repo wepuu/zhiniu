@@ -135,9 +135,9 @@ class ResearchCoverageService:
 
     async def _stock_health_enabled(self) -> bool:
         if self._ai_stock_health_enabled is None:
-            runtime = await ProviderConfigurationService(
-                self._session, self._settings
-            ).runtime("deepseek")
+            runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+                "deepseek"
+            )
             configuration = DeepSeekConfiguration.model_validate(runtime.configuration)
             self._ai_stock_health_enabled = deepseek_route_available(
                 configuration, runtime.credentials, "stock_health"

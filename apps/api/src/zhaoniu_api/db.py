@@ -1211,6 +1211,11 @@ class LLMCallRecord(Base):
         ForeignKey("natural_language_screen_parse_runs.id", ondelete="CASCADE"),
         index=True,
     )
+    comparison_ai_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("comparison_ai_runs.id", ondelete="CASCADE"),
+        index=True,
+    )
     user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
@@ -2311,6 +2316,222 @@ class AutomationStepAttemptRecord(Base):
     duration_ms: Mapped[int | None]
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ComparisonSnapshotRecord(Base):
+    __tablename__ = "comparison_snapshots"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_comparison_snapshot_idempotency"),
+        Index(
+            "ix_comparison_snapshot_pair_created",
+            "canonical_symbol_low",
+            "canonical_symbol_high",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    canonical_symbol_low: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    canonical_symbol_high: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    comparison_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    comparison_rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    input_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    structured_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    evidence_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    coverage_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    limitation_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ComparisonBuildRunRecord(Base):
+    __tablename__ = "comparison_build_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_comparison_build_run_idempotency"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'succeeded', 'failed')",
+            name="ck_comparison_build_run_status",
+        ),
+        Index("ix_comparison_build_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    canonical_symbol_low: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    canonical_symbol_high: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    requested_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("comparison_snapshots.id", ondelete="SET NULL")
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retry_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ComparisonAIRunRecord(Base):
+    __tablename__ = "comparison_ai_runs"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_comparison_ai_run_idempotency"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'succeeded', 'failed')",
+            name="ck_comparison_ai_run_status",
+        ),
+        Index("ix_comparison_ai_run_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("comparison_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    context_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    context_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_route_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    route_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_attempt: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ComparisonAIOutputRecord(Base):
+    __tablename__ = "comparison_ai_outputs"
+    __table_args__ = (
+        UniqueConstraint("run_id", name="uq_comparison_ai_output_run"),
+        UniqueConstraint("idempotency_key", name="uq_comparison_ai_output_idempotency"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("comparison_ai_runs.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("comparison_snapshots.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    model: Mapped[str] = mapped_column(String(160), nullable=False)
+    structured_result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    evidence_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    context_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    context_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_route_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    route_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ComparisonRequestRecord(Base):
+    __tablename__ = "comparison_requests"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_request_id", name="uq_comparison_request_user_client"),
+        CheckConstraint(
+            "status IN ('pending', 'building', 'ready', 'partial', 'failed', 'unsupported')",
+            name="ck_comparison_request_status",
+        ),
+        Index("ix_comparison_request_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    client_request_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    left_symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    right_symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    requested_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    include_ai: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    build_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("comparison_build_runs.id", ondelete="SET NULL")
+    )
+    snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("comparison_snapshots.id", ondelete="SET NULL")
+    )
+    ai_output_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("comparison_ai_outputs.id", ondelete="SET NULL")
+    )
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SavedComparisonRecord(Base):
+    __tablename__ = "saved_comparisons"
+    __table_args__ = (
+        UniqueConstraint("user_id", "normalized_name", name="uq_saved_comparison_user_name"),
+        Index("ix_saved_comparison_user_updated", "user_id", "updated_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    left_symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    right_symbol: Mapped[str] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT"), nullable=False
+    )
+    profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    latest_request_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("comparison_requests.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
 
 class BetaFeedbackItemRecord(Base):

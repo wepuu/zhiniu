@@ -53,19 +53,32 @@ class DeepSeekConfiguration(BaseModel):
             max_output_tokens=1200,
         )
     )
+    comparison_explanation: DeepSeekRouteConfiguration = Field(
+        default_factory=lambda: DeepSeekRouteConfiguration(
+            models=[ALLOWED_DEEPSEEK_MODELS[0]],
+            max_attempts=1,
+            timeout_seconds=60,
+            deadline_seconds=90,
+            max_output_tokens=1200,
+        )
+    )
 
     @model_validator(mode="after")
     def lock_research_assistant(self) -> DeepSeekConfiguration:
         route = self.research_assistant
         if route.models != [ALLOWED_DEEPSEEK_MODELS[0]] or route.max_attempts != 1:
             raise ValueError("research_assistant_profile_locked")
+        comparison = self.comparison_explanation
+        if comparison.models != [ALLOWED_DEEPSEEK_MODELS[0]] or comparison.max_attempts != 1:
+            raise ValueError("comparison_explanation_profile_locked")
         return self
 
 
 def deepseek_route_available(
     configuration: DeepSeekConfiguration,
     credentials: Mapping[str, str],
-    route: Literal["stock_health", "screen_parser", "research_assistant"] | None = None,
+    route: Literal["stock_health", "screen_parser", "research_assistant", "comparison_explanation"]
+    | None = None,
 ) -> bool:
     if not configuration.enabled or not credentials.get("api_key"):
         return False

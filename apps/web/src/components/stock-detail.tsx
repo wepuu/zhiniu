@@ -20,6 +20,7 @@ import {
   Activity,
   BarChart3,
   CalendarDays,
+  Columns2,
   Database,
   FileText,
   ListTree,
@@ -27,6 +28,7 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { assertAIResearch } from "@/lib/ai-research";
@@ -807,11 +809,20 @@ function DesktopStock({
             {stock.exchange} · {stock.board} · {stock.status}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-slate text-xs">最近收盘</p>
-          <p className="font-data mt-1 text-4xl font-semibold">
-            {formatDecimal(stock.latest_price)}
-          </p>
+        <div className="flex items-end gap-4 text-right">
+          <Link
+            href={`/comparisons?left=${encodeURIComponent(stock.symbol)}`}
+            className="border-ink/10 bg-paper inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 text-xs"
+          >
+            <Columns2 className="size-4" />
+            对比公司
+          </Link>
+          <div>
+            <p className="text-slate text-xs">最近收盘</p>
+            <p className="font-data mt-1 text-4xl font-semibold">
+              {formatDecimal(stock.latest_price)}
+            </p>
+          </div>
         </div>
       </div>
       <QuoteStrip stock={stock} latest={latest} />
@@ -942,6 +953,13 @@ function MobileStock({
       <div className="mt-4">
         <QuoteStrip stock={stock} latest={latest} />
       </div>
+      <Link
+        href={`/comparisons?left=${encodeURIComponent(stock.symbol)}`}
+        className="border-ink/10 bg-paper mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border text-xs"
+      >
+        <Columns2 className="size-4" />
+        对比另一家公司
+      </Link>
       <div className="mt-4">
         <WorkspaceTabs value={tab} onChange={setTab} mobile />
       </div>

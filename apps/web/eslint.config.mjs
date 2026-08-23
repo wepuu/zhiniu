@@ -4,7 +4,9 @@ import nextTypescript from "eslint-config-next/typescript";
 const eslintConfig = [
   ...nextVitals,
   ...nextTypescript,
-  { ignores: [".next/**", "coverage/**", "next-env.d.ts"] },
+  {
+    ignores: [".next/**", ".next-phase*/**", "coverage/**", "next-env.d.ts"],
+  },
 ];
 
 export default eslintConfig;

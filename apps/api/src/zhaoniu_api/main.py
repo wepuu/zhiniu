@@ -12,6 +12,7 @@ from zhaoniu_api.ai_explanations.routes import router as ai_explanation_router
 from zhaoniu_api.auth.webhook_routes import router as webhook_router
 from zhaoniu_api.automation.routes import router as automation_router
 from zhaoniu_api.company_timeline.routes import router as company_timeline_router
+from zhaoniu_api.comparisons.routes import router as comparison_router
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.coverage.routes import router as coverage_router
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(company_timeline_router)
     app.include_router(research_feed_router)
     app.include_router(screening_router)
+    app.include_router(comparison_router)
     app.include_router(access_control_router)
     app.include_router(ai_explanation_router)
     app.include_router(coverage_router)
@@ -64,7 +66,9 @@ def create_app() -> FastAPI:
             request.url.path not in public_screen_paths
         )
         if (
-            request.url.path.startswith(("/api/v1/me", "/api/v1/watchlists", "/api/v1/admin"))
+            request.url.path.startswith(
+                ("/api/v1/me", "/api/v1/watchlists", "/api/v1/admin", "/api/v1/comparisons")
+            )
             or private_screen
         ):
             response.headers["Cache-Control"] = "private, no-store"

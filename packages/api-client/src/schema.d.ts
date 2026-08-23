@@ -894,6 +894,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comparisons/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_v1_comparisons_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comparisons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Comparisons */
+        get: operations["list_comparisons_api_v1_comparisons_get"];
+        put?: never;
+        /** Create Comparison */
+        post: operations["create_comparison_api_v1_comparisons_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comparisons/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Comparison */
+        post: operations["save_comparison_api_v1_comparisons_saved_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comparisons/saved/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Comparisons */
+        get: operations["list_saved_comparisons_api_v1_comparisons_saved_list_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comparisons/saved/{saved_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Comparison */
+        delete: operations["delete_saved_comparison_api_v1_comparisons_saved__saved_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comparisons/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Comparison */
+        get: operations["get_comparison_api_v1_comparisons__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/access": {
         parameters: {
             query?: never;
@@ -2464,6 +2567,252 @@ export interface components {
              */
             upcoming_count: number;
         };
+        /** ComparisonAIOutput */
+        ComparisonAIOutput: {
+            /**
+             * Output Id
+             * Format: uuid
+             */
+            output_id: string;
+            /** Provider */
+            provider: string;
+            /** Model */
+            model: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            content: components["schemas"]["ComparisonAIResearchV1"];
+        };
+        /** ComparisonAIResearchV1 */
+        ComparisonAIResearchV1: {
+            headline: components["schemas"]["ComparisonCitedText"];
+            /** Common Ground */
+            common_ground: components["schemas"]["ComparisonCitedText"][];
+            /** Differences */
+            differences: components["schemas"]["ComparisonCitedText"][];
+            /** Attention Items */
+            attention_items?: components["schemas"]["ComparisonCitedText"][];
+        };
+        /** ComparisonCatalogResponse */
+        ComparisonCatalogResponse: {
+            /**
+             * Profile Version
+             * @default standard-v1
+             */
+            profile_version: string;
+            /**
+             * Supported Issuer Type
+             * @default general
+             */
+            supported_issuer_type: string;
+            /** Dimensions */
+            dimensions: string[];
+            /** Ai Available */
+            ai_available: boolean;
+            /** Saved Limit */
+            saved_limit: number;
+        };
+        /** ComparisonCitedText */
+        ComparisonCitedText: {
+            /** Text */
+            text: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** ComparisonCompany */
+        ComparisonCompany: {
+            /** Symbol */
+            symbol: string;
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            /** Exchange */
+            exchange: string;
+            /** Board */
+            board: string;
+            /** Industry Name */
+            industry_name?: string | null;
+        };
+        /** ComparisonCreate */
+        ComparisonCreate: {
+            /** Left Symbol */
+            left_symbol: string;
+            /** Right Symbol */
+            right_symbol: string;
+            /**
+             * Include Ai
+             * @default false
+             */
+            include_ai: boolean;
+            /**
+             * Client Request Id
+             * Format: uuid
+             */
+            client_request_id?: string;
+        };
+        /** ComparisonEvidence */
+        ComparisonEvidence: {
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right" | "shared";
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "metric" | "valuation" | "industry" | "peer" | "signal";
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Evidence Path */
+            evidence_path: string;
+        };
+        /** ComparisonListResponse */
+        ComparisonListResponse: {
+            /** Items */
+            items: components["schemas"]["ComparisonResponse"][];
+        };
+        /** ComparisonMetric */
+        ComparisonMetric: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Dimension */
+            dimension: string;
+            /**
+             * Comparability
+             * @enum {string}
+             */
+            comparability: "comparable" | "not_comparable" | "missing";
+            /** Reason */
+            reason?: string | null;
+            left: components["schemas"]["ComparisonValue"];
+            right: components["schemas"]["ComparisonValue"];
+        };
+        /** ComparisonResponse */
+        ComparisonResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Left Symbol */
+            left_symbol: string;
+            /** Right Symbol */
+            right_symbol: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "building" | "ready" | "partial" | "failed" | "unsupported";
+            /** Include Ai */
+            include_ai: boolean;
+            /**
+             * Ai Status
+             * @enum {string}
+             */
+            ai_status: "not_requested" | "building" | "ready" | "disabled" | "failed";
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Requested Cutoff
+             * Format: date-time
+             */
+            requested_cutoff: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            snapshot?: components["schemas"]["ComparisonSnapshotDocument"] | null;
+            /** Evidence */
+            evidence?: components["schemas"]["ComparisonEvidence"][];
+            ai_output?: components["schemas"]["ComparisonAIOutput"] | null;
+        };
+        /** ComparisonSignal */
+        ComparisonSignal: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right";
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Attention Level */
+            attention_level: string;
+            /**
+             * Known At
+             * Format: date-time
+             */
+            known_at: string;
+            /** Evidence Ref */
+            evidence_ref: string;
+        };
+        /** ComparisonSnapshotDocument */
+        ComparisonSnapshotDocument: {
+            /**
+             * Schema Version
+             * @default company-comparison-v1
+             * @constant
+             */
+            schema_version: "company-comparison-v1";
+            /**
+             * Profile Version
+             * @default standard-v1
+             * @constant
+             */
+            profile_version: "standard-v1";
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            left: components["schemas"]["ComparisonCompany"];
+            right: components["schemas"]["ComparisonCompany"];
+            /** Same Industry */
+            same_industry: boolean;
+            /** Metrics */
+            metrics: components["schemas"]["ComparisonMetric"][];
+            /** Recent Signals */
+            recent_signals: components["schemas"]["ComparisonSignal"][];
+            /** Limitations */
+            limitations: string[];
+        };
+        /** ComparisonValue */
+        ComparisonValue: {
+            /** Value */
+            value: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Status */
+            status: string;
+            /** Period End */
+            period_end?: string | null;
+            /** Basis */
+            basis?: string | null;
+            /** Evidence Ref */
+            evidence_ref?: string | null;
+        };
         /** CorporateEventListResponse */
         CorporateEventListResponse: {
             /** Symbol */
@@ -2631,6 +2980,7 @@ export interface components {
             stock_health?: components["schemas"]["DeepSeekRouteConfiguration"];
             screen_parser?: components["schemas"]["DeepSeekRouteConfiguration"];
             research_assistant?: components["schemas"]["DeepSeekRouteConfiguration"];
+            comparison_explanation?: components["schemas"]["DeepSeekRouteConfiguration"];
         };
         /** DeepSeekDraftUpdate */
         DeepSeekDraftUpdate: {
@@ -4374,6 +4724,48 @@ export interface components {
             api_key?: string | null;
             /** Webhook Secret */
             webhook_secret?: string | null;
+        };
+        /** SavedComparisonCreate */
+        SavedComparisonCreate: {
+            /** Name */
+            name: string;
+            /** Left Symbol */
+            left_symbol: string;
+            /** Right Symbol */
+            right_symbol: string;
+        };
+        /** SavedComparisonListResponse */
+        SavedComparisonListResponse: {
+            /** Items */
+            items: components["schemas"]["SavedComparisonResponse"][];
+            /** Limit */
+            limit: number;
+        };
+        /** SavedComparisonResponse */
+        SavedComparisonResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Left Symbol */
+            left_symbol: string;
+            /** Right Symbol */
+            right_symbol: string;
+            /** Latest Request Id */
+            latest_request_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** SavedScreenCreate */
         SavedScreenCreate: {
@@ -6979,6 +7371,235 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenResultListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_comparisons_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonCatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_comparisons_api_v1_comparisons_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_comparison_api_v1_comparisons_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_comparison_api_v1_comparisons_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedComparisonCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedComparisonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_comparisons_api_v1_comparisons_saved_list_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedComparisonListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_comparison_api_v1_comparisons_saved__saved_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                saved_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_comparison_api_v1_comparisons__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonResponse"];
                 };
             };
             /** @description Validation Error */

@@ -380,6 +380,20 @@ def execute_screen(execution_id: str) -> dict[str, object]:
     return asyncio.run(_execute_screen(execution_id))
 
 
+async def _build_comparison(request_id: str) -> dict[str, object]:
+    from zhaoniu_api.composition import build_comparison_service
+    from zhaoniu_api.database import session_factory
+
+    async with session_factory() as session:
+        result = await build_comparison_service(session).execute(UUID(request_id))
+        return result.model_dump(mode="json")
+
+
+@celery_app.task(name="comparisons.build")  # type: ignore[untyped-decorator]
+def build_comparison(request_id: str) -> dict[str, object]:
+    return asyncio.run(_build_comparison(request_id))
+
+
 async def _run_coverage_backfill(run_id: str) -> dict[str, object]:
     from zhaoniu_api.composition import build_coverage_service
     from zhaoniu_api.database import session_factory

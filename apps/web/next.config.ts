@@ -3,8 +3,10 @@ import type { NextConfig } from "next";
 const apiOrigin = (process.env.API_BASE_URL ?? "http://127.0.0.1:8000")
   .replace(/\/$/, "")
   .replace(/\/api\/v1$/, "");
+const distDir = process.env.ZHAONIU_NEXT_DIST_DIR ?? ".next";
 
 const nextConfig: NextConfig = {
+  distDir,
   poweredByHeader: false,
   async rewrites() {
     return [

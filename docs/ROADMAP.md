@@ -115,13 +115,22 @@ historical alert safety; and deterministic shareholder-change and litigation/arb
 families. Timeline facts remain global projections with one upstream artifact. News, LLM fact
 extraction, event scoring, cross-domain event ratios and additional event families remain deferred.
 
-## Phase 17 - DeepSeek Production Enablement & Evidence-Grounded Research Assistant (current)
+## Phase 17 - DeepSeek Production Enablement & Evidence-Grounded Research Assistant (completed)
 
 A bounded DeepSeek production profile and four evidence-grounded research questions inside the
 existing AI interpretation experience. User-owned request wrappers, atomic daily entitlements,
 shared run/output deduplication, strict structured validation, explicit retry, provider diagnostics
 and desktop/mobile evidence navigation are included. Free-form chat, tools, streaming, price
 questions, automated full-market generation and personalized advice remain out of scope.
+
+## Phase 18 - Evidence-Grounded Pairwise Company Comparison (current)
+
+User-owned comparison requests over global immutable pair snapshots, strict point-in-time metric
+comparability, explicit cross-industry and missing-data limits, recent research-signal context,
+saved comparison definitions, and an independently gated DeepSeek explanation after deterministic
+facts. Desktop uses a two-column ledger and mobile uses dimension cards with the same evidence
+identities. Rankings, winners, scores, segment inference, LLM calculations, scheduling, exports and
+multi-company comparison remain out of scope.
 
 ## Future - Factor / Backtest
 
