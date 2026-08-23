@@ -3,7 +3,17 @@ from decimal import Decimal
 
 import pytest
 from zhaoniu_api.domain.models import AdjustType, Board, DailyBar, Exchange, resolve_symbol
-from zhaoniu_api.market_data.errors import DataQualityError, ProviderUnavailableError
+from zhaoniu_api.market_data.akshare_provider import AKShareProvider
+from zhaoniu_api.market_data.errors import (
+    DataQualityError,
+    ProviderConnectionError,
+    ProviderInvalidResponseError,
+    ProviderProxyUnavailableError,
+    ProviderRateLimitedError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+    safe_market_error_code,
+)
 from zhaoniu_api.market_data.normalizer import AKShareNormalizer
 from zhaoniu_api.market_data.quality import validate_daily_bar_batch
 from zhaoniu_api.market_data.registry import FallbackEngine
@@ -120,3 +130,50 @@ def test_idempotency_key_is_deterministic_and_window_sensitive() -> None:
     one = make_idempotency_key("daily", "600519.SH", date(2026, 1, 1))
     assert one == make_idempotency_key("daily", "600519.SH", date(2026, 1, 1))
     assert one != make_idempotency_key("daily", "600519.SH", date(2026, 1, 2))
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    [
+        (type("ProxyError", (Exception,), {})(), ProviderProxyUnavailableError),
+        (TimeoutError(), ProviderTimeoutError),
+        (ConnectionError(), ProviderConnectionError),
+        (RuntimeError("HTTP 429"), ProviderRateLimitedError),
+    ],
+)
+async def test_akshare_retries_only_transient_failures(
+    failure: Exception, expected: type[Exception]
+) -> None:
+    calls = 0
+
+    def fail() -> None:
+        nonlocal calls
+        calls += 1
+        raise failure
+
+    provider = AKShareProvider(max_attempts=2, retry_backoff_seconds=0)
+    with pytest.raises(expected):
+        await provider._call(fail)
+    assert calls == 2
+
+
+async def test_akshare_does_not_retry_invalid_response() -> None:
+    calls = 0
+
+    def fail() -> None:
+        nonlocal calls
+        calls += 1
+        raise ValueError("unexpected payload")
+
+    provider = AKShareProvider(max_attempts=2, retry_backoff_seconds=0)
+    with pytest.raises(ProviderInvalidResponseError) as captured:
+        await provider._call(fail)
+    assert calls == 1
+    assert str(captured.value) == "provider_invalid_response"
+
+
+def test_market_provider_error_codes_are_safe_and_stable() -> None:
+    assert safe_market_error_code(ProviderConnectionError("remote secret URL")) == (
+        "provider_connection_failed"
+    )
+    assert safe_market_error_code(RuntimeError("token=secret")) == "provider_invalid_response"

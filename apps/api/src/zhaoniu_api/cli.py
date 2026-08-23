@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import json
 from dataclasses import asdict, is_dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
@@ -27,12 +27,17 @@ from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.models import EventBuildResult
 from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.db import User
+from zhaoniu_api.domain.models import resolve_symbol
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
+from zhaoniu_api.market_data.akshare_provider import AKShareProvider
+from zhaoniu_api.market_data.errors import safe_market_error_code
 from zhaoniu_api.market_data.service import SyncResult
 from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
+from zhaoniu_api.provider_configuration.crypto import generate_key
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.models import ResearchBuildResult
 from zhaoniu_api.screening.models import ScreeningBuildResult, ScreenQuery
 
@@ -54,6 +59,8 @@ def _parser() -> argparse.ArgumentParser:
     daily.add_argument("--start", type=_date)
     daily.add_argument("--end", type=_date)
     daily.add_argument("--force", action="store_true")
+    diagnosis = subcommands.add_parser("diagnose-market-provider")
+    diagnosis.add_argument("symbol")
     financials = subcommands.add_parser("sync-financial-statements")
     financials.add_argument("symbol")
     financials.add_argument("--start-year", type=int, default=date.today().year - 6)
@@ -152,6 +159,10 @@ def _parser() -> argparse.ArgumentParser:
     automation_resume.add_argument("run_id", type=UUID)
     automation_refresh = subcommands.add_parser("automation-refresh-stock")
     automation_refresh.add_argument("symbol")
+    subcommands.add_parser("generate-provider-encryption-key")
+    reencrypt = subcommands.add_parser("reencrypt-provider-credentials")
+    reencrypt.add_argument("--to-key-id", required=True)
+    reencrypt.add_argument("--operator-email", required=True)
     return parser
 
 
@@ -177,6 +188,31 @@ async def _run(args: argparse.Namespace) -> None:
                 result = await build_market_data_service(session).sync_daily_bars(
                     args.symbol, start=args.start, end=args.end, force=args.force
                 )
+            elif args.command == "diagnose-market-provider":
+                settings = get_settings()
+                resolved = resolve_symbol(args.symbol)
+                provider = AKShareProvider(
+                    max_attempts=settings.akshare_max_attempts,
+                    retry_backoff_seconds=settings.akshare_retry_backoff_seconds,
+                )
+                diagnosis_end = date.today()
+                try:
+                    diagnosis_rows = await provider.get_daily_bars(
+                        resolved.ticker, diagnosis_end - timedelta(days=14), diagnosis_end
+                    )
+                    result = {
+                        "status": "healthy",
+                        "provider": provider.name,
+                        "symbol": resolved.canonical,
+                        "received_count": len(diagnosis_rows),
+                    }
+                except Exception as exc:
+                    result = {
+                        "status": "unavailable",
+                        "provider": provider.name,
+                        "symbol": resolved.canonical,
+                        "reason_code": safe_market_error_code(exc),
+                    }
             elif args.command == "sync-financial-statements":
                 result = await build_fundamental_service(session).sync_financial_statements(
                     args.symbol, start_year=args.start_year, force=args.force
@@ -335,10 +371,28 @@ async def _run(args: argparse.Namespace) -> None:
                     }
                 else:
                     settings.validate_runtime_security()
+                    await ProviderConfigurationService(
+                        session, settings
+                    ).validate_production_runtime()
                     result = {
                         "status": "configuration_valid",
                         "environment": settings.app_env,
                     }
+            elif args.command == "generate-provider-encryption-key":
+                result = {"key": generate_key()}
+            elif args.command == "reencrypt-provider-credentials":
+                settings = get_settings()
+                if settings.provider_credential_active_key_id != args.to_key_id:
+                    raise ValueError("target_key_must_be_active_key")
+                operator = await session.scalar(
+                    select(User).where(User.email == args.operator_email.strip().lower())
+                )
+                if operator is None:
+                    raise ValueError("operator_not_found")
+                count = await ProviderConfigurationService(session, settings).reencrypt_all(
+                    operator.id
+                )
+                result = {"status": "reencrypted", "credential_count": count}
             elif args.command == "automation-tick":
                 result = await build_automation_service(session).tick()
             elif args.command == "automation-run":

@@ -34,8 +34,20 @@ class AIResearchReason(StrEnum):
 class CitedText(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    text: str = Field(min_length=1, max_length=500)
-    evidence_refs: list[str] = Field(min_length=1, max_length=4)
+    text: str = Field(
+        min_length=1,
+        max_length=500,
+        description=(
+            "Chinese research prose without Arabic digits, Chinese quantities, dates, "
+            "percentages, amounts, prices or time-window lengths; describe historical windows "
+            "as 历史区间 and never write forms such as 三年."
+        ),
+    )
+    evidence_refs: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="One to four valid evidence IDs; never include a fifth reference.",
+    )
 
 
 class AIResearchDimension(BaseModel):

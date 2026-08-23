@@ -65,6 +65,7 @@ class LiteLLMGateway:
         timeout_seconds: float,
         max_output_tokens: int | None = None,
         thinking_enabled: bool = False,
+        api_key: str | None = None,
     ) -> LLMStructuredResponse:
         started = time.perf_counter()
         try:
@@ -110,6 +111,7 @@ class LiteLLMGateway:
                     temperature=0,
                     max_tokens=max_output_tokens,
                     extra_body=extra_body,
+                    api_key=api_key,
                 )
         except LLMGatewayError:
             raise

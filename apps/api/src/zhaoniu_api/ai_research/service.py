@@ -1,5 +1,6 @@
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
@@ -43,6 +44,8 @@ class AIResearchOptions:
     max_attempts: int = 4
     per_model_timeout_seconds: float = 75
     run_deadline_seconds: float = 240
+    max_output_tokens: int = 1200
+    configuration_revision: int | None = None
 
     @property
     def active_models(self) -> tuple[str, ...]:
@@ -63,12 +66,18 @@ class AIResearchService:
         ai_research: AIResearchRepository,
         gateway: LLMGateway,
         options: AIResearchOptions,
+        options_resolver: Callable[[], Awaitable[AIResearchOptions]] | None = None,
     ) -> None:
         self._stocks = stocks
         self._research = research
         self._ai_research = ai_research
         self._gateway = gateway
         self._options = options
+        self._options_resolver = options_resolver
+
+    async def _refresh_options(self) -> None:
+        if self._options_resolver is not None:
+            self._options = await self._options_resolver()
 
     @property
     def generation_enabled(self) -> bool:
@@ -77,6 +86,7 @@ class AIResearchService:
     async def generate_stock_health(
         self, symbol: str, *, retry_failed: bool = False
     ) -> AIResearchBuildResult:
+        await self._refresh_options()
         canonical = resolve_symbol(symbol).canonical
         stock = await self._stocks.get(canonical)
         if stock is None:
@@ -90,7 +100,13 @@ class AIResearchService:
             return AIResearchBuildResult("disabled", None, None, None)
 
         context = build_context(snapshot)
-        route_hash = digest([MODEL_ROUTE_VERSION, list(self._options.active_models)])
+        route_hash = digest(
+            [
+                MODEL_ROUTE_VERSION,
+                self._options.configuration_revision,
+                list(self._options.active_models),
+            ]
+        )
         idempotency_key = digest(
             [
                 str(snapshot.id),
@@ -174,6 +190,8 @@ class AIResearchService:
                             input_data=context.model_dump(mode="json"),
                             response_schema=StockHealthResearchV1.model_json_schema(),
                             timeout_seconds=timeout_seconds,
+                            max_output_tokens=self._options.max_output_tokens,
+                            thinking_enabled=False,
                         )
                     content = validate_stock_health_output(response.data, context)
                 except TimeoutError:
@@ -291,6 +309,7 @@ class AIResearchService:
             raise
 
     async def get_stock_health(self, symbol: str) -> AIResearchEnvelope:
+        await self._refresh_options()
         canonical = resolve_symbol(symbol).canonical
         stock = await self._stocks.get(canonical)
         if stock is None:

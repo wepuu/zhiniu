@@ -48,9 +48,7 @@ def _document(text: str, evidence: str) -> ResearchExplanationV1:
         question_key="fundamental_changes",
         headline=cited,
         summary=[cited, cited],
-        interpretations=[
-            ExplanationInterpretation(focus_key="fundamental", explanation=cited)
-        ],
+        interpretations=[ExplanationInterpretation(focus_key="fundamental", explanation=cited)],
         attention_items=[],
     )
 

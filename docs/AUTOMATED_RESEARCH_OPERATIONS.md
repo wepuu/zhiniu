@@ -50,7 +50,8 @@ Symbol steps are ordered across the whole run before the next stage starts:
 6. disclosure, corporate-event and radar build
 7. peer research once for each retained industry scope
 8. signal projection and dispatch of newly inserted alert deliveries
-9. optional AI research only when the Phase 3 snapshot changed
+9. optional AI research when the Phase 3 snapshot changed, the latest snapshot has no current
+   output for the published route/prompt/schema, or the retained output is stale
 10. one run-level coverage finalizer
 
 Provider, normalizer, canonical model and repository boundaries remain inside the existing
@@ -61,6 +62,12 @@ application services. Automation never calls a vendor SDK directly.
 Run states are `pending`, `running`, `succeeded`, `succeeded_with_warnings`, `partial`, `failed`,
 `blocked` and `skipped`. Optional AI failure produces a warning rather than failing deterministic
 research.
+
+A step that called its application service successfully remains `succeeded` even when its retained
+artifact fingerprint did not change; the step records `changed=false`. `skipped` is reserved for
+work that was not invoked, such as a financial check that is not due or a downstream dependency
+whose input did not change. An idempotently reused current AI output is therefore
+`succeeded/changed=false`, with the bounded reason code `ai_research_output_current`.
 
 Runs and steps use expiring leases. A new worker may reclaim an expired lease atomically. Resume
 operates on the same run and policy revision, resets failed work plus skipped downstream work, and

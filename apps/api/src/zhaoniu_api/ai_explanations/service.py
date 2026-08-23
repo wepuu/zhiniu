@@ -26,7 +26,6 @@ from zhaoniu_api.ai_explanations.models import (
 )
 from zhaoniu_api.ai_explanations.prompt import PROMPT_VERSION, SYSTEM_PROMPT
 from zhaoniu_api.ai_explanations.validation import validate_explanation
-from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
     AIExplanationDailyUsageRecord,
@@ -39,6 +38,12 @@ from zhaoniu_api.db import (
 )
 from zhaoniu_api.domain.models import resolve_symbol
 from zhaoniu_api.ports.providers import LLMGatewayError, LLMUsage
+from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
+from zhaoniu_api.provider_configuration.models import (
+    DeepSeekConfiguration,
+    DeepSeekRouteConfiguration,
+)
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 
 RESEARCH_TYPE = "stock_explanation"
 SCHEMA_VERSION = "research-explanation-v1"
@@ -72,12 +77,17 @@ class AIExplanationService:
         self._session = session
         self._settings = settings
         self._access = AccessControlService(session, settings)
-        self._gateway = LiteLLMGateway(
-            "json_object",
-            redis_url=settings.redis_url,
-            max_concurrency=settings.llm_provider_max_concurrency,
-            daily_call_limit=settings.llm_provider_daily_call_limit,
+        self._gateway = ManagedLiteLLMGateway(session, settings)
+
+    async def _managed_route(self) -> tuple[DeepSeekRouteConfiguration, int | None]:
+        runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+            "deepseek"
         )
+        configuration = DeepSeekConfiguration.model_validate(runtime.configuration)
+        route = configuration.research_assistant
+        if not configuration.enabled:
+            route = route.model_copy(update={"enabled": False})
+        return route, runtime.revision
 
     async def question_catalog(self, user_id: UUID, symbol: str) -> ExplanationQuestionCatalog:
         canonical = await self._stock_symbol(symbol)
@@ -85,11 +95,10 @@ class AIExplanationService:
         allowed = entitlements.features.get("ai_research_explanation", False)
         daily_limit = entitlements.limits.get("ai_explanations_daily", 0)
         used = await self._used_today(user_id)
-        globally_enabled = self._settings.llm_enabled and self._settings.ai_explanation_enabled
+        route, _revision = await self._managed_route()
+        globally_enabled = route.enabled
         access: Literal["available", "contact_support", "disabled"] = (
-            "disabled"
-            if not globally_enabled
-            else ("available" if allowed else "contact_support")
+            "disabled" if not globally_enabled else ("available" if allowed else "contact_support")
         )
         snapshot = await latest_snapshot(self._session, canonical)
         questions: list[ExplanationQuestion] = []
@@ -243,8 +252,9 @@ class AIExplanationService:
             return await self._fail_request(request, "insufficient_evidence")
         c_hash = context_hash(context)
         prompt_hash = _digest(f"{PROMPT_VERSION}:{SYSTEM_PROMPT}")
-        route = list(self._settings.ai_explanation_models)
-        route_hash = _digest(route)
+        managed_route, configuration_revision = await self._managed_route()
+        route = list(managed_route.models)
+        route_hash = _digest([configuration_revision, route])
         idempotency_key = _digest(
             {
                 "snapshot_id": str(snapshot.id),
@@ -283,8 +293,8 @@ class AIExplanationService:
                 system_prompt=SYSTEM_PROMPT,
                 input_data=context.model_dump(mode="json"),
                 response_schema=ResearchExplanationV1.model_json_schema(),
-                timeout_seconds=self._settings.ai_explanation_timeout_seconds,
-                max_output_tokens=self._settings.ai_explanation_max_output_tokens,
+                timeout_seconds=managed_route.timeout_seconds,
+                max_output_tokens=managed_route.max_output_tokens,
                 thinking_enabled=False,
             )
             document = ResearchExplanationV1.model_validate(response.data)
@@ -342,7 +352,8 @@ class AIExplanationService:
         return canonical
 
     async def _require_access(self, user_id: UUID) -> None:
-        if not self._settings.llm_enabled or not self._settings.ai_explanation_enabled:
+        route, _revision = await self._managed_route()
+        if not route.enabled:
             raise ExplanationServiceError("ai_explanation_disabled")
         entitlements = await self._access.effective_entitlements(user_id)
         if not entitlements.features.get("ai_research_explanation", False):

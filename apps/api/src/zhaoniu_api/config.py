@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -65,6 +66,12 @@ class Settings(BaseSettings):
     ai_explanation_run_deadline_seconds: float = Field(default=90, gt=0, le=120)
     ai_explanation_max_output_tokens: int = Field(default=1200, ge=256, le=2000)
     deepseek_api_key: str = ""
+    provider_credential_active_key_id: str = ""
+    provider_credential_key_ring: str = ""
+    managed_providers_hard_disabled: bool = False
+    provider_outbound_http_proxy_url: str = ""
+    akshare_max_attempts: int = Field(default=2, ge=1, le=2)
+    akshare_retry_backoff_seconds: float = Field(default=0.5, ge=0, le=5)
     screen_parser_enabled: bool = False
     screen_parser_model_chain: str = ""
     screen_parser_max_attempts: int = Field(default=2, ge=1, le=2)
@@ -108,10 +115,21 @@ class Settings(BaseSettings):
     @property
     def ai_explanation_models(self) -> tuple[str, ...]:
         return tuple(
-            item.strip()
-            for item in self.ai_explanation_model_chain.split(",")
-            if item.strip()
+            item.strip() for item in self.ai_explanation_model_chain.split(",") if item.strip()
         )
+
+    @property
+    def provider_credential_keys(self) -> dict[str, str]:
+        pairs: dict[str, str] = {}
+        for item in self.provider_credential_key_ring.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            key_id, separator, encoded = item.partition(":")
+            if not separator or not key_id.strip() or not encoded.strip():
+                raise ValueError("invalid_provider_credential_key_ring")
+            pairs[key_id.strip()] = encoded.strip()
+        return pairs
 
     @property
     def coverage_pinned_symbols(self) -> tuple[str, ...]:
@@ -190,6 +208,17 @@ class Settings(BaseSettings):
                 raise ValueError("production_ai_explanation_requires_approval")
 
 
+def _configure_outbound_http_proxy(settings: Settings) -> None:
+    if settings.provider_outbound_http_proxy_url:
+        # LiteLLM/httpx honor the standard proxy variables. Keep this deployment-only
+        # setting outside the managed provider database so it cannot become an SSRF
+        # escape hatch in the operations console.
+        os.environ["HTTP_PROXY"] = settings.provider_outbound_http_proxy_url
+        os.environ["HTTPS_PROXY"] = settings.provider_outbound_http_proxy_url
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    _configure_outbound_http_proxy(settings)
+    return settings

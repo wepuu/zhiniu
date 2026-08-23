@@ -313,12 +313,21 @@ function WorkspaceTabs({
 function EvidenceRail({
   stock,
   latest,
-  research,
+  coverage,
 }: {
   stock: StockResponse;
   latest?: DailyBarResponse;
-  research?: FundamentalResearchResponse;
+  coverage?: StockCoverageResponse;
 }) {
+  const marketCoverage = coverage?.dimensions.find(
+    (item) => item.dimension === "market",
+  );
+  const healthCopy = {
+    healthy: "来源健康",
+    degraded: "来源暂时降级，保留最近已验证行情",
+    unavailable: "来源当前不可用",
+    unknown: "来源状态待确认",
+  }[marketCoverage?.source_health ?? "unknown"];
   return (
     <Card className="overflow-hidden">
       <div className="bg-ink px-5 py-4 text-white">
@@ -333,7 +342,7 @@ function EvidenceRail({
           <div>
             <dt className="text-slate text-xs">数据来源</dt>
             <dd className="mt-1 font-medium">
-              {research?.provider ?? latest?.source ?? stock.source ?? "—"}
+              {latest?.source ?? stock.source ?? "—"}
             </dd>
             <p className="text-amber mt-1 text-xs">开发与技术评估数据源</p>
           </div>
@@ -341,25 +350,24 @@ function EvidenceRail({
         <div className="flex gap-3 py-4">
           <CalendarDays className="text-blue mt-0.5 size-4 shrink-0" />
           <div>
-            <dt className="text-slate text-xs">最新数据期间</dt>
+            <dt className="text-slate text-xs">最新交易日</dt>
             <dd className="font-data mt-1">
-              {research?.latest_report_period ??
-                stock.latest_trade_date ??
-                "暂无数据"}
+              {latest?.trade_date ?? stock.latest_trade_date ?? "暂无数据"}
             </dd>
+            <p className="text-slate mt-1 text-xs">未复权日 K</p>
           </div>
         </div>
         <div className="flex gap-3 py-4">
           <ShieldCheck className="text-blue mt-0.5 size-4 shrink-0" />
           <div>
-            <dt className="text-slate text-xs">可用时间口径</dt>
-            <dd className="mt-1">
-              {research?.published_at_precision === "date"
-                ? "公告日后保守可用"
-                : "精确发布时间"}
+            <dt className="text-slate text-xs">采集与健康状态</dt>
+            <dd className="mt-1" data-testid="market-source-health">
+              {healthCopy}
             </dd>
             <p className="text-slate mt-1 text-xs">
-              财务指标由确定性公式计算，不使用 AI 估算
+              {latest?.collected_at
+                ? `采集于 ${new Date(latest.collected_at).toLocaleString("zh-CN")}`
+                : "暂无采集时间"}
             </p>
           </div>
         </div>
@@ -836,11 +844,7 @@ function DesktopStock({
         {tab === "market" && (
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-5">
             <ChartCard candles={candles} empty={bars.length === 0} />
-            <EvidenceRail
-              stock={stock}
-              latest={latest}
-              research={research?.fundamentals}
-            />
+            <EvidenceRail stock={stock} latest={latest} coverage={coverage} />
           </div>
         )}
         {tab !== "market" && !research && (
@@ -968,11 +972,7 @@ function MobileStock({
         {tab === "market" && (
           <div className="space-y-4">
             <ChartCard candles={candles} empty={bars.length === 0} />
-            <EvidenceRail
-              stock={stock}
-              latest={latest}
-              research={research?.fundamentals}
-            />
+            <EvidenceRail stock={stock} latest={latest} coverage={coverage} />
           </div>
         )}
         {tab !== "market" && !research && (

@@ -1,7 +1,18 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Providers } from "./providers";
+
+vi.mock("./stock-chart", () => ({
+  StockChart: () => <div data-testid="stock-chart" />,
+}));
+
 import { StockDetail } from "./stock-detail";
 
 const stock = {
@@ -28,6 +39,27 @@ const emptyBars = {
   adjust: "none",
   items: [],
   total: 0,
+};
+
+const marketBars = {
+  ...emptyBars,
+  items: [
+    {
+      trade_date: "2026-08-21",
+      adjust_type: "none",
+      open: "1400.00",
+      high: "1430.00",
+      low: "1395.00",
+      close: "1420.00",
+      pre_close: "1405.00",
+      volume: 100000,
+      amount: "142000000.00",
+      pct_change: "1.0676",
+      source: "akshare",
+      collected_at: "2026-08-22T01:00:00Z",
+    },
+  ],
+  total: 1,
 };
 
 const fundamentals = {
@@ -350,6 +382,14 @@ const coverage = {
   limitations: [],
   dimensions: [
     {
+      dimension: "market",
+      availability: "ready",
+      freshness: "current",
+      source_health: "degraded",
+      reason_codes: ["provider_unavailable"],
+      latest_artifact_at: "2026-08-21T00:00:00Z",
+    },
+    {
       dimension: "financial",
       availability: "ready",
       freshness: "current",
@@ -474,6 +514,44 @@ describe("StockDetail states and responsive compositions", () => {
     expect(screen.getAllByText("股票资料已找到，暂无日 K 行情")).toHaveLength(
       2,
     );
+  });
+
+  it("uses the latest market date and source health in the market evidence rail", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        if (String(input).includes("daily-bars")) {
+          return Promise.resolve(
+            new Response(JSON.stringify(marketBars), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+        return successfulFetch(input);
+      }),
+    );
+    render(
+      <Providers>
+        <StockDetail symbol="600519" />
+      </Providers>,
+    );
+    await screen.findAllByText("贵州茅台");
+    for (const tab of screen.getAllByRole("tab", { name: "行情" })) {
+      fireEvent.click(tab);
+    }
+    expect(screen.getAllByText("2026-08-21")).toHaveLength(2);
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByTestId("market-source-health")
+          .map((item) => item.textContent),
+      ).toEqual([
+        "来源暂时降级，保留最近已验证行情",
+        "来源暂时降级，保留最近已验证行情",
+      ]),
+    );
+    expect(screen.getAllByText("未复权日 K")).toHaveLength(2);
   });
 
   it("opens an evidence trace in both responsive compositions", async () => {

@@ -4,6 +4,7 @@ import asyncio
 import hmac
 import re
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -91,6 +92,7 @@ class NaturalLanguageParserOptions:
     max_attempts: int = 2
     per_model_timeout_seconds: float = 30
     run_deadline_seconds: float = 75
+    configuration_revision: int | None = None
 
     @property
     def active_models(self) -> tuple[str, ...]:
@@ -106,12 +108,18 @@ class NaturalLanguageScreeningService:
         gateway: LLMGateway,
         options: NaturalLanguageParserOptions,
         access_control: AccessControlService,
+        options_resolver: Callable[[], Awaitable[NaturalLanguageParserOptions]] | None = None,
     ) -> None:
         self._session = session
         self._gateway = gateway
         self._options = options
         self._access_control = access_control
         self._screening = ScreeningService(session, access_control)
+        self._options_resolver = options_resolver
+
+    async def _refresh_options(self) -> None:
+        if self._options_resolver is not None:
+            self._options = await self._options_resolver()
 
     def input_hash(self, text: str) -> str:
         return hmac.new(
@@ -121,6 +129,7 @@ class NaturalLanguageScreeningService:
         ).hexdigest()
 
     async def create_run(self, user_id: UUID, text: str) -> NaturalLanguageParseResponse:
+        await self._refresh_options()
         normalized = text.strip()
         now = datetime.now(UTC)
         entitlements = await self._access_control.effective_entitlements(user_id, now=now)
@@ -128,7 +137,12 @@ class NaturalLanguageScreeningService:
             raise ValueError("advanced_access_required")
         catalog = await self._screening.catalog()
         route_hash = _hash(
-            [MODEL_ROUTE_VERSION, self._options.enabled, list(self._options.active_models)]
+            [
+                MODEL_ROUTE_VERSION,
+                self._options.configuration_revision,
+                self._options.enabled,
+                list(self._options.active_models),
+            ]
         )
         input_hash = self.input_hash(normalized)
         existing = await self._session.scalar(
@@ -203,6 +217,7 @@ class NaturalLanguageScreeningService:
         return self._response(row) if row else None
 
     async def parse(self, run_id: UUID, text: str) -> NaturalLanguageParseResponse:
+        await self._refresh_options()
         now = datetime.now(UTC)
         row = await self._session.scalar(
             update(NaturalLanguageScreenParseRunRecord)

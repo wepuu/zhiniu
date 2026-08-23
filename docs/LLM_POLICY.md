@@ -9,8 +9,9 @@
   fallback, total deadline, validation and audit behavior.
 - Provider-local network, timeout, rate-limit, authentication, quota, model-availability, parse and
   output-validation failures may fall back. Internal context, repository or unknown errors may not.
-- API keys are read only from provider-specific environment variables. Logs, HTTP errors and stored
-  call records must contain only redacted categories and codes.
+- API keys are resolved from the encrypted managed-provider vault after publication, with
+  provider-specific environment variables retained only as a bootstrap source. Logs, HTTP errors
+  and stored call records contain only redacted categories and codes.
 - Do not persist full prompts, raw model responses or reasoning traces. Store only structured valid
   output, public evidence mapping, route/version hashes and bounded operational metadata.
 - Public UI must carry an explicit AI-generated label and continue to prohibit buy/sell language,

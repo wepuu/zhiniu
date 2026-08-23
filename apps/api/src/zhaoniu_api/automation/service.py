@@ -45,6 +45,12 @@ from zhaoniu_api.db import (
     StockDailyBarRecord,
     ValuationObservationRecord,
 )
+from zhaoniu_api.market_data.errors import MarketDataError, safe_market_error_code
+from zhaoniu_api.provider_configuration.models import (
+    DeepSeekConfiguration,
+    deepseek_route_available,
+)
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 
 POLICY_KEY = "priority_daily_refresh"
 POLICY_DISPLAY_NAME = "优先股票池每日研究刷新"
@@ -79,13 +85,62 @@ def is_reporting_window(day: date) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class StepExecutionResult:
-    status: Literal["succeeded", "skipped"] = "succeeded"
+    status: Literal["succeeded", "skipped", "failed"] = "succeeded"
+    error_code: str | None = None
+    retryable: bool = False
     provider_calls: int = 0
     rows_received: int = 0
     rows_written: int = 0
     signal_count: int = 0
     alert_count: int = 0
     ai_output_count: int = 0
+
+
+def persisted_step_status(
+    execution_status: Literal["succeeded", "skipped", "failed"], *, changed: bool
+) -> Literal["succeeded", "skipped", "failed"]:
+    """Keep execution outcome separate from whether the retained artifact changed."""
+
+    del changed
+    return execution_status
+
+
+def ai_step_result(result: object) -> StepExecutionResult:
+    result_status = str(getattr(result, "status", "failed"))
+    status_map = {
+        "succeeded": "succeeded",
+        "skipped": "succeeded",
+        "failed": "failed",
+        "disabled": "skipped",
+        "not_built": "skipped",
+        "unsupported": "skipped",
+    }
+    error_codes = {
+        "failed": "ai_generation_failed",
+        "disabled": "automation_ai_disabled",
+        "not_built": "deterministic_snapshot_missing",
+        "unsupported": "unsupported_issuer_type",
+        "skipped": "ai_research_output_current",
+    }
+    return StepExecutionResult(
+        status=cast(Any, status_map.get(result_status, "failed")),
+        error_code=error_codes.get(result_status),
+        retryable=result_status == "failed",
+        ai_output_count=int(
+            result_status == "succeeded" and getattr(result, "output_id", None) is not None
+        ),
+    )
+
+
+def attempted_step_status(result_status: object) -> Literal["succeeded", "skipped", "failed"]:
+    """Translate an invoked application service outcome into an automation outcome."""
+
+    status = str(result_status)
+    if status == "failed":
+        return "failed"
+    if status in {"not_applicable", "unsupported", "disabled"}:
+        return "skipped"
+    return "succeeded"
 
 
 class ProductionAutomationExecutor:
@@ -119,7 +174,7 @@ class ProductionAutomationExecutor:
             result = await build_coverage_service(self._session).build_coverage_snapshot(
                 universe_snapshot_id
             )
-            return StepExecutionResult(status=cast(Any, result.status))
+            return StepExecutionResult(status=attempted_step_status(result.status))
         if symbol is None:
             raise ValueError("automation_symbol_required")
         if step_key == "market_sync":
@@ -146,9 +201,7 @@ class ProductionAutomationExecutor:
             radar = await service.build_event_radar(symbol)
             combined = _service_result(synced, provider_calls=1)
             return StepExecutionResult(
-                status="skipped"
-                if combined.status == "skipped" and getattr(radar, "status", "") == "skipped"
-                else "succeeded",
+                status=attempted_step_status(getattr(radar, "status", "succeeded")),
                 provider_calls=1,
                 rows_received=combined.rows_received,
                 rows_written=combined.rows_written,
@@ -177,15 +230,10 @@ class ProductionAutomationExecutor:
                         )
                     ).all()
                 )
-            statuses = []
             peer_service = build_peer_research_service(self._session)
             for target in sorted(set(targets)):
-                statuses.append((await peer_service.build_peer_research(target)).status)
-            return StepExecutionResult(
-                status="skipped"
-                if statuses and all(item == "skipped" for item in statuses)
-                else "succeeded"
-            )
+                await peer_service.build_peer_research(target)
+            return StepExecutionResult(status="succeeded")
         if step_key == "signal_projection":
             feed = build_research_feed_service(self._session)
             projected = await feed.project_symbol(symbol, projection_mode="live_incremental")
@@ -193,23 +241,21 @@ class ProductionAutomationExecutor:
             for signal_id in projected.projected_signal_ids:
                 alerts += (await feed.dispatch(signal_id)).delivery_count
             return StepExecutionResult(
-                status=projected.status,
+                status=attempted_step_status(projected.status),
                 signal_count=len(projected.projected_signal_ids),
                 alert_count=alerts,
             )
         if step_key == "ai_research":
             result = await build_ai_research_service(self._session).generate_stock_health(symbol)
-            return StepExecutionResult(
-                status="skipped" if result.status == "skipped" else "succeeded",
-                ai_output_count=int(result.output_id is not None),
-            )
+            return ai_step_result(result)
         raise ValueError("unsupported_automation_step")
 
 
 def _service_result(result: object, *, provider_calls: int = 0) -> StepExecutionResult:
     result_status = str(getattr(result, "status", "succeeded"))
     return StepExecutionResult(
-        status="skipped" if result_status in {"skipped", "not_applicable"} else "succeeded",
+        status=attempted_step_status(result_status),
+        error_code="service_not_applicable" if result_status == "not_applicable" else None,
         provider_calls=provider_calls,
         rows_received=int(getattr(result, "received_count", 0) or 0),
         rows_written=int(getattr(result, "written_count", 0) or 0),
@@ -560,6 +606,11 @@ class AutomationService:
         step.before_fingerprint = await self._artifact_fingerprint(
             step.step_key, step.symbol, step.scope_key
         )
+        step_key = step.step_key
+        symbol = step.symbol
+        scope_key = step.scope_key
+        universe_snapshot_id = run.universe_snapshot_id
+        before_fingerprint = step.before_fingerprint
         attempt = AutomationStepAttemptRecord(
             id=uuid4(),
             step_id=step.id,
@@ -568,47 +619,69 @@ class AutomationService:
             status="running",
             started_at=now,
         )
+        step_id = step.id
+        attempt_id = attempt.id
+        run_id = run.id
         self._session.add(attempt)
         await self._session.commit()
         started = perf_counter()
         try:
-            skip_reason = await self._skip_reason(run.id, step)
+            skip_reason = await self._skip_reason(run_id, step)
             if skip_reason is not None:
                 step.status = "skipped"
                 step.error_code = skip_reason
                 result = StepExecutionResult(status="skipped")
             else:
                 result = await self._executor.execute(
-                    step.step_key,
-                    symbol=step.symbol,
-                    universe_snapshot_id=run.universe_snapshot_id,
-                    scope_key=step.scope_key,
+                    step_key,
+                    symbol=symbol,
+                    universe_snapshot_id=universe_snapshot_id,
+                    scope_key=scope_key,
                 )
-                step.after_fingerprint = await self._artifact_fingerprint(
-                    step.step_key, step.symbol, step.scope_key
+                after_fingerprint = await self._artifact_fingerprint(
+                    step_key, symbol, scope_key
                 )
-                step.changed = step.before_fingerprint != step.after_fingerprint
-                step.status = (
-                    "skipped" if result.status == "skipped" or not step.changed else "succeeded"
+                persisted_step = await self._session.get(AutomationRunStepRecord, step_id)
+                persisted_attempt = await self._session.get(
+                    AutomationStepAttemptRecord, attempt_id
                 )
+                persisted_run = await self._session.get(AutomationRunRecord, run_id)
+                assert (
+                    persisted_step is not None
+                    and persisted_attempt is not None
+                    and persisted_run is not None
+                )
+                step = persisted_step
+                attempt = persisted_attempt
+                run = persisted_run
+                step.after_fingerprint = after_fingerprint
+                step.changed = before_fingerprint != after_fingerprint
+                step.status = persisted_step_status(result.status, changed=step.changed)
+                step.error_code = result.error_code
                 step.provider_call_count = result.provider_calls
                 step.rows_received = result.rows_received
                 step.rows_written = result.rows_written
                 run.signal_count += result.signal_count
                 run.alert_count += result.alert_count
                 run.ai_output_count += result.ai_output_count
+                attempt.retryable = result.retryable
+                attempt.error_code = result.error_code
             attempt.status = step.status
         except Exception as error:
             await self._session.rollback()
-            persisted_step = await self._session.get(AutomationRunStepRecord, step.id)
-            persisted_attempt = await self._session.get(AutomationStepAttemptRecord, attempt.id)
+            persisted_step = await self._session.get(AutomationRunStepRecord, step_id)
+            persisted_attempt = await self._session.get(AutomationStepAttemptRecord, attempt_id)
             assert persisted_step is not None and persisted_attempt is not None
             step = persisted_step
             attempt = persisted_attempt
-            persisted_run = await self._session.get(AutomationRunRecord, run.id)
+            persisted_run = await self._session.get(AutomationRunRecord, run_id)
             assert persisted_run is not None
             run = persisted_run
-            code = type(error).__name__[:120]
+            code = (
+                safe_market_error_code(error)
+                if isinstance(error, MarketDataError)
+                else type(error).__name__[:120]
+            )
             step.status = "failed"
             step.error_code = code
             attempt.status = "failed"
@@ -684,10 +757,22 @@ class AutomationService:
             if not symbol_changed and not peer_changed:
                 return "signal_inputs_unchanged"
         if step.step_key == "ai_research" and step.symbol:
-            if not self._settings.automation_ai_enabled or not self._settings.llm_enabled:
+            runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+                "deepseek"
+            )
+            deepseek = DeepSeekConfiguration.model_validate(runtime.configuration)
+            if not self._settings.automation_ai_enabled or not deepseek_route_available(
+                deepseek, runtime.credentials, "stock_health"
+            ):
                 return "automation_ai_disabled"
-            if not await self._changed_step(run_id, step.symbol, "research_build"):
-                return "ai_research_snapshot_unchanged"
+            latest_snapshot = await self._session.scalar(
+                select(ResearchSnapshotRecord)
+                .where(ResearchSnapshotRecord.symbol == step.symbol)
+                .order_by(ResearchSnapshotRecord.knowledge_cutoff.desc())
+                .limit(1)
+            )
+            if latest_snapshot is None:
+                return "deterministic_snapshot_missing"
             count = int(
                 await self._session.scalar(
                     select(func.count())

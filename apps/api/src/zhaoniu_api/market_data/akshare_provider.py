@@ -4,8 +4,11 @@ from datetime import date
 from typing import Any
 
 from zhaoniu_api.market_data.errors import (
+    ProviderConnectionError,
     ProviderInvalidResponseError,
+    ProviderProxyUnavailableError,
     ProviderRateLimitedError,
+    ProviderTimeoutError,
     ProviderUnavailableError,
 )
 from zhaoniu_api.ports.providers import RawDailyBar, RawStock
@@ -14,9 +17,20 @@ from zhaoniu_api.ports.providers import RawDailyBar, RawStock
 class AKShareProvider:
     name = "akshare"
 
-    def __init__(self, sdk: Any | None = None, *, max_concurrency: int = 2) -> None:
+    def __init__(
+        self,
+        sdk: Any | None = None,
+        *,
+        max_concurrency: int = 2,
+        max_attempts: int = 2,
+        retry_backoff_seconds: float = 0.5,
+    ) -> None:
+        if not 1 <= max_attempts <= 2:
+            raise ValueError("AKShare max_attempts must be between 1 and 2")
         self._sdk = sdk
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._max_attempts = max_attempts
+        self._retry_backoff_seconds = retry_backoff_seconds
 
     def _load_sdk(self) -> Any:
         if self._sdk is None:
@@ -29,15 +43,49 @@ class AKShareProvider:
 
     async def _call(self, function: Callable[[], Any]) -> Any:
         async with self._semaphore:
-            try:
-                return await asyncio.to_thread(function)
-            except Exception as exc:
-                message = str(exc).lower()
-                if "429" in message or "rate" in message or "too many" in message:
-                    raise ProviderRateLimitedError(
-                        "AKShare upstream rate limited the request"
-                    ) from exc
-                raise ProviderUnavailableError("AKShare request failed") from exc
+            for attempt in range(1, self._max_attempts + 1):
+                try:
+                    return await asyncio.to_thread(function)
+                except Exception as exc:
+                    classified = self._classify_exception(exc)
+                    if not isinstance(
+                        classified,
+                        (
+                            ProviderProxyUnavailableError,
+                            ProviderTimeoutError,
+                            ProviderConnectionError,
+                            ProviderRateLimitedError,
+                        ),
+                    ) or attempt == self._max_attempts:
+                        raise classified from None
+                    await asyncio.sleep(self._retry_backoff_seconds)
+        raise AssertionError("AKShare retry loop exhausted without a result")
+
+    @staticmethod
+    def _classify_exception(exc: Exception) -> Exception:
+        if isinstance(exc, ProviderInvalidResponseError):
+            return exc
+        kind = type(exc).__name__.lower()
+        message = str(exc).lower()
+        if "proxy" in kind or "proxy" in message:
+            return ProviderProxyUnavailableError("provider_proxy_unavailable")
+        if isinstance(exc, TimeoutError) or "timeout" in kind or "timed out" in message:
+            return ProviderTimeoutError("provider_timeout")
+        if "429" in message or "rate limit" in message or "too many requests" in message:
+            return ProviderRateLimitedError("provider_rate_limited")
+        connection_markers = (
+            "connection",
+            "remote disconnected",
+            "remotedisconnected",
+            "connection aborted",
+            "connection reset",
+            "protocolerror",
+        )
+        if isinstance(exc, ConnectionError) or any(
+            marker in kind or marker in message for marker in connection_markers
+        ):
+            return ProviderConnectionError("provider_connection_failed")
+        return ProviderInvalidResponseError("provider_invalid_response")
 
     @staticmethod
     def _records(frame: Any) -> list[dict[str, object]]:

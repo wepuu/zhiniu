@@ -119,6 +119,16 @@ export type OperatorAuditListResponse =
   components["schemas"]["OperatorAuditListResponse"];
 export type ProviderStatusListResponse =
   components["schemas"]["ProviderStatusListResponse"];
+export type ProviderConfigurationListResponse =
+  components["schemas"]["ProviderConfigurationListResponse"];
+export type ProviderConfigurationView =
+  components["schemas"]["ProviderConfigurationView"];
+export type DeepSeekDraftUpdate = components["schemas"]["DeepSeekDraftUpdate"];
+export type ResendDraftUpdate = components["schemas"]["ResendDraftUpdate"];
+export type ProviderMutationResponse =
+  components["schemas"]["ProviderMutationResponse"];
+export type ProviderDraftDiagnoseResponse =
+  components["schemas"]["ProviderDraftDiagnoseResponse"];
 export type OperatorActionResponse =
   components["schemas"]["OperatorActionResponse"];
 export type OperatorInviteBatchResponse =
@@ -689,6 +699,72 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       return request<ProviderStatusListResponse>(
         `/api/v1/admin/providers/${provider}/diagnose`,
         { method: "POST" },
+      );
+    },
+    getProviderConfigurations() {
+      return request<ProviderConfigurationListResponse>(
+        "/api/v1/admin/providers/configurations",
+      );
+    },
+    getProviderConfiguration(provider: "deepseek" | "resend") {
+      return request<ProviderConfigurationView>(
+        `/api/v1/admin/providers/${provider}/configuration`,
+      );
+    },
+    saveProviderDraft(
+      provider: "deepseek" | "resend",
+      payload: DeepSeekDraftUpdate | ResendDraftUpdate,
+    ) {
+      return jsonRequest<ProviderMutationResponse>(
+        `/api/v1/admin/providers/${provider}/draft`,
+        "PUT",
+        payload,
+      );
+    },
+    importProviderEnvironment(
+      provider: "deepseek" | "resend",
+      expectedRowVersion: number,
+    ) {
+      return jsonRequest<ProviderMutationResponse>(
+        `/api/v1/admin/providers/${provider}/draft/import-environment`,
+        "POST",
+        { expected_row_version: expectedRowVersion },
+      );
+    },
+    discardProviderDraft(
+      provider: "deepseek" | "resend",
+      expectedRowVersion: number,
+    ) {
+      return jsonRequest<ProviderMutationResponse>(
+        `/api/v1/admin/providers/${provider}/draft`,
+        "DELETE",
+        { expected_row_version: expectedRowVersion },
+      );
+    },
+    diagnoseProviderDraft(provider: "deepseek" | "resend") {
+      return request<ProviderDraftDiagnoseResponse>(
+        `/api/v1/admin/providers/${provider}/draft/diagnose`,
+        { method: "POST" },
+      );
+    },
+    publishProviderDraft(
+      provider: "deepseek" | "resend",
+      expectedRowVersion: number,
+    ) {
+      return jsonRequest<ProviderMutationResponse>(
+        `/api/v1/admin/providers/${provider}/draft/publish`,
+        "POST",
+        { expected_row_version: expectedRowVersion },
+      );
+    },
+    removeProviderCredentials(
+      provider: "deepseek" | "resend",
+      expectedRowVersion: number,
+    ) {
+      return jsonRequest<ProviderMutationResponse>(
+        `/api/v1/admin/providers/${provider}/credentials`,
+        "DELETE",
+        { expected_row_version: expectedRowVersion },
       );
     },
     getAutomationPolicies() {

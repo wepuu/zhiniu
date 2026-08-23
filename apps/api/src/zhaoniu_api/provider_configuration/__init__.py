@@ -1,0 +1,1 @@
+"""Managed external-provider configuration."""

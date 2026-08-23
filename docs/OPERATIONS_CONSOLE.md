@@ -36,6 +36,12 @@ tokens and failures for the previous day. It never exposes prompts, provider res
 or user-private request content. DeepSeek diagnostics use the Phase 17 JSON-object profile with
 thinking disabled.
 
+The provider workspace exposes encrypted DeepSeek and Resend configuration to `security_admin`
+members only. Saving, importing environment values, diagnosing drafts, publishing, disabling and
+credential removal require elevation. `operations` may read managed configuration metadata and
+diagnose the active provider. Secret fields are write-only and never appear in API responses or the
+audit stream. Mobile keeps the configuration workspace read-only.
+
 The audit stream stores action keys, actor role, bounded target identity, outcome and safe metadata.
 It must never contain passwords, plaintext activation/invitation codes, session tokens, API keys,
 full email bodies, provider responses, model prompts or natural-language screening input.

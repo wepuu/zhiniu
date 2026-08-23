@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.access_control.service import AccessControlService
 from zhaoniu_api.ai_explanations.service import AIExplanationService
-from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.sql_repository import SQLAlchemyAIResearchRepository
 from zhaoniu_api.automation.service import AutomationService
@@ -26,6 +25,9 @@ from zhaoniu_api.market_data.normalizer import AKShareNormalizer
 from zhaoniu_api.market_data.service import MarketDataSyncService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.peer_research.sql_repository import SQLAlchemyPeerResearchRepository
+from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
+from zhaoniu_api.provider_configuration.models import DeepSeekConfiguration
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research.sql_repository import SQLAlchemyResearchRepository
 from zhaoniu_api.research_feed.service import ResearchFeedService
@@ -37,8 +39,12 @@ from zhaoniu_api.screening.service import ScreeningService
 
 
 def build_market_data_service(session: AsyncSession) -> MarketDataSyncService:
+    settings = get_settings()
     return MarketDataSyncService(
-        provider=AKShareProvider(),
+        provider=AKShareProvider(
+            max_attempts=settings.akshare_max_attempts,
+            retry_backoff_seconds=settings.akshare_retry_backoff_seconds,
+        ),
         normalizer=AKShareNormalizer(),
         stocks=SQLAlchemyStockRepository(session),
         bars=SQLAlchemyDailyBarRepository(session),
@@ -77,16 +83,26 @@ def build_peer_research_service(session: AsyncSession) -> PeerResearchService:
 
 def build_ai_research_service(session: AsyncSession) -> AIResearchService:
     settings = get_settings()
+
+    async def managed_options() -> AIResearchOptions:
+        runtime = await ProviderConfigurationService(session, settings).runtime("deepseek")
+        provider = DeepSeekConfiguration.model_validate(runtime.configuration)
+        route = provider.stock_health
+        return AIResearchOptions(
+            enabled=provider.enabled and route.enabled,
+            model_chain=tuple(route.models),
+            max_attempts=route.max_attempts,
+            per_model_timeout_seconds=route.timeout_seconds,
+            run_deadline_seconds=route.deadline_seconds,
+            max_output_tokens=route.max_output_tokens,
+            configuration_revision=runtime.revision,
+        )
+
     return AIResearchService(
         stocks=SQLAlchemyStockRepository(session),
         research=SQLAlchemyResearchRepository(session),
         ai_research=SQLAlchemyAIResearchRepository(session),
-        gateway=LiteLLMGateway(
-            settings.llm_structured_output_mode,
-            redis_url=settings.redis_url,
-            max_concurrency=settings.llm_provider_max_concurrency,
-            daily_call_limit=settings.llm_provider_daily_call_limit,
-        ),
+        gateway=ManagedLiteLLMGateway(session, settings),
         options=AIResearchOptions(
             enabled=settings.llm_enabled,
             model_chain=settings.llm_models,
@@ -94,6 +110,7 @@ def build_ai_research_service(session: AsyncSession) -> AIResearchService:
             per_model_timeout_seconds=settings.llm_per_model_timeout_seconds,
             run_deadline_seconds=settings.llm_run_deadline_seconds,
         ),
+        options_resolver=managed_options,
     )
 
 
@@ -122,14 +139,24 @@ def build_natural_language_screening_service(
     session: AsyncSession,
 ) -> NaturalLanguageScreeningService:
     settings = get_settings()
+
+    async def managed_options() -> NaturalLanguageParserOptions:
+        runtime = await ProviderConfigurationService(session, settings).runtime("deepseek")
+        provider = DeepSeekConfiguration.model_validate(runtime.configuration)
+        route = provider.screen_parser
+        return NaturalLanguageParserOptions(
+            enabled=provider.enabled and route.enabled,
+            model_chain=tuple(route.models),
+            hmac_secret=settings.screen_parser_hmac_secret,
+            max_attempts=route.max_attempts,
+            per_model_timeout_seconds=route.timeout_seconds,
+            run_deadline_seconds=route.deadline_seconds,
+            configuration_revision=runtime.revision,
+        )
+
     return NaturalLanguageScreeningService(
         session,
-        LiteLLMGateway(
-            settings.llm_structured_output_mode,
-            redis_url=settings.redis_url,
-            max_concurrency=settings.llm_provider_max_concurrency,
-            daily_call_limit=settings.llm_provider_daily_call_limit,
-        ),
+        ManagedLiteLLMGateway(session, settings),
         NaturalLanguageParserOptions(
             enabled=settings.screen_parser_enabled,
             model_chain=settings.screen_parser_models,
@@ -139,6 +166,7 @@ def build_natural_language_screening_service(
             run_deadline_seconds=settings.screen_parser_run_deadline_seconds,
         ),
         AccessControlService(session, settings),
+        options_resolver=managed_options,
     )
 
 

@@ -8,6 +8,7 @@ from uuid import uuid4
 import httpx
 
 from zhaoniu_api.config import Settings
+from zhaoniu_api.provider_configuration.models import ResendConfiguration
 
 
 class TransactionalEmailError(RuntimeError):
@@ -123,9 +124,81 @@ class ResendEmailGateway:
         return EmailDeliveryResult(provider=self.provider_name, message_id=message_id)
 
 
+class ManagedResendEmailGateway:
+    provider_name = "resend"
+
+    def __init__(self, configuration: ResendConfiguration, api_key: str) -> None:
+        self._configuration = configuration
+        self._api_key = api_key
+
+    async def send(self, message: TransactionalEmail) -> EmailDeliveryResult:
+        sender = (
+            f"{self._configuration.from_name} <{self._configuration.from_email}>"
+            if self._configuration.from_name
+            else self._configuration.from_email
+        )
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "User-Agent": "zhaoniu-transactional-email/1.0",
+        }
+        if message.idempotency_key:
+            headers["Idempotency-Key"] = message.idempotency_key[:256]
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    "https://api.resend.com/emails",
+                    headers=headers,
+                    json={
+                        "from": sender,
+                        "to": [message.recipient],
+                        "subject": message.subject,
+                        "text": message.text_body,
+                        "tags": [
+                            {"name": "template", "value": message.template_key},
+                            {"name": "version", "value": message.template_version},
+                        ],
+                    },
+                )
+        except httpx.TimeoutException as error:
+            raise TransactionalEmailError("email_provider_timeout") from error
+        except httpx.HTTPError as error:
+            raise TransactionalEmailError("email_provider_unavailable") from error
+        if response.status_code in {401, 403}:
+            raise TransactionalEmailError("email_provider_auth")
+        if response.status_code == 429:
+            raise TransactionalEmailError("email_provider_rate_limit")
+        if response.status_code >= 500:
+            raise TransactionalEmailError("email_provider_unavailable")
+        if response.status_code >= 400:
+            raise TransactionalEmailError("email_provider_rejected")
+        message_id = response.json().get("id")
+        if not isinstance(message_id, str) or not message_id:
+            raise TransactionalEmailError("email_provider_invalid_response")
+        return EmailDeliveryResult(provider=self.provider_name, message_id=message_id)
+
+
 def build_email_gateway(settings: Settings) -> TransactionalEmailGateway:
     if settings.email_delivery_mode == "resend":
         return ResendEmailGateway(settings)
     if settings.email_delivery_mode == "smtp":
+        return SMTPEmailGateway(settings)
+    return DisabledEmailGateway()
+
+
+async def build_managed_email_gateway(
+    session: object, settings: Settings
+) -> TransactionalEmailGateway:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
+
+    if not isinstance(session, AsyncSession):
+        raise TypeError("async_session_required")
+    runtime = await ProviderConfigurationService(session, settings).runtime("resend")
+    configuration = ResendConfiguration.model_validate(runtime.configuration)
+    api_key = runtime.credentials.get("api_key")
+    if configuration.enabled and api_key:
+        return ManagedResendEmailGateway(configuration, api_key)
+    if runtime.source == "environment" and settings.email_delivery_mode == "smtp":
         return SMTPEmailGateway(settings)
     return DisabledEmailGateway()

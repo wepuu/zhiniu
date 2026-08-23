@@ -59,6 +59,11 @@ from zhaoniu_api.db import (
     WatchlistRecord,
 )
 from zhaoniu_api.domain.models import resolve_symbol
+from zhaoniu_api.provider_configuration.models import (
+    DeepSeekConfiguration,
+    deepseek_route_available,
+)
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 
 COVERAGE_SCHEMA_VERSION = "research-coverage-v1"
 EVALUATOR_VERSION = "coverage-evaluator-v1"
@@ -126,6 +131,18 @@ class ResearchCoverageService:
         self._session = session
         self._settings = settings
         self._policy = DatasetPolicyRegistry(settings)
+        self._ai_stock_health_enabled: bool | None = None
+
+    async def _stock_health_enabled(self) -> bool:
+        if self._ai_stock_health_enabled is None:
+            runtime = await ProviderConfigurationService(
+                self._session, self._settings
+            ).runtime("deepseek")
+            configuration = DeepSeekConfiguration.model_validate(runtime.configuration)
+            self._ai_stock_health_enabled = deepseek_route_available(
+                configuration, runtime.credentials, "stock_health"
+            )
+        return self._ai_stock_health_enabled
 
     async def build_universe(
         self, *, operator_pinned: tuple[str, ...] | None = None, as_of: datetime | None = None
@@ -611,6 +628,7 @@ class ResearchCoverageService:
             select(AIResearchOutputRecord)
             .where(
                 AIResearchOutputRecord.symbol == symbol,
+                AIResearchOutputRecord.research_type == "stock_health",
                 AIResearchOutputRecord.knowledge_cutoff <= cutoff,
             )
             .order_by(AIResearchOutputRecord.generated_at.desc())
@@ -618,7 +636,7 @@ class ResearchCoverageService:
         )
         if stock.issuer_type != "general":
             dimensions.append(self._unsupported("ai_research", "ai_unsupported_issuer_type"))
-        elif not self._settings.llm_enabled:
+        elif not await self._stock_health_enabled():
             dimensions.append(
                 CoverageDimension(
                     dimension="ai_research", availability="disabled", reason_codes=["ai_disabled"]

@@ -150,7 +150,10 @@ class FakeGateway:
         input_data: dict[str, object],
         response_schema: dict[str, Any],
         timeout_seconds: float,
+        max_output_tokens: int | None = None,
+        thinking_enabled: bool = False,
     ) -> LLMStructuredResponse:
+        del max_output_tokens, thinking_enabled
         self.models.append(model)
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):

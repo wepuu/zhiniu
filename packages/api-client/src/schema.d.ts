@@ -1302,6 +1302,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/providers/configurations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Provider Configurations */
+        get: operations["list_provider_configurations_api_v1_admin_providers_configurations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Provider Configuration */
+        get: operations["get_provider_configuration_api_v1_admin_providers__provider__configuration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Provider Draft */
+        put: operations["save_provider_draft_api_v1_admin_providers__provider__draft_put"];
+        post?: never;
+        /** Discard Provider Draft */
+        delete: operations["discard_provider_draft_api_v1_admin_providers__provider__draft_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/draft/import-environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Provider Environment */
+        post: operations["import_provider_environment_api_v1_admin_providers__provider__draft_import_environment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/draft/diagnose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Diagnose Provider Draft */
+        post: operations["diagnose_provider_draft_api_v1_admin_providers__provider__draft_diagnose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/draft/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Provider Draft */
+        post: operations["publish_provider_draft_api_v1_admin_providers__provider__draft_publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/providers/{provider}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Provider Credentials */
+        delete: operations["remove_provider_credentials_api_v1_admin_providers__provider__credentials_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/coverage/plans": {
         parameters: {
             query?: never;
@@ -2216,9 +2336,15 @@ export interface components {
         };
         /** CitedText */
         CitedText: {
-            /** Text */
+            /**
+             * Text
+             * @description Chinese research prose without Arabic digits, Chinese quantities, dates, percentages, amounts, prices or time-window lengths; describe historical windows as 历史区间 and never write forms such as 三年.
+             */
             text: string;
-            /** Evidence Refs */
+            /**
+             * Evidence Refs
+             * @description One to four valid evidence IDs; never include a fifth reference.
+             */
             evidence_refs: string[];
         };
         /** CompanyTimelineCoverage */
@@ -2484,6 +2610,65 @@ export interface components {
              * Format: date-time
              */
             collected_at: string;
+        };
+        /** DeepSeekConfiguration */
+        DeepSeekConfiguration: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Max Concurrency
+             * @default 2
+             */
+            max_concurrency: number;
+            /**
+             * Daily Call Limit
+             * @default 100
+             */
+            daily_call_limit: number;
+            stock_health?: components["schemas"]["DeepSeekRouteConfiguration"];
+            screen_parser?: components["schemas"]["DeepSeekRouteConfiguration"];
+            research_assistant?: components["schemas"]["DeepSeekRouteConfiguration"];
+        };
+        /** DeepSeekDraftUpdate */
+        DeepSeekDraftUpdate: {
+            /** Expected Row Version */
+            expected_row_version: number;
+            configuration: components["schemas"]["DeepSeekConfiguration"];
+            /** Api Key */
+            api_key?: string | null;
+        };
+        /** DeepSeekRouteConfiguration */
+        DeepSeekRouteConfiguration: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Models */
+            models?: string[];
+            /**
+             * Max Attempts
+             * @default 1
+             */
+            max_attempts: number;
+            /**
+             * Timeout Seconds
+             * @default 60
+             */
+            timeout_seconds: number;
+            /**
+             * Deadline Seconds
+             * @default 90
+             */
+            deadline_seconds: number;
+            /**
+             * Max Output Tokens
+             * @default 1200
+             */
+            max_output_tokens: number;
         };
         /** DependencyStatus */
         DependencyStatus: {
@@ -3862,6 +4047,102 @@ export interface components {
             /** Stocks */
             stocks?: components["schemas"]["PeerStockResponse"][];
         };
+        /** ProviderConfigurationListResponse */
+        ProviderConfigurationListResponse: {
+            /** Items */
+            items: components["schemas"]["ProviderConfigurationView"][];
+        };
+        /** ProviderConfigurationView */
+        ProviderConfigurationView: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "deepseek" | "resend";
+            /** Environment */
+            environment: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "environment" | "database" | "disabled";
+            /** Row Version */
+            row_version: number;
+            /**
+             * Credential State
+             * @enum {string}
+             */
+            credential_state: "missing" | "environment" | "encrypted";
+            /** Credential Rotated At */
+            credential_rotated_at?: string | null;
+            active?: components["schemas"]["ProviderRevisionView"] | null;
+            draft?: components["schemas"]["ProviderRevisionView"] | null;
+            /**
+             * Diagnostic Status
+             * @enum {string}
+             */
+            diagnostic_status: "not_run" | "healthy" | "unavailable";
+            /** Diagnostic Checked At */
+            diagnostic_checked_at?: string | null;
+            /** Webhook Verified At */
+            webhook_verified_at?: string | null;
+        };
+        /** ProviderDraftDiagnoseResponse */
+        ProviderDraftDiagnoseResponse: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "deepseek" | "resend";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "unavailable";
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+        };
+        /** ProviderMutationResponse */
+        ProviderMutationResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft_saved" | "draft_discarded" | "published" | "credentials_removed";
+            configuration: components["schemas"]["ProviderConfigurationView"];
+        };
+        /** ProviderRevisionView */
+        ProviderRevisionView: {
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "active" | "retired";
+            /** Configuration */
+            configuration: {
+                [key: string]: unknown;
+            };
+            /** Configuration Hash */
+            configuration_hash: string;
+            /** Credential Generation */
+            credential_generation?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Published At */
+            published_at?: string | null;
+        };
         /** ProviderStatusListResponse */
         ProviderStatusListResponse: {
             /** Items */
@@ -3886,6 +4167,11 @@ export interface components {
             latency_ms?: number | null;
             /** Reason Code */
             reason_code?: string | null;
+        };
+        /** ProviderVersionRequest */
+        ProviderVersionRequest: {
+            /** Expected Row Version */
+            expected_row_version: number;
         };
         /** ReadinessResponse */
         ReadinessResponse: {
@@ -4055,6 +4341,39 @@ export interface components {
              */
             status: "ready" | "not_built";
             snapshot?: components["schemas"]["ResearchSnapshotDocument"] | null;
+        };
+        /** ResendConfiguration */
+        ResendConfiguration: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * From Name
+             * @default 知牛研究
+             */
+            from_name: string;
+            /**
+             * From Email
+             * @default
+             */
+            from_email: string;
+            /**
+             * Sending Domain
+             * @default
+             */
+            sending_domain: string;
+        };
+        /** ResendDraftUpdate */
+        ResendDraftUpdate: {
+            /** Expected Row Version */
+            expected_row_version: number;
+            configuration: components["schemas"]["ResendConfiguration"];
+            /** Api Key */
+            api_key?: string | null;
+            /** Webhook Secret */
+            webhook_secret?: string | null;
         };
         /** SavedScreenCreate */
         SavedScreenCreate: {
@@ -7466,6 +7785,288 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderStatusListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_provider_configurations_api_v1_admin_providers_configurations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConfigurationListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_provider_configuration_api_v1_admin_providers__provider__configuration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderConfigurationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_provider_draft_api_v1_admin_providers__provider__draft_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeepSeekDraftUpdate"] | components["schemas"]["ResendDraftUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_provider_draft_api_v1_admin_providers__provider__draft_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_provider_environment_api_v1_admin_providers__provider__draft_import_environment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    diagnose_provider_draft_api_v1_admin_providers__provider__draft_diagnose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDraftDiagnoseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_provider_draft_api_v1_admin_providers__provider__draft_publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_provider_credentials_api_v1_admin_providers__provider__credentials_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "deepseek" | "resend";
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderMutationResponse"];
                 };
             };
             /** @description Validation Error */

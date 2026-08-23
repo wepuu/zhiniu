@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from zhaoniu_api.domain.models import resolve_symbol
+from zhaoniu_api.market_data.errors import safe_market_error_code
 from zhaoniu_api.market_data.normalizer import AKShareNormalizer
 from zhaoniu_api.market_data.quality import validate_daily_bar_batch
 from zhaoniu_api.ports.providers import MarketDataProvider
@@ -29,7 +30,7 @@ def make_idempotency_key(*parts: object) -> str:
 
 
 def _safe_error(exc: Exception) -> str:
-    return type(exc).__name__
+    return safe_market_error_code(exc)
 
 
 class MarketDataSyncService:

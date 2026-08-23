@@ -34,6 +34,74 @@ services:
       timeout: 3s
       retries: 10
 
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-zhaoniu}:${POSTGRES_PASSWORD:-zhaoniu}@postgres:5432/${POSTGRES_DB:-zhaoniu}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONPATH: /app/apps/api/src:/app/apps/worker/src
+      PROVIDER_OUTBOUND_HTTP_PROXY_URL: ${DOCKER_PROVIDER_OUTBOUND_HTTP_PROXY_URL:-http://host.docker.internal:10808}
+      ZHAONIU_DISABLE_DB_POOL: "1"
+    command:
+      [
+        "celery",
+        "-A",
+        "zhaoniu_worker.celery_app:celery_app",
+        "worker",
+        "--loglevel",
+        "INFO",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./apps/worker/src:/app/apps/worker/src:ro
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-zhaoniu}:${POSTGRES_PASSWORD:-zhaoniu}@postgres:5432/${POSTGRES_DB:-zhaoniu}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONPATH: /app/apps/api/src:/app/apps/worker/src
+      PROVIDER_OUTBOUND_HTTP_PROXY_URL: ${DOCKER_PROVIDER_OUTBOUND_HTTP_PROXY_URL:-http://host.docker.internal:10808}
+      ZHAONIU_DISABLE_DB_POOL: "1"
+    command:
+      [
+        "celery",
+        "-A",
+        "zhaoniu_worker.celery_app:celery_app",
+        "beat",
+        "--loglevel",
+        "INFO",
+        "--pidfile",
+        "/tmp/zhaoniu-beat.pid",
+        "--schedule",
+        "/tmp/zhaoniu-celerybeat-schedule",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./apps/worker/src:/app/apps/worker/src:ro
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:

@@ -4630,6 +4630,545 @@
         }
       }
     },
+    "/api/v1/admin/providers/configurations": {
+      "get": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "List Provider Configurations",
+        "operationId": "list_provider_configurations_api_v1_admin_providers_configurations_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/configuration": {
+      "get": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Get Provider Configuration",
+        "operationId": "get_provider_configuration_api_v1_admin_providers__provider__configuration_get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigurationView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/draft": {
+      "put": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Save Provider Draft",
+        "operationId": "save_provider_draft_api_v1_admin_providers__provider__draft_put",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DeepSeekDraftUpdate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResendDraftUpdate"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Discard Provider Draft",
+        "operationId": "discard_provider_draft_api_v1_admin_providers__provider__draft_delete",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/draft/import-environment": {
+      "post": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Import Provider Environment",
+        "operationId": "import_provider_environment_api_v1_admin_providers__provider__draft_import_environment_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/draft/diagnose": {
+      "post": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Diagnose Provider Draft",
+        "operationId": "diagnose_provider_draft_api_v1_admin_providers__provider__draft_diagnose_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDraftDiagnoseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/draft/publish": {
+      "post": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Publish Provider Draft",
+        "operationId": "publish_provider_draft_api_v1_admin_providers__provider__draft_publish_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/providers/{provider}/credentials": {
+      "delete": {
+        "tags": [
+          "operator console"
+        ],
+        "summary": "Remove Provider Credentials",
+        "operationId": "remove_provider_credentials_api_v1_admin_providers__provider__credentials_delete",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "deepseek",
+                "resend"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/coverage/plans": {
       "post": {
         "tags": [
@@ -7126,7 +7665,8 @@
             "type": "string",
             "maxLength": 500,
             "minLength": 1,
-            "title": "Text"
+            "title": "Text",
+            "description": "Chinese research prose without Arabic digits, Chinese quantities, dates, percentages, amounts, prices or time-window lengths; describe historical windows as 历史区间 and never write forms such as 三年."
           },
           "evidence_refs": {
             "items": {
@@ -7135,7 +7675,8 @@
             "type": "array",
             "maxItems": 4,
             "minItems": 1,
-            "title": "Evidence Refs"
+            "title": "Evidence Refs",
+            "description": "One to four valid evidence IDs; never include a fifth reference."
           }
         },
         "additionalProperties": false,
@@ -7818,6 +8359,122 @@
           "collected_at"
         ],
         "title": "DailyBarResponse"
+      },
+      "DeepSeekConfiguration": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "max_concurrency": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Concurrency",
+            "default": 2
+          },
+          "daily_call_limit": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Daily Call Limit",
+            "default": 100
+          },
+          "stock_health": {
+            "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
+          },
+          "screen_parser": {
+            "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
+          },
+          "research_assistant": {
+            "$ref": "#/components/schemas/DeepSeekRouteConfiguration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DeepSeekConfiguration"
+      },
+      "DeepSeekDraftUpdate": {
+        "properties": {
+          "expected_row_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Row Version"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/DeepSeekConfiguration"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_row_version",
+          "configuration"
+        ],
+        "title": "DeepSeekDraftUpdate"
+      },
+      "DeepSeekRouteConfiguration": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Models"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "default": 1
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": 10.0,
+            "title": "Timeout Seconds",
+            "default": 60
+          },
+          "deadline_seconds": {
+            "type": "number",
+            "maximum": 240.0,
+            "minimum": 15.0,
+            "title": "Deadline Seconds",
+            "default": 90
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "maximum": 4000.0,
+            "minimum": 128.0,
+            "title": "Max Output Tokens",
+            "default": 1200
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DeepSeekRouteConfiguration"
       },
       "DependencyStatus": {
         "properties": {
@@ -11597,6 +12254,269 @@
         ],
         "title": "PeerUniverseResponse"
       },
+      "ProviderConfigurationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderConfigurationView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProviderConfigurationListResponse"
+      },
+      "ProviderConfigurationView": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "deepseek",
+              "resend"
+            ],
+            "title": "Provider"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "environment",
+              "database",
+              "disabled"
+            ],
+            "title": "Source"
+          },
+          "row_version": {
+            "type": "integer",
+            "title": "Row Version"
+          },
+          "credential_state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "environment",
+              "encrypted"
+            ],
+            "title": "Credential State"
+          },
+          "credential_rotated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Rotated At"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderRevisionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderRevisionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diagnostic_status": {
+            "type": "string",
+            "enum": [
+              "not_run",
+              "healthy",
+              "unavailable"
+            ],
+            "title": "Diagnostic Status"
+          },
+          "diagnostic_checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Checked At"
+          },
+          "webhook_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Verified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "environment",
+          "source",
+          "row_version",
+          "credential_state",
+          "diagnostic_status"
+        ],
+        "title": "ProviderConfigurationView"
+      },
+      "ProviderDraftDiagnoseResponse": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "deepseek",
+              "resend"
+            ],
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "status",
+          "latency_ms",
+          "checked_at"
+        ],
+        "title": "ProviderDraftDiagnoseResponse"
+      },
+      "ProviderMutationResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft_saved",
+              "draft_discarded",
+              "published",
+              "credentials_removed"
+            ],
+            "title": "Status"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/ProviderConfigurationView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "configuration"
+        ],
+        "title": "ProviderMutationResponse"
+      },
+      "ProviderRevisionView": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "retired"
+            ],
+            "title": "Status"
+          },
+          "configuration": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Configuration"
+          },
+          "configuration_hash": {
+            "type": "string",
+            "title": "Configuration Hash"
+          },
+          "credential_generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Generation"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision",
+          "status",
+          "configuration",
+          "configuration_hash",
+          "created_at"
+        ],
+        "title": "ProviderRevisionView"
+      },
       "ProviderStatusListResponse": {
         "properties": {
           "items": {
@@ -11681,6 +12601,20 @@
           "configured"
         ],
         "title": "ProviderStatusView"
+      },
+      "ProviderVersionRequest": {
+        "properties": {
+          "expected_row_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Row Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_row_version"
+        ],
+        "title": "ProviderVersionRequest"
       },
       "ReadinessResponse": {
         "properties": {
@@ -12132,6 +13066,81 @@
           "status"
         ],
         "title": "ResearchSnapshotEnvelope"
+      },
+      "ResendConfiguration": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "from_name": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "From Name",
+            "default": "知牛研究"
+          },
+          "from_email": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "From Email",
+            "default": ""
+          },
+          "sending_domain": {
+            "type": "string",
+            "maxLength": 253,
+            "title": "Sending Domain",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ResendConfiguration"
+      },
+      "ResendDraftUpdate": {
+        "properties": {
+          "expected_row_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Row Version"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/ResendConfiguration"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "webhook_secret": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Secret"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_row_version",
+          "configuration"
+        ],
+        "title": "ResendDraftUpdate"
       },
       "SavedScreenCreate": {
         "properties": {

@@ -5,12 +5,11 @@ from time import perf_counter
 from typing import Literal, cast
 from uuid import UUID, uuid4
 
-import httpx
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.access_control.service import AccessControlService
-from zhaoniu_api.ai_research.litellm_gateway import LiteLLMGateway
+from zhaoniu_api.auth.email import TransactionalEmail, build_managed_email_gateway
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
     AccessActivationCodeRecord,
@@ -46,6 +45,14 @@ from zhaoniu_api.operations_console.models import (
     ProviderStatusView,
 )
 from zhaoniu_api.ports.providers import LLMGatewayError
+from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
+from zhaoniu_api.provider_configuration.models import (
+    ALLOWED_DEEPSEEK_MODELS,
+    DeepSeekConfiguration,
+    ResendConfiguration,
+    deepseek_route_available,
+)
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.system import MIGRATION_HEAD
 
 CAPABILITIES: dict[str, frozenset[str]] = {
@@ -75,6 +82,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "feedback.manage",
             "providers.read",
             "providers.diagnose",
+            "providers.config.read",
             "automation.read",
             "automation.manage",
             "automation.run",
@@ -98,6 +106,8 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "ai.run",
             "providers.read",
             "providers.diagnose",
+            "providers.config.read",
+            "providers.config.manage",
             "automation.read",
             "automation.manage",
             "automation.run",
@@ -243,6 +253,15 @@ class OperatorService:
     async def dashboard(self) -> OperatorDashboardResponse:
         now = datetime.now(UTC)
         since = now - timedelta(hours=24)
+        deepseek_runtime = await ProviderConfigurationService(
+            self._session, self._settings
+        ).runtime("deepseek")
+        deepseek_configuration = DeepSeekConfiguration.model_validate(
+            deepseek_runtime.configuration
+        )
+        managed_ai_enabled = deepseek_route_available(
+            deepseek_configuration, deepseek_runtime.credentials
+        )
         users_total = int(await self._session.scalar(select(func.count()).select_from(User)) or 0)
         users_active = int(
             await self._session.scalar(
@@ -389,10 +408,16 @@ class OperatorService:
                 "activation_codes_available": activation_available,
             },
             ai={
-                "enabled": str(self._settings.llm_enabled).lower(),
+                "enabled": str(managed_ai_enabled).lower(),
                 "calls_24h": llm_calls,
                 "failures_24h": llm_failures,
-                "explanation_enabled": str(self._settings.ai_explanation_enabled).lower(),
+                "explanation_enabled": str(
+                    deepseek_route_available(
+                        deepseek_configuration,
+                        deepseek_runtime.credentials,
+                        "research_assistant",
+                    )
+                ).lower(),
                 "explanation_requests_24h": explanation_requests,
                 "explanation_outputs_24h": explanation_outputs,
                 "explanation_cache_attachments_24h": max(
@@ -581,11 +606,14 @@ class OperatorService:
         ]
 
     async def provider_statuses(self) -> list[ProviderStatusView]:
+        managed = ProviderConfigurationService(self._session, self._settings)
+        deepseek_runtime = await managed.runtime("deepseek")
+        resend_runtime = await managed.runtime("resend")
+        deepseek = DeepSeekConfiguration.model_validate(deepseek_runtime.configuration)
+        resend = ResendConfiguration.model_validate(resend_runtime.configuration)
         configured = {
-            "deepseek": self._settings.llm_enabled
-            and self._settings.ai_explanation_enabled
-            and bool(self._settings.ai_explanation_models),
-            "resend": self._settings.email_delivery_mode == "resend",
+            "deepseek": deepseek.enabled and bool(deepseek_runtime.credentials.get("api_key")),
+            "resend": resend.enabled and bool(resend_runtime.credentials.get("api_key")),
             "market_data": True,
             "disclosure": True,
         }
@@ -599,7 +627,10 @@ class OperatorService:
         for provider, is_configured in configured.items():
             latest = await self._session.scalar(
                 select(ProviderDiagnosticRunRecord)
-                .where(ProviderDiagnosticRunRecord.provider == provider)
+                .where(
+                    ProviderDiagnosticRunRecord.provider == provider,
+                    ProviderDiagnosticRunRecord.target == "active",
+                )
                 .order_by(ProviderDiagnosticRunRecord.checked_at.desc())
             )
             latest_status = cast(
@@ -627,29 +658,18 @@ class OperatorService:
         capability = "unknown"
         if provider == "deepseek":
             capability = "structured_generation"
-            model = next(
-                (
-                    item
-                    for item in self._settings.ai_explanation_models
-                    if item.startswith("deepseek/")
-                ),
-                None,
+            runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+                "deepseek"
             )
-            configured = bool(
-                self._settings.llm_enabled and self._settings.ai_explanation_enabled and model
-            )
-            if not configured or model is None:
+            deepseek_configuration = DeepSeekConfiguration.model_validate(runtime.configuration)
+            configured = deepseek_configuration.enabled and bool(runtime.credentials.get("api_key"))
+            if not configured:
                 status = "disabled"
             else:
                 try:
-                    gateway = LiteLLMGateway(
-                        "json_object",
-                        redis_url=self._settings.redis_url,
-                        max_concurrency=self._settings.llm_provider_max_concurrency,
-                        daily_call_limit=self._settings.llm_provider_daily_call_limit,
-                    )
-                    await gateway.generate_structured(
-                        model=model,
+                    llm_gateway = ManagedLiteLLMGateway(self._session, self._settings)
+                    await llm_gateway.generate_structured(
+                        model=ALLOWED_DEEPSEEK_MODELS[0],
                         task_type="provider_diagnostic",
                         system_prompt=(
                             "Return a JSON object that confirms structured output availability."
@@ -661,7 +681,7 @@ class OperatorService:
                             "required": ["ok"],
                             "additionalProperties": False,
                         },
-                        timeout_seconds=min(self._settings.llm_per_model_timeout_seconds, 30),
+                        timeout_seconds=30,
                         max_output_tokens=128,
                         thinking_enabled=False,
                     )
@@ -671,40 +691,30 @@ class OperatorService:
                     reason = error.code
         elif provider == "resend":
             capability = "transactional_email"
-            configured = self._settings.email_delivery_mode == "resend"
+            runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+                "resend"
+            )
+            resend_configuration = ResendConfiguration.model_validate(runtime.configuration)
+            configured = resend_configuration.enabled and bool(runtime.credentials.get("api_key"))
             if not configured:
                 status = "disabled"
             else:
                 try:
-                    async with httpx.AsyncClient(timeout=10) as client:
-                        response = await client.get(
-                            "https://api.resend.com/domains",
-                            headers={"Authorization": f"Bearer {self._settings.resend_api_key}"},
+                    user = await self._session.get(User, actor)
+                    if user is None or user.email_verified_at is None:
+                        raise ValueError("verified_operator_email_required")
+                    email_gateway = await build_managed_email_gateway(self._session, self._settings)
+                    await email_gateway.send(
+                        TransactionalEmail(
+                            recipient=user.email,
+                            subject="知牛 Resend 配置状态测试",
+                            text_body="这是一封由知牛管理后台发出的正式配置诊断邮件。",
+                            template_key="provider_diagnostic",
+                            idempotency_key=f"active-provider-diagnostic/{uuid4()}",
                         )
-                    if response.status_code >= 400:
-                        status = "unavailable"
-                        reason = (
-                            "provider_auth"
-                            if response.status_code in {401, 403}
-                            else "provider_unavailable"
-                        )
-                    else:
-                        domains = response.json().get("data", [])
-                        target = next(
-                            (
-                                item
-                                for item in domains
-                                if item.get("name") == self._settings.resend_sending_domain
-                            ),
-                            None,
-                        )
-                        status = (
-                            "healthy"
-                            if target and target.get("status") == "verified"
-                            else "degraded"
-                        )
-                        reason = None if status == "healthy" else "sending_domain_not_verified"
-                except (httpx.HTTPError, ValueError):
+                    )
+                    status = "healthy"
+                except (ValueError, RuntimeError):
                     status = "unavailable"
                     reason = "provider_unavailable"
         else:
@@ -721,6 +731,7 @@ class OperatorService:
             reason_code=reason,
             checked_at=checked_at,
             requested_by_user_id=actor,
+            target="active",
         )
         self._session.add(row)
         await self._session.commit()

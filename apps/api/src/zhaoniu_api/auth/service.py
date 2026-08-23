@@ -540,7 +540,15 @@ class AuthService:
         self, delivery: TransactionalEmailDeliveryRecord, message: TransactionalEmail
     ) -> bool:
         message = replace(message, idempotency_key=delivery.logical_delivery_key)
-        if self._settings.email_delivery_mode == "resend":
+        from zhaoniu_api.provider_configuration.models import ResendConfiguration
+        from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
+
+        runtime = await ProviderConfigurationService(self._session, self._settings).runtime(
+            "resend"
+        )
+        resend = ResendConfiguration.model_validate(runtime.configuration)
+        if resend.enabled:
+            delivery.provider = "resend"
             from celery import Celery  # type: ignore[import-untyped]
 
             dispatcher = Celery(

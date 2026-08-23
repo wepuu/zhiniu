@@ -43,7 +43,7 @@ async def _deliver_transactional_email(
     from zhaoniu_api.auth.email import (
         TransactionalEmail,
         TransactionalEmailError,
-        build_email_gateway,
+        build_managed_email_gateway,
     )
     from zhaoniu_api.config import get_settings
     from zhaoniu_api.database import session_factory
@@ -60,7 +60,7 @@ async def _deliver_transactional_email(
         if delivery.status in {"submitted", "delivered"}:
             return {"status": "skipped", "delivery_id": delivery_id}
 
-        gateway = build_email_gateway(get_settings())
+        gateway = await build_managed_email_gateway(session, get_settings())
         try:
             result = await gateway.send(TransactionalEmail(**message_data))  # type: ignore[arg-type]
         except TransactionalEmailError as error:

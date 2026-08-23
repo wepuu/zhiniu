@@ -35,6 +35,7 @@ from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
+from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research_feed.service import ResearchFeedService
 from zhaoniu_api.screening.dispatch import ScreeningDispatcher
@@ -167,6 +168,13 @@ def get_operator_service(
     return OperatorService(session, settings)
 
 
+def get_provider_configuration_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ProviderConfigurationService:
+    return ProviderConfigurationService(session, settings)
+
+
 def get_automation_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AutomationService:
@@ -231,6 +239,9 @@ NaturalLanguageScreeningServiceDependency = Annotated[
 ]
 CoverageServiceDependency = Annotated[ResearchCoverageService, Depends(get_coverage_service)]
 OperatorServiceDependency = Annotated[OperatorService, Depends(get_operator_service)]
+ProviderConfigurationServiceDependency = Annotated[
+    ProviderConfigurationService, Depends(get_provider_configuration_service)
+]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
 OperatorContextDependency = Annotated[OperatorContext, Depends(get_operator_context)]
 CSRFSafe = Annotated[None, Depends(require_csrf)]

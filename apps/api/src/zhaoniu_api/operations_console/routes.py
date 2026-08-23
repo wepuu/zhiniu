@@ -14,6 +14,7 @@ from zhaoniu_api.dependencies import (
     CurrentUser,
     OperatorContextDependency,
     OperatorServiceDependency,
+    ProviderConfigurationServiceDependency,
 )
 from zhaoniu_api.operations_console.models import (
     OperatorAccessCodeCreate,
@@ -32,6 +33,20 @@ from zhaoniu_api.operations_console.models import (
     ProviderStatusListResponse,
 )
 from zhaoniu_api.operations_console.service import OperatorAuthorizationError
+from zhaoniu_api.provider_configuration.models import (
+    DeepSeekDraftUpdate,
+    ProviderConfigurationListResponse,
+    ProviderConfigurationView,
+    ProviderDraftDiagnoseResponse,
+    ProviderMutationResponse,
+    ProviderVersionRequest,
+    ResendDraftUpdate,
+)
+from zhaoniu_api.provider_configuration.service import (
+    ProviderConfigurationConflict,
+    ProviderConfigurationError,
+    ProviderConfigurationService,
+)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["operator console"])
 
@@ -58,6 +73,19 @@ def _dispatcher() -> Celery:
         "zhaoniu-operator-dispatch",
         broker=settings.celery_broker_url,
         backend=settings.celery_result_backend,
+    )
+
+
+def _provider_service(
+    value: ProviderConfigurationServiceDependency,
+) -> ProviderConfigurationService:
+    return value
+
+
+def _provider_error(error: ProviderConfigurationError) -> HTTPException:
+    return HTTPException(
+        status_code=409 if isinstance(error, ProviderConfigurationConflict) else 422,
+        detail=str(error),
     )
 
 
@@ -366,6 +394,234 @@ async def diagnose_provider(
         metadata={"status": result.status, "reason_code": result.reason_code},
     )
     return ProviderStatusListResponse(items=[result])
+
+
+@router.get(
+    "/providers/configurations",
+    response_model=ProviderConfigurationListResponse,
+)
+async def list_provider_configurations(
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderConfigurationListResponse:
+    _require(context, operators, "providers.config.read")
+    return await _provider_service(configurations).list_configurations()
+
+
+@router.get(
+    "/providers/{provider}/configuration",
+    response_model=ProviderConfigurationView,
+)
+async def get_provider_configuration(
+    provider: Literal["deepseek", "resend"],
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderConfigurationView:
+    _require(context, operators, "providers.config.read")
+    return await _provider_service(configurations).get_configuration(provider)
+
+
+@router.put(
+    "/providers/{provider}/draft",
+    response_model=ProviderMutationResponse,
+)
+async def save_provider_draft(
+    provider: Literal["deepseek", "resend"],
+    payload: DeepSeekDraftUpdate | ResendDraftUpdate,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderMutationResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    if (provider == "deepseek") != isinstance(payload, DeepSeekDraftUpdate):
+        raise HTTPException(status_code=422, detail="provider_configuration_payload_mismatch")
+    try:
+        result = await _provider_service(configurations).save_draft(provider, payload, user.id)
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.configuration.draft.save",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+        metadata={
+            "revision": result.configuration.draft.revision if result.configuration.draft else None
+        },
+    )
+    return result
+
+
+@router.post(
+    "/providers/{provider}/draft/import-environment",
+    response_model=ProviderMutationResponse,
+)
+async def import_provider_environment(
+    provider: Literal["deepseek", "resend"],
+    payload: ProviderVersionRequest,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderMutationResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    try:
+        result = await _provider_service(configurations).import_environment(
+            provider, payload.expected_row_version, user.id
+        )
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.configuration.environment.import",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+        metadata={
+            "revision": result.configuration.draft.revision if result.configuration.draft else None
+        },
+    )
+    return result
+
+
+@router.delete(
+    "/providers/{provider}/draft",
+    response_model=ProviderMutationResponse,
+)
+async def discard_provider_draft(
+    provider: Literal["deepseek", "resend"],
+    payload: ProviderVersionRequest,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderMutationResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    try:
+        result = await _provider_service(configurations).discard_draft(
+            provider, payload.expected_row_version
+        )
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.configuration.draft.discard",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+    )
+    return result
+
+
+@router.post(
+    "/providers/{provider}/draft/diagnose",
+    response_model=ProviderDraftDiagnoseResponse,
+)
+async def diagnose_provider_draft(
+    provider: Literal["deepseek", "resend"],
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderDraftDiagnoseResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    try:
+        result = await _provider_service(configurations).diagnose_draft(provider, user.id)
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.configuration.draft.diagnose",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+        metadata={"status": result.status, "reason_code": result.reason_code},
+    )
+    return result
+
+
+@router.post(
+    "/providers/{provider}/draft/publish",
+    response_model=ProviderMutationResponse,
+)
+async def publish_provider_draft(
+    provider: Literal["deepseek", "resend"],
+    payload: ProviderVersionRequest,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderMutationResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    try:
+        result = await _provider_service(configurations).publish(
+            provider, payload.expected_row_version, user.id
+        )
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.configuration.publish",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+        metadata={
+            "revision": result.configuration.active.revision
+            if result.configuration.active
+            else None
+        },
+    )
+    return result
+
+
+@router.delete(
+    "/providers/{provider}/credentials",
+    response_model=ProviderMutationResponse,
+)
+async def remove_provider_credentials(
+    provider: Literal["deepseek", "resend"],
+    payload: ProviderVersionRequest,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    configurations: ProviderConfigurationServiceDependency,
+) -> ProviderMutationResponse:
+    _require(context, operators, "providers.config.manage", elevated=True)
+    try:
+        result = await _provider_service(configurations).remove_credentials(
+            provider, payload.expected_row_version
+        )
+    except ProviderConfigurationError as error:
+        raise _provider_error(error) from error
+    await operators.audit(
+        user.id,
+        context,
+        "provider.credentials.remove",
+        "provider",
+        provider,
+        request_id=request.headers.get("x-request-id"),
+    )
+    return result
 
 
 @router.post("/coverage/plans", response_model=BackfillRunResponse)

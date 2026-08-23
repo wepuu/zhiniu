@@ -27,6 +27,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/card";
+import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 type View =
@@ -212,7 +213,10 @@ export function AdminWorkspace() {
             <FeedbackPanel capabilities={operator.capabilities} />
           )}
           {view === "providers" && (
-            <ProvidersPanel capabilities={operator.capabilities} />
+            <ProvidersPanel
+              capabilities={operator.capabilities}
+              elevated={operator.elevated}
+            />
           )}
           {view === "audit" && <AuditPanel />}
         </div>
@@ -353,6 +357,7 @@ function Overview() {
 function AutomationPanel({ capabilities }: { capabilities: string[] }) {
   const client = useQueryClient();
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
+  const [acceptanceSymbol, setAcceptanceSymbol] = useState("");
   const policies = useQuery({
     queryKey: ["automation-policies"],
     queryFn: api.getAutomationPolicies,
@@ -380,6 +385,13 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["automation-runs"] });
       client.invalidateQueries({ queryKey: ["automation-run"] });
+    },
+  });
+  const refreshStock = useMutation({
+    mutationFn: (symbol: string) => api.refreshAutomationStock(symbol),
+    onSuccess: (result) => {
+      setSelectedRun(result.run_id);
+      client.invalidateQueries({ queryKey: ["automation-runs"] });
     },
   });
   const canRun = capabilities.includes("automation.run");
@@ -445,6 +457,44 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
           )}
         </Card>
       </div>
+
+      <Card className="mt-4 hidden p-5 md:block">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-slate min-w-[240px] flex-1 text-xs">
+            单股验收
+            <input
+              value={acceptanceSymbol}
+              onChange={(event) =>
+                setAcceptanceSymbol(event.target.value.toUpperCase())
+              }
+              placeholder="输入股票代码，例如 600519"
+              className="border-ink/10 text-ink mt-2 w-full rounded-xl border bg-white px-3 py-2.5"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => refreshStock.mutate(acceptanceSymbol.trim())}
+            disabled={
+              !canRun ||
+              refreshStock.isPending ||
+              !/^\d{6}(\.(SH|SZ))?$/.test(acceptanceSymbol.trim())
+            }
+            className="bg-ink flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs text-white disabled:opacity-40"
+          >
+            <Play className="size-3.5" />
+            运行单股链路
+          </button>
+        </div>
+        <p className="text-slate mt-2 text-xs">
+          使用当前已发布策略版本执行单股数据、研究、AI
+          与覆盖链路；不会自动启用每日策略。
+        </p>
+        {refreshStock.isError && (
+          <p className="text-risk mt-2 text-xs" role="alert">
+            单股任务启动失败，请确认代码、管理员权限和服务状态后重试。
+          </p>
+        )}
+      </Card>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Card className="overflow-hidden">
@@ -552,6 +602,13 @@ function AutomationPolicyCard({
           <p className="font-data text-slate mt-1 text-[10px]">
             REV {policy.revision} · {policy.configuration_hash.slice(0, 12)}
           </p>
+          {!policy.enabled && (
+            <p className="text-amber mt-1 text-xs">
+              {policy.hard_disabled
+                ? "环境紧急开关已关闭，定时策略不会运行"
+                : "数据库策略总开关已关闭，手动验收仍可运行"}
+            </p>
+          )}
         </div>
         <button
           onClick={onRun}
@@ -720,11 +777,13 @@ function AutomationRunDetailPanel({
         <table className="w-full min-w-[660px] text-left text-xs">
           <thead className="bg-paper text-slate sticky top-0">
             <tr>
-              {["顺序", "范围", "步骤", "状态", "变化", "耗时"].map((item) => (
-                <th key={item} className="px-4 py-3 font-medium">
-                  {item}
-                </th>
-              ))}
+              {["顺序", "范围", "步骤", "状态", "执行结果", "原因", "耗时"].map(
+                (item) => (
+                  <th key={item} className="px-4 py-3 font-medium">
+                    {item}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -738,7 +797,20 @@ function AutomationRunDetailPanel({
                 <td className="px-4">
                   <StatusPill status={step.status} />
                 </td>
-                <td className="px-4">{step.changed ? "有更新" : "无变化"}</td>
+                <td className="px-4">
+                  {step.status === "succeeded"
+                    ? step.changed
+                      ? "完成，有更新"
+                      : "完成，无变化"
+                    : step.status === "skipped"
+                      ? "未执行"
+                      : "执行失败"}
+                </td>
+                <td className="text-slate max-w-[220px] px-4">
+                  {automationReasonCopy[step.error_code ?? ""] ??
+                    step.error_code ??
+                    "—"}
+                </td>
                 <td className="font-data px-4">
                   {step.duration_ms ? `${step.duration_ms} ms` : "—"}
                 </td>
@@ -750,6 +822,27 @@ function AutomationRunDetailPanel({
     </Card>
   );
 }
+
+const automationReasonCopy: Record<string, string> = {
+  financial_check_not_due: "未到财务数据检查时间",
+  market_input_unchanged: "行情输入没有变化",
+  fundamental_input_unchanged: "基本面输入没有变化",
+  research_input_unchanged: "确定性研究输入没有变化",
+  signal_inputs_unchanged: "信号依赖没有变化",
+  ai_research_output_current: "已有当前版本的 AI 股票体检",
+  automation_ai_disabled: "自动 AI 或股票体检路由未启用",
+  deterministic_snapshot_missing: "缺少确定性研究快照",
+  unsupported_issuer_type: "当前发行人模板暂不支持",
+  automation_ai_call_limit_reached: "达到本次运行的 AI 调用上限",
+  ai_generation_failed: "DeepSeek 生成或安全校验未通过",
+  ProviderUnavailableError: "上游数据服务暂不可用",
+  ProviderConnectionError: "上游连接中断",
+  provider_connection_failed: "上游连接中断",
+  provider_proxy_unavailable: "本地代理不可用",
+  provider_timeout: "上游请求超时",
+  provider_rate_limited: "上游请求受到限流",
+  provider_invalid_response: "上游响应格式无效",
+};
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
@@ -987,7 +1080,13 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
   );
 }
 
-function ProvidersPanel({ capabilities }: { capabilities: string[] }) {
+function ProvidersPanel({
+  capabilities,
+  elevated,
+}: {
+  capabilities: string[];
+  elevated: boolean;
+}) {
   const client = useQueryClient();
   const query = useQuery({
     queryKey: ["operator-providers"],
@@ -1001,62 +1100,75 @@ function ProvidersPanel({ capabilities }: { capabilities: string[] }) {
   });
   return (
     <>
-      <PanelTitle
-        eyebrow="External dependencies"
-        title="服务商状态"
-        detail="诊断只验证契约，不发送测试邮件"
-      />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {query.data?.items.map((item) => (
-          <Card key={item.provider} className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="flex gap-3">
-                <span className="bg-blue/8 text-blue grid size-10 place-items-center rounded-xl">
-                  {item.provider === "resend" ? (
-                    <Mail className="size-4" />
-                  ) : (
-                    <ServerCog className="size-4" />
-                  )}
-                </span>
-                <div>
-                  <h3 className="font-medium capitalize">{item.provider}</h3>
-                  <p className="text-slate mt-1 text-xs">{item.capability}</p>
+      {capabilities.includes("providers.config.read") && (
+        <ProviderConfigurationPanel
+          canManage={capabilities.includes("providers.config.manage")}
+          elevated={elevated}
+        />
+      )}
+      <section
+        className={
+          capabilities.includes("providers.config.read") ? "mt-9" : undefined
+        }
+      >
+        <PanelTitle
+          eyebrow="External dependencies"
+          title="服务商状态"
+          detail="诊断只验证契约，不发送测试邮件"
+        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {query.data?.items.map((item) => (
+            <Card key={item.provider} className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="flex gap-3">
+                  <span className="bg-blue/8 text-blue grid size-10 place-items-center rounded-xl">
+                    {item.provider === "resend" ? (
+                      <Mail className="size-4" />
+                    ) : (
+                      <ServerCog className="size-4" />
+                    )}
+                  </span>
+                  <div>
+                    <h3 className="font-medium capitalize">{item.provider}</h3>
+                    <p className="text-slate mt-1 text-xs">{item.capability}</p>
+                  </div>
                 </div>
+                <StatusPill status={item.status} />
               </div>
-              <StatusPill status={item.status} />
-            </div>
-            <dl className="border-ink/8 mt-5 grid grid-cols-2 gap-3 border-t pt-4 text-xs">
-              <div>
-                <dt className="text-slate">最近检查</dt>
-                <dd className="mt-1">{dateTime(item.checked_at)}</dd>
-              </div>
-              <div>
-                <dt className="text-slate">延迟</dt>
-                <dd className="font-data mt-1">
-                  {item.latency_ms ? `${item.latency_ms} ms` : "—"}
-                </dd>
-              </div>
-            </dl>
-            {item.reason_code && (
-              <p className="text-risk mt-3 text-xs">{item.reason_code}</p>
-            )}
-            {capabilities.includes("providers.diagnose") &&
-              (item.provider === "deepseek" || item.provider === "resend") && (
-                <button
-                  onClick={() =>
-                    diagnose.mutate(item.provider as "deepseek" | "resend")
-                  }
-                  className="border-blue/20 text-blue mt-4 hidden items-center gap-2 rounded-xl border px-3 py-2 text-xs md:flex"
-                >
-                  <RefreshCw
-                    className={`size-3.5 ${diagnose.isPending ? "animate-spin" : ""}`}
-                  />
-                  运行诊断
-                </button>
+              <dl className="border-ink/8 mt-5 grid grid-cols-2 gap-3 border-t pt-4 text-xs">
+                <div>
+                  <dt className="text-slate">最近检查</dt>
+                  <dd className="mt-1">{dateTime(item.checked_at)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate">延迟</dt>
+                  <dd className="font-data mt-1">
+                    {item.latency_ms ? `${item.latency_ms} ms` : "—"}
+                  </dd>
+                </div>
+              </dl>
+              {item.reason_code && (
+                <p className="text-risk mt-3 text-xs">{item.reason_code}</p>
               )}
-          </Card>
-        ))}
-      </div>
+              {capabilities.includes("providers.diagnose") &&
+                (item.provider === "deepseek" ||
+                  item.provider === "resend") && (
+                  <button
+                    onClick={() =>
+                      diagnose.mutate(item.provider as "deepseek" | "resend")
+                    }
+                    className="border-blue/20 text-blue mt-4 hidden items-center gap-2 rounded-xl border px-3 py-2 text-xs md:flex"
+                  >
+                    <RefreshCw
+                      className={`size-3.5 ${diagnose.isPending ? "animate-spin" : ""}`}
+                    />
+                    运行诊断
+                  </button>
+                )}
+            </Card>
+          ))}
+        </div>
+      </section>
     </>
   );
 }

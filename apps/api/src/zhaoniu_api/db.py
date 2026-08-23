@@ -255,6 +255,92 @@ class ProviderDiagnosticRunRecord(Base):
     requested_by_user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
+    configuration_revision_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("provider_configuration_revisions.id", ondelete="SET NULL"),
+    )
+    credential_generation: Mapped[int | None]
+    target: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
+
+
+class ProviderConfigurationRecord(Base):
+    __tablename__ = "provider_configurations"
+    __table_args__ = (
+        UniqueConstraint("provider", "environment", name="uq_provider_configuration_scope"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    provider: Mapped[str] = mapped_column(String(48), nullable=False)
+    environment: Mapped[str] = mapped_column(String(24), nullable=False)
+    active_revision: Mapped[int | None]
+    draft_revision: Mapped[int | None]
+    row_version: Mapped[int] = mapped_column(default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ProviderConfigurationRevisionRecord(Base):
+    __tablename__ = "provider_configuration_revisions"
+    __table_args__ = (
+        UniqueConstraint("configuration_id", "revision", name="uq_provider_configuration_revision"),
+        CheckConstraint(
+            "status IN ('draft', 'active', 'retired')",
+            name="ck_provider_configuration_revision_status",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    configuration_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("provider_configurations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    configuration_json: Mapped[dict[str, Any]] = mapped_column("configuration", JSONB)
+    configuration_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    credential_generation: Mapped[int | None]
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProviderCredentialRecord(Base):
+    __tablename__ = "provider_credentials"
+    __table_args__ = (
+        UniqueConstraint("configuration_id", "slot", name="uq_provider_credential_slot"),
+        CheckConstraint("slot IN ('active', 'candidate')", name="ck_provider_credential_slot"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    configuration_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("provider_configurations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    slot: Mapped[str] = mapped_column(String(16), nullable=False)
+    encrypted_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    nonce: Mapped[str] = mapped_column(String(32), nullable=False)
+    key_id: Mapped[str] = mapped_column(String(48), nullable=False)
+    generation: Mapped[int] = mapped_column(nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class TransactionalEmailProviderEventRecord(Base):
@@ -1100,9 +1186,7 @@ class AIExplanationRequestRecord(Base):
 
 class AIExplanationDailyUsageRecord(Base):
     __tablename__ = "ai_explanation_daily_usage"
-    __table_args__ = (
-        UniqueConstraint("user_id", "quota_day", name="uq_ai_explanation_usage_day"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "quota_day", name="uq_ai_explanation_usage_day"),)
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
@@ -2004,9 +2088,7 @@ class ResearchCoverageMemberRecord(Base):
 class CoverageBackfillRunRecord(Base):
     __tablename__ = "coverage_backfill_runs"
     __table_args__ = (
-        UniqueConstraint(
-            "idempotency_key", name="coverage_backfill_runs_idempotency_key_key"
-        ),
+        UniqueConstraint("idempotency_key", name="coverage_backfill_runs_idempotency_key_key"),
         Index("ix_coverage_backfill_run_status", "status", "created_at"),
     )
 
