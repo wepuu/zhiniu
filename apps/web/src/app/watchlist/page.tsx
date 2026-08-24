@@ -96,7 +96,7 @@ export default function WatchlistPage() {
   return (
     <AppShell>
       <PageHeading
-        eyebrow="Watchlist"
+        eyebrow="个人自选研究"
         title="我的自选股"
         description="围绕关注公司组织研究，不重复存储公共市场数据。"
       />
@@ -132,7 +132,7 @@ export default function WatchlistPage() {
         <Card className="border-risk/30 mt-6 p-6" role="alert">
           <TriangleAlert className="text-risk size-5" />
           <p className="mt-3 font-medium">自选股暂时不可用</p>
-          <p className="text-slate mt-1 text-sm">请检查 API 服务后重试。</p>
+          <p className="text-slate mt-1 text-sm">请检查应用服务后重试。</p>
           <button
             className="bg-ink mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-white"
             type="button"
@@ -149,7 +149,7 @@ export default function WatchlistPage() {
             <Card className="p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-slate text-xs">内部 beta 额度</p>
+                  <p className="text-slate text-xs">内测额度</p>
                   <p className="mt-1 text-sm">
                     {watchlists.data.length}/5 个分组，{totalItems}/30 只股票
                   </p>
@@ -288,7 +288,7 @@ function formatWatchlistError(error: unknown) {
     return "没有找到这只股票，或你没有访问该分组的权限。";
   }
   if (error instanceof ApiError && error.status === 409) {
-    return "已达到当前内部 beta 的自选股额度。";
+    return "已达到当前内测阶段的自选股额度。";
   }
   if (error instanceof ApiError && error.status === 422) {
     return "请输入 6 位 A 股代码，例如 600519。";

@@ -144,9 +144,7 @@ export function ResearchCoverageCard({
     <Card className="mb-4 overflow-hidden">
       <div className="border-ink/8 flex items-start justify-between gap-4 border-b px-5 py-4">
         <div>
-          <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Research coverage
-          </p>
+          <p className="text-blue text-xs font-medium">研究覆盖情况</p>
           <h2 className="font-display mt-1 text-lg font-semibold">研究覆盖</h2>
           <p className="text-slate mt-1 text-xs">
             展示事实数据、确定性研究与 AI 解读各自的准备状态，不构成评分。

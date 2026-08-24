@@ -48,6 +48,12 @@ import {
 } from "@/lib/market-data";
 import { assertPeerComparisons } from "@/lib/peer-research";
 import { assertResearchSnapshot } from "@/lib/research";
+import {
+  financialMetricAbbreviation,
+  financialMetricLabel,
+  providerDisplayName,
+  translateEnum,
+} from "@/lib/presentation";
 import { assertEventRadar } from "@/lib/event-radar";
 import { assertCompanyTimeline } from "@/lib/company-timeline";
 
@@ -334,7 +340,7 @@ function EvidenceRail({
     <Card className="overflow-hidden">
       <div className="bg-ink px-5 py-4 text-white">
         <p className="font-data text-[10px] uppercase tracking-[0.2em] text-white/55">
-          Evidence ledger
+          行情证据记录
         </p>
         <h2 className="font-display mt-1 text-lg font-semibold">数据证据</h2>
       </div>
@@ -344,7 +350,7 @@ function EvidenceRail({
           <div>
             <dt className="text-slate text-xs">数据来源</dt>
             <dd className="mt-1 font-medium">
-              {latest?.source ?? stock.source ?? "—"}
+              {providerDisplayName(latest?.source ?? stock.source)}
             </dd>
             <p className="text-amber mt-1 text-xs">开发与技术评估数据源</p>
           </div>
@@ -395,7 +401,7 @@ function ChartCard({
           </p>
         </div>
         <span className="bg-mist font-data rounded-full px-3 py-1 text-[10px]">
-          未复权 · CNY
+          未复权 · 人民币
         </span>
       </div>
       {empty ? (
@@ -460,21 +466,29 @@ function ResearchState({
 
 function MetricCell({ metric }: { metric: FundamentalMetricResponse }) {
   const available = metric.status === "available";
+  const abbreviation = financialMetricAbbreviation(metric.code);
   return (
     <div className="border-ink/8 border-t py-3 first:border-t-0">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium">{metric.display_name}</p>
-          <p className="font-data text-slate mt-1 text-[10px] uppercase">
-            {metric.period_end ?? "无报告期"} · {metric.basis}
+          <p className="text-sm font-medium">
+            {financialMetricLabel(metric.code, metric.display_name)}
+          </p>
+          {abbreviation && (
+            <p className="font-data text-slate mt-1 text-xs">{abbreviation}</p>
+          )}
+          <p className="text-slate mt-1 text-xs">
+            {metric.period_end ?? "无报告期"} ·{" "}
+            {translateEnum("basis", metric.basis)}
           </p>
         </div>
         <p
           className={`font-data text-right text-base ${available ? "text-ink" : "text-slate"}`}
         >
           {available
-            ? formatFinancialValue(metric.value, metric.unit)
-            : (metricStatusCopy[metric.status] ?? metric.status)}
+            ? formatFinancialValue(metric.value, metric.unit, metric.code)
+            : (metricStatusCopy[metric.status] ??
+              translateEnum("status", metric.status))}
         </p>
       </div>
       <p className="text-slate mt-1 text-[11px]">
@@ -558,31 +572,37 @@ function FundamentalLedger({
 
 const financialRows = [
   {
+    code: "revenue",
     label: "营业收入",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.income?.revenue,
   },
   {
+    code: "parent_net_profit",
     label: "归母净利润",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.income?.parent_net_profit,
   },
   {
+    code: "operating_cash_flow",
     label: "经营现金流",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.cash_flow?.operating_cash_flow,
   },
   {
+    code: "total_assets",
     label: "总资产",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.balance?.total_assets,
   },
   {
+    code: "total_liabilities",
     label: "总负债",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.balance?.total_liabilities,
   },
   {
+    code: "cash",
     label: "货币资金",
     value: (period: FinancialPeriodListResponse["items"][number]) =>
       period.balance?.cash,
@@ -601,7 +621,7 @@ function FinancialComparison({
       <div className="border-ink/8 border-b px-5 py-4">
         <h3 className="font-display text-lg font-semibold">报告期对照</h3>
         <p className="text-slate mt-1 text-xs">
-          披露事实 · CNY · 不将缺失值写成零
+          披露事实 · 金额单位为亿元 · 缺失值不按零处理
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -611,7 +631,8 @@ function FinancialComparison({
               <th className="px-5 py-3 font-medium">科目</th>
               {displayed.map((period) => (
                 <th key={period.id} className="font-data px-4 py-3 font-medium">
-                  {period.fiscal_year} {period.fiscal_period}
+                  {period.fiscal_year}年{" "}
+                  {translateEnum("fiscal_period", period.fiscal_period)}
                 </th>
               ))}
             </tr>
@@ -622,7 +643,7 @@ function FinancialComparison({
                 <th className="px-5 py-3 text-left font-medium">{row.label}</th>
                 {displayed.map((period) => (
                   <td key={period.id} className="font-data px-4 py-3">
-                    {formatFinancialValue(row.value(period), "CNY")}
+                    {formatFinancialValue(row.value(period), "CNY", row.code)}
                   </td>
                 ))}
               </tr>
@@ -656,7 +677,8 @@ function MobileFinancialPeriod({
       >
         {periods.items.map((period) => (
           <option key={period.id} value={period.id}>
-            {period.fiscal_year} {period.fiscal_period} ·{" "}
+            {period.fiscal_year}年{" "}
+            {translateEnum("fiscal_period", period.fiscal_period)} ·{" "}
             {period.is_audited ? "已审计" : "未审计"}
           </option>
         ))}
@@ -669,13 +691,13 @@ function MobileFinancialPeriod({
           >
             <dt className="text-sm">{row.label}</dt>
             <dd className="font-data text-sm">
-              {formatFinancialValue(row.value(selected), "CNY")}
+              {formatFinancialValue(row.value(selected), "CNY", row.code)}
             </dd>
           </div>
         ))}
       </dl>
       <p className="text-slate mt-3 text-[11px]">
-        {selected.provider} · 公告日{" "}
+        数据来源：{providerDisplayName(selected.provider)} · 公告日{" "}
         {new Date(selected.published_at).toLocaleDateString("zh-CN")}
       </p>
     </Card>
@@ -701,11 +723,14 @@ function ValuationPanel({
       <div className={`grid gap-3 ${compact ? "grid-cols-2" : "grid-cols-4"}`}>
         {summary.map((metric) => (
           <Card key={metric.code} className="p-4">
-            <p className="text-slate text-xs">{metric.display_name}</p>
+            <p className="text-slate text-xs">
+              {financialMetricLabel(metric.code, metric.display_name)}
+            </p>
             <p className="font-data mt-2 text-lg font-semibold">
               {metric.status === "available"
-                ? formatFinancialValue(metric.value, metric.unit)
-                : (metricStatusCopy[metric.status] ?? metric.status)}
+                ? formatFinancialValue(metric.value, metric.unit, metric.code)
+                : (metricStatusCopy[metric.status] ??
+                  translateEnum("status", metric.status))}
             </p>
             <p className="text-slate mt-1 text-[10px]">
               {metric.period_end ?? "暂无日期"}
@@ -718,7 +743,7 @@ function ValuationPanel({
           <div>
             <h3 className="font-display text-lg font-semibold">历史估值轨迹</h3>
             <p className="text-slate mt-1 text-xs">
-              Provider 观测值，不伪装为本地重算
+              数据服务观测值，不作为本地计算结果展示
             </p>
           </div>
           <span className="bg-mist font-data rounded-full px-3 py-1 text-[10px]">
@@ -806,7 +831,9 @@ function DesktopStock({
             {stock.name}
           </h1>
           <p className="text-slate mt-2 text-sm">
-            {stock.exchange} · {stock.board} · {stock.status}
+            {translateEnum("exchange", stock.exchange)} ·{" "}
+            {translateEnum("board", stock.board)} ·{" "}
+            {translateEnum("stock_status", stock.status)}
           </p>
         </div>
         <div className="flex items-end gap-4 text-right">
@@ -942,7 +969,8 @@ function MobileStock({
               {stock.name}
             </h1>
             <p className="mt-1 text-xs text-white/55">
-              {stock.exchange} · {stock.board}
+              {translateEnum("exchange", stock.exchange)} ·{" "}
+              {translateEnum("board", stock.board)}
             </p>
           </div>
           <p className="font-data text-3xl font-semibold">
@@ -1080,7 +1108,7 @@ export function StockDetail({ symbol }: { symbol: string }) {
           <RefreshCw className="text-blue mx-auto size-6 animate-spin" />
           <p className="mt-3 font-medium">正在读取真实行情</p>
           <p className="text-slate mt-1 text-sm">
-            股票资料与日 K 正从版本化 API 加载。
+            股票资料与日 K 正从版本化服务加载。
           </p>
         </div>
       </div>
@@ -1094,7 +1122,7 @@ export function StockDetail({ symbol }: { symbol: string }) {
           无法读取这只股票
         </h1>
         <p className="text-slate mt-2 text-sm">
-          确认 API 已启动、股票代码有效，然后重试。
+          确认应用服务已启动、股票代码有效，然后重试。
         </p>
         <button
           className="bg-ink mt-5 rounded-xl px-4 py-2 text-sm text-white"

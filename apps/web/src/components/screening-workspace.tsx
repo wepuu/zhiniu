@@ -28,6 +28,7 @@ import { useState } from "react";
 import { PageHeading } from "@/components/page-heading";
 import { NaturalLanguageScreenInput } from "@/components/natural-language-screen-input";
 import { ResearchSectionTabs } from "@/components/research-section-tabs";
+import { financialMetricLabel, translateEnum } from "@/lib/presentation";
 import { Card } from "@/components/ui/card";
 
 const api = createZhaoniuClient();
@@ -333,7 +334,7 @@ export function ScreeningWorkspace() {
     <>
       <ResearchSectionTabs />
       <PageHeading
-        eyebrow="Research Screener"
+        eyebrow="确定性研究筛选"
         title="股票筛选"
         description="使用可解释、可回溯的确定性条件，在当前研究快照中查找符合条件的公司。"
       />
@@ -507,11 +508,11 @@ function FilterBuilder({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-blue text-xs font-semibold uppercase tracking-[0.14em]">
-            Conditions
+            条件组合
           </p>
           <h2 className="font-display mt-1 text-xl font-semibold">筛选条件</h2>
         </div>
-        <span className="text-slate text-xs">全部满足（AND）</span>
+        <span className="text-slate text-xs">需要同时满足全部条件</span>
       </div>
       <div className="mt-4 space-y-3">
         {criteria.map((criterion, index) => {
@@ -591,7 +592,7 @@ function FilterBuilder({
                         : catalog?.metrics
                       )?.map((item) => (
                         <option key={item.code} value={item.code}>
-                          {item.display_name}
+                          {financialMetricLabel(item.code, item.display_name)}
                         </option>
                       ))}
                     </select>
@@ -961,7 +962,7 @@ function ResultCard({
             {item.stock_name}
           </h3>
           <p className="text-slate mt-1 text-xs">
-            {item.exchange}
+            {translateEnum("exchange", item.exchange)}
             {item.industry_name ? " · " + item.industry_name : ""}
           </p>
         </div>

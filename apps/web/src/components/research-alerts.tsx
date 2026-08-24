@@ -4,6 +4,8 @@ import { ApiError, createZhaoniuClient } from "@zhaoniu/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, CheckCheck, ExternalLink } from "lucide-react";
 import Link from "next/link";
+
+import { researchTitle } from "@/lib/presentation";
 import { Card } from "@/components/ui/card";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
@@ -90,7 +92,10 @@ export function ResearchAlerts() {
                       </time>
                     </div>
                     <h2 className="font-display mt-2 text-lg font-semibold">
-                      {item.signal.title}
+                      {researchTitle(
+                        item.signal.signal_family,
+                        item.signal.title,
+                      )}
                     </h2>
                     <p className="text-slate mt-2 text-sm leading-6">
                       {item.signal.summary}

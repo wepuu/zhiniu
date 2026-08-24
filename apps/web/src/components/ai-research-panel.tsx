@@ -26,6 +26,11 @@ import {
 import { useRef, useState } from "react";
 
 import { formatEvidenceValue } from "@/lib/research";
+import {
+  financialMetricLabel,
+  providerDisplayName,
+  translateEnum,
+} from "@/lib/presentation";
 
 import { EvidenceSheet } from "./research-changes";
 import { Card } from "./ui/card";
@@ -95,8 +100,8 @@ function AIState({ envelope }: { envelope: AIResearchEnvelope }) {
     <Card className="overflow-hidden">
       <div className="border-ink/8 bg-paper flex items-center justify-between border-b px-5 py-4">
         <AILabel />
-        <span className="font-data text-slate text-[10px] uppercase">
-          {envelope.status}
+        <span className="text-slate text-xs">
+          {translateEnum("status", envelope.status)}
         </span>
       </div>
       <div className="grid min-h-64 place-items-center px-6 py-10 text-center">
@@ -198,8 +203,8 @@ function StockHealthPanel({
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
               <AILabel />
-              <p className="font-data mt-4 text-[10px] uppercase tracking-[0.18em] text-white/50">
-                Evidence-bound research memo
+              <p className="mt-4 text-xs font-medium text-white/60">
+                证据约束研究摘要
               </p>
               <h2 className="font-display mt-1 max-w-3xl text-2xl font-semibold leading-tight">
                 {output.content.headline.text}
@@ -225,7 +230,9 @@ function StockHealthPanel({
           <div className="px-5 py-3">
             <dt className="text-slate text-[10px]">实际模型</dt>
             <dd className="mt-1 text-xs font-medium">
-              {output.provider_display_name} · {output.model_display_name}
+              生成服务：{providerDisplayName(output.provider_display_name)} ·
+              模型：
+              <span className="font-data">{output.model_display_name}</span>
             </dd>
           </div>
           <div className="border-ink/8 px-5 py-3 sm:border-l">
@@ -352,7 +359,11 @@ function StockHealthPanel({
                     key={`${metric.metric_point_id}-${metric.role}`}
                     className="bg-mist rounded-lg px-2.5 py-1.5 text-[10px]"
                   >
-                    {metric.display_name} ·{" "}
+                    {financialMetricLabel(
+                      metric.metric_code,
+                      metric.display_name,
+                    )}{" "}
+                    ·{" "}
                     <strong className="font-data">
                       {formatEvidenceValue(metric.value, metric.unit)}
                     </strong>
@@ -454,7 +465,7 @@ function AssistantEvidencePanel({
       <dl className="border-ink/8 mt-5 space-y-3 border-t pt-4 text-xs">
         <div className="flex justify-between gap-4">
           <dt className="text-slate">证据类型</dt>
-          <dd>{item.source_kind}</dd>
+          <dd>{translateEnum("source_kind", item.source_kind)}</dd>
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-slate">系统已知时间</dt>
@@ -669,7 +680,9 @@ function ResearchAssistant({
                 onOpen={setSelected}
               />
               <p className="text-slate mt-4 text-[10px]">
-                {output.provider_display_name} · {output.model_display_name} ·
+                生成服务：{providerDisplayName(output.provider_display_name)} ·
+                模型：
+                <span className="font-data">{output.model_display_name}</span> ·
                 数据截止{" "}
                 {new Date(output.knowledge_cutoff).toLocaleString("zh-CN")}
               </p>

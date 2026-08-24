@@ -30,7 +30,7 @@ export function ResearchAlertSettings() {
     <>
       <section className="border-ink/10 border-b pb-6">
         <p className="font-data text-blue text-[11px] uppercase tracking-[0.18em]">
-          Preferences
+          研究偏好设置
         </p>
         <h1 className="font-display mt-2 text-3xl font-semibold sm:text-4xl">
           研究偏好

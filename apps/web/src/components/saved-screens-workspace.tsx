@@ -21,6 +21,7 @@ import { useState } from "react";
 
 import { PageHeading } from "@/components/page-heading";
 import { ResearchSectionTabs } from "@/components/research-section-tabs";
+import { financialMetricLabel, translateEnum } from "@/lib/presentation";
 import { Card } from "@/components/ui/card";
 
 const api = createZhaoniuClient();
@@ -72,7 +73,7 @@ export function SavedScreensWorkspace() {
     <>
       <ResearchSectionTabs />
       <PageHeading
-        eyebrow="Saved Research Workspace"
+        eyebrow="已保存的研究条件"
         title="已保存筛选"
         description="保留研究条件与版本信息，在新快照上重复运行，并明确提示目录兼容性变化。"
       />
@@ -124,7 +125,7 @@ export function SavedScreensWorkspace() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-blue text-xs font-semibold uppercase tracking-[0.14em]">
-                Latest Run
+                最近一次运行
               </p>
               <h2 className="font-display mt-1 text-xl font-semibold">
                 {activeName}
@@ -295,8 +296,9 @@ function criterionLabel(
 ) {
   if (filter.kind === "industry")
     return `行业 · ${filter.industry_codes.join("、")}`;
-  if (filter.kind === "event") return `事件 · ${filter.event_family}`;
-  return `${filter.kind === "peer" ? "同行" : "指标"} · ${filter.metric_code}`;
+  if (filter.kind === "event")
+    return `事件 · ${translateEnum("event_type", filter.event_family)}`;
+  return `${filter.kind === "peer" ? "同行" : "指标"} · ${financialMetricLabel(filter.metric_code)}`;
 }
 
 function formatDate(value: string) {

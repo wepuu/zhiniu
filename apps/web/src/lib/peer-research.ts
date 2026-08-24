@@ -1,5 +1,7 @@
 import type { PeerComparisonEnvelope } from "@zhaoniu/api-client";
 
+import { formatFinancialValue, translateEnum } from "./presentation";
+
 const envelopeStatuses = new Set([
   "ready",
   "not_built",
@@ -58,7 +60,7 @@ export function peerStatusCopy(status: string) {
     invalid_inputs: "输入值未通过质量校验",
     not_applicable: "不适用",
   };
-  return copy[status] ?? status;
+  return copy[status] ?? translateEnum("status", status);
 }
 
 export function formatPeerDecimal(
@@ -77,14 +79,12 @@ export function formatPeerDecimal(
 export function formatPeerValue(
   value: string | null | undefined,
   unit?: string | null,
+  metricCode?: string,
 ) {
-  if (value == null) return "—";
-  const formatted = formatPeerDecimal(
+  return formatFinancialValue({
+    metricCode,
     value,
-    unit === "ratio" || unit === "multiple" ? 2 : 0,
-  );
-  if (unit === "percent" || unit === "percentage") return `${formatted}%`;
-  if (unit === "multiple") return `${formatted}x`;
-  if (unit === "CNY") return `¥${formatted}`;
-  return formatted;
+    unit,
+    context: "comparison",
+  });
 }

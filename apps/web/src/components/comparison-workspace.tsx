@@ -20,28 +20,17 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/card";
+import {
+  financialMetricLabel,
+  formatFinancialValue,
+  providerDisplayName,
+  translateEnum,
+} from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
 function newRequestId() {
   return crypto.randomUUID();
-}
-
-function formatValue(value: string | null, unit: string | null) {
-  if (value == null) return "暂无";
-  const parsed = Number(value);
-  const display = Number.isFinite(parsed)
-    ? new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(
-        parsed,
-      )
-    : value;
-  const suffix: Record<string, string> = {
-    percent: "%",
-    ratio: "",
-    cny: "元",
-    cny_yuan: "元",
-  };
-  return `${display}${suffix[unit ?? ""] ?? ` ${unit ?? ""}`}`;
 }
 
 export function ComparisonLauncher({
@@ -71,9 +60,7 @@ export function ComparisonLauncher({
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-7">
-        <p className="font-data text-blue text-xs uppercase tracking-[0.18em]">
-          Evidence comparison
-        </p>
+        <p className="text-blue text-xs font-medium">基于证据的确定性对比</p>
         <h1 className="font-display mt-2 text-3xl font-semibold md:text-4xl">
           公司研究对比
         </h1>
@@ -157,9 +144,7 @@ function ComparisonLibrary() {
   return (
     <div className="mt-8 grid gap-5 lg:grid-cols-2">
       <Card className="p-5">
-        <p className="font-data text-blue text-[10px] uppercase tracking-[0.16em]">
-          Saved definitions
-        </p>
+        <p className="text-blue text-xs font-medium">常用对比组合</p>
         <h2 className="font-display mt-2 text-xl font-semibold">已保存对比</h2>
         <div className="mt-4 space-y-2">
           {items.map((item) => (
@@ -180,9 +165,7 @@ function ComparisonLibrary() {
         </div>
       </Card>
       <Card className="p-5">
-        <p className="font-data text-blue text-[10px] uppercase tracking-[0.16em]">
-          Recent research
-        </p>
+        <p className="text-blue text-xs font-medium">最近生成记录</p>
         <h2 className="font-display mt-2 text-xl font-semibold">最近对比</h2>
         <div className="mt-4 space-y-2">
           {recent.map((item) => (
@@ -281,8 +264,9 @@ function ComparisonReady({ comparison }: { comparison: ComparisonResponse }) {
           >
             返回对比入口
           </Link>
-          <p className="font-data text-blue mt-4 text-[10px] uppercase tracking-[0.18em]">
-            Company comparison · {snapshot.profile_version}
+          <p className="text-blue mt-4 text-xs font-medium">
+            公司对比 · 规则版本{" "}
+            <span className="font-data">{snapshot.profile_version}</span>
           </p>
           <h1 className="font-display mt-2 text-3xl font-semibold md:text-4xl">
             {snapshot.left.name} / {snapshot.right.name}
@@ -315,15 +299,17 @@ function ComparisonReady({ comparison }: { comparison: ComparisonResponse }) {
                 className="border-ink/8 grid grid-cols-[220px_1fr_1fr] border-b px-5 py-4 last:border-b-0"
               >
                 <MetricLabel
-                  label={metric.label}
+                  label={financialMetricLabel(metric.code, metric.label)}
                   comparability={metric.comparability}
                   reason={metric.reason}
                 />
                 <MetricValue
+                  metricCode={metric.code}
                   value={metric.left}
                   onEvidence={setSelectedEvidence}
                 />
                 <MetricValue
+                  metricCode={metric.code}
                   value={metric.right}
                   onEvidence={setSelectedEvidence}
                 />
@@ -343,18 +329,20 @@ function ComparisonReady({ comparison }: { comparison: ComparisonResponse }) {
               {metrics.map((metric) => (
                 <div key={metric.code} className="p-4">
                   <MetricLabel
-                    label={metric.label}
+                    label={financialMetricLabel(metric.code, metric.label)}
                     comparability={metric.comparability}
                     reason={metric.reason}
                   />
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <MetricValue
+                      metricCode={metric.code}
                       compact
                       name={snapshot.left.name}
                       value={metric.left}
                       onEvidence={setSelectedEvidence}
                     />
                     <MetricValue
+                      metricCode={metric.code}
                       compact
                       name={snapshot.right.name}
                       value={metric.right}
@@ -374,9 +362,7 @@ function ComparisonReady({ comparison }: { comparison: ComparisonResponse }) {
           onEvidence={setSelectedEvidence}
         />
         <Card className="p-5">
-          <p className="font-data text-blue text-[10px] uppercase tracking-[0.16em]">
-            Deterministic limits
-          </p>
+          <p className="text-blue text-xs font-medium">确定性研究边界</p>
           <h2 className="font-display mt-2 text-xl font-semibold">
             口径与限制
           </h2>
@@ -437,11 +423,13 @@ function MetricLabel({
 }
 
 function MetricValue({
+  metricCode,
   value,
   onEvidence,
   compact = false,
   name,
 }: {
+  metricCode: string;
   value: NonNullable<ComparisonResponse["snapshot"]>["metrics"][number]["left"];
   onEvidence: (id: string) => void;
   compact?: boolean;
@@ -451,10 +439,15 @@ function MetricValue({
     <div className={compact ? "bg-mist rounded-xl p-3" : "px-2"}>
       {name && <p className="text-slate mb-1 truncate text-[10px]">{name}</p>}
       <p className="font-data text-lg font-semibold">
-        {formatValue(value.value, value.unit)}
+        {formatFinancialValue({
+          metricCode,
+          value: value.value,
+          unit: value.unit,
+          context: "comparison",
+        })}
       </p>
-      <p className="text-slate mt-1 text-[10px]">
-        {value.period_end ?? "期间缺失"} · {value.basis ?? "口径缺失"}
+      <p className="text-slate mt-1 text-xs">
+        {value.period_end ?? "期间缺失"} · {translateEnum("basis", value.basis)}
       </p>
       {value.evidence_ref && (
         <button
@@ -481,9 +474,7 @@ function AIComparison({
     <Card className="p-5 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-data text-blue text-[10px] uppercase tracking-[0.16em]">
-            AI generated content
-          </p>
+          <p className="text-blue text-xs font-medium">AI 生成内容</p>
           <h2 className="font-display mt-2 text-xl font-semibold">
             AI 对比解读
           </h2>
@@ -510,7 +501,8 @@ function AIComparison({
             <Cited key={`diff-${index}`} item={item} onEvidence={onEvidence} />
           ))}
           <p className="text-slate text-[10px]">
-            {output.provider} · {output.model} ·{" "}
+            生成服务：{providerDisplayName(output.provider)} · 模型：
+            <span className="font-data">{output.model}</span> ·{" "}
             {new Date(output.generated_at).toLocaleString("zh-CN")}
           </p>
         </div>
@@ -622,11 +614,13 @@ function EvidenceSheet({
         </h2>
         <dl className="text-slate mt-6 space-y-4 text-sm">
           <div>
-            <dt className="text-[10px] uppercase tracking-wider">来源类型</dt>
-            <dd className="text-ink mt-1">{evidence.source_kind}</dd>
+            <dt className="text-xs">来源类型</dt>
+            <dd className="text-ink mt-1">
+              {translateEnum("source_kind", evidence.source_kind)}
+            </dd>
           </div>
           <div>
-            <dt className="text-[10px] uppercase tracking-wider">知识时间</dt>
+            <dt className="text-xs">知识时间</dt>
             <dd className="text-ink mt-1">
               {new Date(evidence.known_at).toLocaleString("zh-CN")}
             </dd>

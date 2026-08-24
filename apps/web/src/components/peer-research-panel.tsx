@@ -11,6 +11,11 @@ import {
   formatPeerValue,
   peerStatusCopy,
 } from "@/lib/peer-research";
+import {
+  financialMetricAbbreviation,
+  financialMetricLabel,
+  translateEnum,
+} from "@/lib/presentation";
 
 import { Card } from "./ui/card";
 
@@ -54,16 +59,16 @@ export function PeerResearchPanel({
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-data text-blue text-[10px] uppercase tracking-[0.2em]">
-              Peer benchmark
-            </p>
+            <p className="text-blue text-xs font-medium">同行业确定性基准</p>
             <h3 className="font-display mt-1 text-xl font-semibold">
               同行位置
             </h3>
             <p className="text-slate mt-2 text-sm">
-              {envelope.industry?.industry_name ?? "未识别行业"} ·{" "}
-              {envelope.industry?.taxonomy_code ?? "unknown"} ·
-              样本来自同一模板和同一行业。
+              {envelope.industry?.industry_name ?? "未识别行业"} · 分类代码：
+              <span className="font-data">
+                {envelope.industry?.taxonomy_code ?? "待确认"}
+              </span>{" "}
+              · 样本来自同一模板和同一行业。
             </p>
           </div>
           <div className="bg-mist rounded-2xl px-4 py-3 text-right">
@@ -92,7 +97,7 @@ export function PeerResearchPanel({
           />
           <MiniFact
             icon={GitBranch}
-            label="Universe"
+            label="同行范围指纹"
             value={envelope.peer_universe_fingerprint?.slice(0, 8) ?? "—"}
           />
         </div>
@@ -132,8 +137,7 @@ export function PeerResearchPanel({
         ))
       )}
       <p className="text-slate text-xs">
-        同行分位是数值位置，不代表投资质量排序；负 PE
-        等无效输入会被排除并记录在证据摘要中。
+        同行分位是数值位置，不代表投资质量排序；负市盈率等无效输入会被排除并记录在证据摘要中。
       </p>
     </div>
   );
@@ -141,13 +145,19 @@ export function PeerResearchPanel({
 
 function PeerMetricCard({ item }: { item: PeerMetricComparisonResponse }) {
   const available = item.status === "available";
+  const abbreviation = financialMetricAbbreviation(item.metric_code);
   return (
     <div className="border-ink/10 rounded-2xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">{item.metric_code}</p>
-          <p className="font-data text-slate mt-1 text-[10px] uppercase">
-            {item.period_end ?? "—"} · {item.basis ?? "—"}
+          <p className="text-sm font-medium">
+            {financialMetricLabel(item.metric_code)}
+          </p>
+          {abbreviation && (
+            <p className="font-data text-slate mt-1 text-xs">{abbreviation}</p>
+          )}
+          <p className="text-slate mt-1 text-xs">
+            {item.period_end ?? "—"} · {translateEnum("basis", item.basis)}
           </p>
         </div>
         <span className="bg-mist rounded-full px-2.5 py-1 text-[10px]">
@@ -159,19 +169,35 @@ function PeerMetricCard({ item }: { item: PeerMetricComparisonResponse }) {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <MetricValue
               label="公司"
-              value={formatPeerValue(item.company_value, item.unit)}
+              value={formatPeerValue(
+                item.company_value,
+                item.unit,
+                item.metric_code,
+              )}
             />
             <MetricValue
               label="同行中位"
-              value={formatPeerValue(item.peer_median, item.unit)}
+              value={formatPeerValue(
+                item.peer_median,
+                item.unit,
+                item.metric_code,
+              )}
             />
             <MetricValue
-              label="P25"
-              value={formatPeerValue(item.peer_p25, item.unit)}
+              label="下四分位（P25）"
+              value={formatPeerValue(
+                item.peer_p25,
+                item.unit,
+                item.metric_code,
+              )}
             />
             <MetricValue
-              label="P75"
-              value={formatPeerValue(item.peer_p75, item.unit)}
+              label="上四分位（P75）"
+              value={formatPeerValue(
+                item.peer_p75,
+                item.unit,
+                item.metric_code,
+              )}
             />
           </div>
           <DistributionBar percentile={Number(item.numeric_percentile ?? 0)} />
@@ -207,10 +233,10 @@ function DistributionBar({ percentile }: { percentile: number }) {
           style={{ left: `calc(${clamped}% - 0.5rem)` }}
         />
       </div>
-      <div className="text-slate mt-1 flex justify-between text-[10px]">
-        <span>P25</span>
-        <span>Median</span>
-        <span>P75</span>
+      <div className="text-slate mt-1 flex justify-between text-xs">
+        <span>下四分位</span>
+        <span>中位数</span>
+        <span>上四分位</span>
       </div>
     </div>
   );

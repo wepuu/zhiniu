@@ -3,6 +3,8 @@ import type {
   ResearchSnapshotEnvelope,
 } from "@zhaoniu/api-client";
 
+import { formatFinancialValue } from "./presentation";
+
 function assertObservation(observation: ResearchObservation) {
   if (
     !observation.id ||
@@ -34,13 +36,5 @@ export function assertResearchSnapshot(
 }
 
 export function formatEvidenceValue(value: string | null, unit: string) {
-  if (value == null) return "—";
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return "—";
-  const formatted = new Intl.NumberFormat("zh-CN", {
-    maximumFractionDigits: unit === "percent" ? 2 : 4,
-  }).format(parsed);
-  if (unit === "percent") return `${formatted}%`;
-  if (unit === "multiple") return `${formatted}×`;
-  return formatted;
+  return formatFinancialValue({ value, unit, context: "detail" });
 }

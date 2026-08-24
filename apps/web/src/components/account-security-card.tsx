@@ -70,7 +70,7 @@ export function AccountSecurityCard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Security
+            账户安全
           </p>
           <h2 className="font-display mt-2 text-2xl font-semibold">
             账户与安全

@@ -22,6 +22,7 @@ import {
 import { useMemo, useState } from "react";
 
 import { Card } from "./ui/card";
+import { researchTitle, translateEnum } from "@/lib/presentation";
 
 const api = createZhaoniuClient();
 
@@ -78,7 +79,7 @@ function TimelineState({
   onRetry: () => void;
 }) {
   const copy = error
-    ? ["研究时间线暂时不可用", "请检查 API 服务后重试。"]
+    ? ["研究时间线暂时不可用", "请检查应用服务后重试。"]
     : envelope?.status === "not_built"
       ? [
           "研究时间线尚未形成",
@@ -143,7 +144,7 @@ function ThreadSheet({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-blue text-xs font-medium">EVENT THREAD</p>
+            <p className="text-blue text-xs font-medium">事件版本链</p>
             <h3 className="font-display mt-1 text-2xl font-semibold">
               事件进展
             </h3>
@@ -184,7 +185,7 @@ function ThreadSheet({
                 </p>
                 <p className="mt-1 font-medium">{item.title}</p>
                 <p className="text-slate mt-1 text-xs">
-                  阶段：{item.event_type}
+                  阶段：{translateEnum("event_type", item.event_type)}
                 </p>
               </div>
             </div>
@@ -246,9 +247,7 @@ export function CompanyTimelinePanel({
     <div>
       <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="text-blue text-xs font-medium uppercase tracking-[0.14em]">
-            Company research
-          </p>
+          <p className="text-blue text-xs font-medium">公司研究记录</p>
           <h2 className="font-display mt-1 text-2xl font-semibold">
             研究时间线
           </h2>
@@ -301,7 +300,7 @@ export function CompanyTimelinePanel({
                           </span>
                         </div>
                         <h3 className="mt-3 font-medium leading-6">
-                          {item.title}
+                          {researchTitle(item.signal_family, item.title)}
                         </h3>
                         <p className="text-slate mt-1.5 text-sm leading-6">
                           {item.summary}

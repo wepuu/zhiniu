@@ -6,9 +6,9 @@ import { useEffect, useRef } from "react";
 import type { valuationSeries } from "@/lib/fundamentals";
 
 const labels: Record<string, string> = {
-  pe_ttm: "PE-TTM",
-  pb: "PB",
-  pcf: "PCF",
+  pe_ttm: "市盈率（滚动十二个月）",
+  pb: "市净率",
+  pcf: "市现率",
 };
 
 export function ValuationChart({
@@ -35,7 +35,7 @@ export function ValuationChart({
       },
       tooltip: {
         trigger: "axis",
-        valueFormatter: (value: unknown) => `${Number(value).toFixed(2)}×`,
+        valueFormatter: (value: unknown) => `${Number(value).toFixed(2)} 倍`,
       },
       xAxis: {
         type: "time",

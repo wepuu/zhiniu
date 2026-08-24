@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ResearchSectionTabs } from "@/components/research-section-tabs";
+import { researchTitle } from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 const sourceLabels = {
@@ -55,7 +56,8 @@ function SignalCard({ signal }: { signal: FeedSignalResponse }) {
             </time>
           </div>
           <h3 className="font-display mt-3 text-lg font-semibold leading-7">
-            {signal.stock_name} · {signal.title}
+            {signal.stock_name} ·{" "}
+            {researchTitle(signal.signal_family, signal.title)}
           </h3>
           <p className="text-slate mt-2 text-sm leading-6">{signal.summary}</p>
           <div className="mt-4 flex items-center gap-3">
@@ -110,9 +112,7 @@ export function ResearchFeedDashboard() {
       <ResearchSectionTabs />
       <section className="border-ink/10 flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end">
         <div>
-          <p className="font-data text-blue text-[11px] uppercase tracking-[0.18em]">
-            Personal research desk
-          </p>
+          <p className="text-blue text-xs font-medium">个人研究工作台</p>
           <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             自选研究
           </h1>
@@ -177,7 +177,7 @@ export function ResearchFeedDashboard() {
               <Card className="h-44 animate-pulse" />
             ) : feed.isError ? (
               <Card className="text-risk p-6 text-sm">
-                研究流暂时不可用，请检查 API 服务后重试。
+                研究流暂时不可用，请检查应用服务后重试。
               </Card>
             ) : (
               <div className="space-y-8">

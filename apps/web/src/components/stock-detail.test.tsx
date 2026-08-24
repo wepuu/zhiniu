@@ -681,7 +681,7 @@ describe("StockDetail states and responsive compositions", () => {
     const financialTabs = await screen.findAllByRole("tab", { name: "财务" });
     fireEvent.click(financialTabs[0]);
     fireEvent.click(financialTabs[1]);
-    expect(await screen.findAllByText("营业收入同比")).toHaveLength(2);
+    expect(await screen.findAllByText("营业收入同比增长率")).toHaveLength(2);
     expect(screen.getAllByText("可追溯至 1 个报表版本")).toHaveLength(2);
   });
 });

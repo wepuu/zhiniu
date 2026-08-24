@@ -116,7 +116,7 @@ describe("ProviderConfigurationPanel", () => {
 
     expect(await screen.findByText("服务配置发布台")).toBeInTheDocument();
     expect(screen.getByText(/移动端仅供查看/)).toBeInTheDocument();
-    const secret = await screen.findByLabelText("DeepSeek API Key");
+    const secret = await screen.findByLabelText("DeepSeek 接口密钥（API Key）");
     expect(secret).toHaveAttribute("placeholder", "已安全配置；留空表示不变");
     expect(secret).toHaveValue("");
 

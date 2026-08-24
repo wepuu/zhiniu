@@ -123,7 +123,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           知牛研究
         </Link>
         <p className="font-data text-blue mt-8 text-[10px] uppercase tracking-[0.18em]">
-          Secure research workspace
+          安全可信的研究工作台
         </p>
         <h1 className="font-display mt-2 text-3xl font-semibold">
           {isRegister ? "创建研究账户" : "继续你的研究"}

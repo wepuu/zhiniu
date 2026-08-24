@@ -28,6 +28,11 @@ import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
+import {
+  providerDisplayName,
+  translateEnum,
+  translateReasonCode,
+} from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 type View =
@@ -67,9 +72,10 @@ function StatusPill({ status }: { status: string }) {
         : "bg-amber-50 text-amber-700 border-amber-200";
   return (
     <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${tone}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tone}`}
     >
-      {status}
+      {translateEnum("status", status)}
+      <span className="font-data opacity-65">{status}</span>
     </span>
   );
 }
@@ -86,9 +92,7 @@ function PanelTitle({
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-          {eyebrow}
-        </p>
+        <p className="text-blue text-xs font-medium">{eyebrow}</p>
         <h2 className="font-display mt-1 text-xl font-semibold">{title}</h2>
       </div>
       {detail && <p className="text-slate hidden text-xs md:block">{detail}</p>}
@@ -152,7 +156,7 @@ export function AdminWorkspace() {
           <span>
             <b className="font-display block">知牛运营台</b>
             <small className="font-data text-[9px] tracking-[0.18em] text-white/45">
-              OPERATIONS
+              运营控制台
             </small>
           </span>
         </Link>
@@ -172,7 +176,10 @@ export function AdminWorkspace() {
           <p className="text-xs text-white/50">当前角色</p>
           <p className="mt-1 flex items-center gap-2 text-sm">
             <ShieldCheck className="size-4" />
-            {operator.role}
+            <span>{translateEnum("operator_role", operator.role)}</span>
+            <span className="font-data text-[10px] text-white/45">
+              {operator.role}
+            </span>
           </p>
         </div>
       </aside>
@@ -304,7 +311,7 @@ function Overview() {
   return (
     <>
       <PanelTitle
-        eyebrow="Service pulse"
+        eyebrow="服务运行脉搏"
         title="运行总览"
         detail={
           query.data ? `更新于 ${dateTime(query.data.generated_at)}` : "加载中"
@@ -314,9 +321,9 @@ function Overview() {
         {groups.map(([label, values]) => (
           <Card key={label} className="p-5">
             <p className="text-slate text-xs">{label}</p>
-            <p className="font-data mt-2 text-3xl font-semibold">
-              {Object.values(values)[0] ?? 0}
-            </p>
+            <div className="mt-2 text-3xl font-semibold">
+              <AdminDashboardValue value={Object.values(values)[0] ?? 0} />
+            </div>
             <div className="border-ink/8 mt-4 space-y-2 border-t pt-3">
               {Object.entries(values)
                 .slice(0, 4)
@@ -325,8 +332,15 @@ function Overview() {
                     key={key}
                     className="flex justify-between gap-3 text-[11px]"
                   >
-                    <span className="text-slate truncate">{key}</span>
-                    <span className="font-data">{String(value ?? "—")}</span>
+                    <span className="text-slate min-w-0">
+                      <span className="block truncate">
+                        {dashboardFieldLabel(key)}
+                      </span>
+                      <span className="font-data block truncate text-[9px] opacity-60">
+                        {key}
+                      </span>
+                    </span>
+                    <AdminDashboardValue value={value} />
                   </div>
                 ))}
             </div>
@@ -335,16 +349,18 @@ function Overview() {
       </div>
       {query.data && (
         <Card className="mt-5 p-5">
-          <PanelTitle eyebrow="Launch gates" title="上线门禁" />
+          <PanelTitle eyebrow="上线准备检查" title="上线门禁" />
           <div className="grid gap-3 md:grid-cols-3">
             {Object.entries(query.data.system).map(([key, value]) => (
               <div key={key} className="border-ink/8 rounded-xl border p-3">
-                <p className="text-slate text-[11px]">{key}</p>
-                <p className="mt-1 text-sm font-medium">
-                  {Array.isArray(value)
-                    ? value.join("、") || "无阻塞项"
-                    : String(value ?? "—")}
-                </p>
+                <p className="text-slate text-xs">{dashboardFieldLabel(key)}</p>
+                <p className="font-data text-slate mt-0.5 text-[9px]">{key}</p>
+                <div className="mt-2 text-sm font-medium">
+                  <AdminDashboardValue
+                    value={value}
+                    reasonList={key === "blocking_reasons"}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -352,6 +368,96 @@ function Overview() {
       )}
     </>
   );
+}
+
+const dashboardFieldLabels: Record<string, string> = {
+  total: "账户总数",
+  active: "正常账户",
+  verified: "已验证邮箱",
+  advanced_active: "高级权益有效",
+  invites_available: "可用邀请码",
+  activation_codes_available: "可用激活码",
+  enabled: "启用状态",
+  calls_24h: "近 24 小时调用",
+  failures_24h: "近 24 小时失败",
+  explanation_enabled: "研究助手状态",
+  provider: "邮件服务状态",
+  configured: "配置完成",
+  submitted_24h: "近 24 小时提交",
+  migration_head: "数据库迁移版本",
+  beta_readiness: "内测准备状态",
+  active_users: "活跃用户数",
+  blocking_reasons: "当前阻塞项",
+  data_use_status: "数据使用审核",
+  legal_review_status: "法律审核",
+};
+
+function dashboardFieldLabel(key: string) {
+  return dashboardFieldLabels[key] ?? "其他运行指标";
+}
+
+function AdminDashboardValue({
+  value,
+  reasonList = false,
+}: {
+  value: unknown;
+  reasonList?: boolean;
+}) {
+  if (Array.isArray(value)) {
+    if (!value.length) return <span>无阻塞项</span>;
+    return (
+      <span className="space-y-1.5">
+        {value.map((item) => (
+          <span key={String(item)} className="block">
+            <span>
+              {reasonList
+                ? translateReasonCode(String(item), "admin").replace(
+                    `（${String(item)}）`,
+                    "",
+                  )
+                : translateEnum("status", String(item), "admin")}
+            </span>
+            <span className="font-data text-slate block text-[9px]">
+              {String(item)}
+            </span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+  if (typeof value === "boolean") {
+    return (
+      <span className="text-right">
+        <span className="block">{value ? "已启用" : "未启用"}</span>
+        <span className="font-data text-slate block text-[9px]">
+          {String(value)}
+        </span>
+      </span>
+    );
+  }
+  if (typeof value === "string") {
+    if (value === "true" || value === "false") {
+      return (
+        <span className="text-right">
+          <span className="block">
+            {value === "true" ? "已启用" : "未启用"}
+          </span>
+          <span className="font-data text-slate block text-[9px]">{value}</span>
+        </span>
+      );
+    }
+    const translated = translateEnum("status", value, "admin");
+    const known = !translated.startsWith("状态未知");
+    return (
+      <span className="text-right">
+        <span className="block">{known ? translated : value}</span>
+        {known && (
+          <span className="font-data text-slate block text-[9px]">{value}</span>
+        )}
+      </span>
+    );
+  }
+  return <span className="font-data">{String(value ?? "—")}</span>;
 }
 
 function AutomationPanel({ capabilities }: { capabilities: string[] }) {
@@ -402,7 +508,7 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
   return (
     <>
       <PanelTitle
-        eyebrow="Research operations"
+        eyebrow="研究生产运行"
         title="自动研究任务"
         detail="数据库记录运行事实；调度器只负责唤醒到期策略"
       />
@@ -791,7 +897,10 @@ function AutomationRunDetailPanel({
               <tr key={step.id} className="border-ink/8 border-t">
                 <td className="font-data px-4 py-3">{step.dependency_order}</td>
                 <td className="px-4">
-                  {step.scope_type} · {step.symbol ?? step.scope_key}
+                  {translateEnum("scope_type", step.scope_type)} ·{" "}
+                  <span className="font-data">
+                    {step.symbol ?? step.scope_key}
+                  </span>
                 </td>
                 <td className="px-4 font-medium">{step.step_key}</td>
                 <td className="px-4">
@@ -892,7 +1001,7 @@ function UsersPanel({ capabilities }: { capabilities: string[] }) {
   return (
     <>
       <PanelTitle
-        eyebrow="Account support"
+        eyebrow="账户支持"
         title="账户支持"
         detail="按完整邮箱或用户 ID 精确查找"
       />
@@ -1033,7 +1142,7 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
   return (
     <>
       <PanelTitle
-        eyebrow="Beta learning"
+        eyebrow="内测反馈学习"
         title="反馈队列"
         detail="保留用户原始表述和处理轨迹"
       />
@@ -1044,10 +1153,19 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
               <MessageSquareText className="text-blue mt-0.5 size-4 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <b className="text-sm">{item.feature_key}</b>
+                  <b className="text-sm">
+                    {feedbackFeatureLabel(item.feature_key)}
+                    <span className="font-data text-slate ml-1 text-[9px] font-normal">
+                      {item.feature_key}
+                    </span>
+                  </b>
                   <StatusPill status={item.status} />
                   <span className="text-slate text-xs">
-                    {item.category} · {dateTime(item.created_at)}
+                    {feedbackCategoryLabel(item.category)} ·{" "}
+                    <span className="font-data text-[9px]">
+                      {item.category}
+                    </span>{" "}
+                    · {dateTime(item.created_at)}
                   </span>
                 </div>
                 <p className="mt-3 text-sm leading-6">{item.message}</p>
@@ -1112,7 +1230,7 @@ function ProvidersPanel({
         }
       >
         <PanelTitle
-          eyebrow="External dependencies"
+          eyebrow="外部服务依赖"
           title="服务商状态"
           detail="诊断只验证契约，不发送测试邮件"
         />
@@ -1129,8 +1247,15 @@ function ProvidersPanel({
                     )}
                   </span>
                   <div>
-                    <h3 className="font-medium capitalize">{item.provider}</h3>
-                    <p className="text-slate mt-1 text-xs">{item.capability}</p>
+                    <h3 className="font-medium">
+                      {providerDisplayName(item.provider)}
+                    </h3>
+                    <p className="text-slate mt-1 text-xs">
+                      {providerCapabilityLabel(item.capability)}
+                      <span className="font-data ml-1 text-[9px] opacity-65">
+                        {item.capability}
+                      </span>
+                    </p>
                   </div>
                 </div>
                 <StatusPill status={item.status} />
@@ -1148,7 +1273,9 @@ function ProvidersPanel({
                 </div>
               </dl>
               {item.reason_code && (
-                <p className="text-risk mt-3 text-xs">{item.reason_code}</p>
+                <p className="text-risk mt-3 text-xs">
+                  {translateReasonCode(item.reason_code, "admin")}
+                </p>
               )}
               {capabilities.includes("providers.diagnose") &&
                 (item.provider === "deepseek" ||
@@ -1173,6 +1300,42 @@ function ProvidersPanel({
   );
 }
 
+const feedbackFeatureLabels: Record<string, string> = {
+  stock_research: "个股研究",
+  research_feed: "研究动态",
+  watchlist: "自选股",
+  alerts: "研究提醒",
+  screening: "股票筛选",
+  comparison: "公司对比",
+  account: "账户与访问",
+  other: "其他功能",
+};
+
+const feedbackCategoryLabels: Record<string, string> = {
+  bug: "功能异常",
+  data_missing: "数据缺失",
+  hard_to_understand: "难以理解",
+  feature_request: "功能建议",
+  other: "其他反馈",
+};
+
+function feedbackFeatureLabel(code: string) {
+  return feedbackFeatureLabels[code] ?? "其他功能";
+}
+
+function feedbackCategoryLabel(code: string) {
+  return feedbackCategoryLabels[code] ?? "其他反馈";
+}
+
+function providerCapabilityLabel(code: string) {
+  const labels: Record<string, string> = {
+    ai_research: "AI 研究生成",
+    email_delivery: "事务邮件发送",
+    transactional_email: "事务邮件发送",
+  };
+  return labels[code] ?? "外部服务能力";
+}
+
 function AuditPanel() {
   const query = useQuery({
     queryKey: ["operator-audit"],
@@ -1181,7 +1344,7 @@ function AuditPanel() {
   return (
     <>
       <PanelTitle
-        eyebrow="Immutable trail"
+        eyebrow="不可变审计记录"
         title="运营审计"
         detail="高风险动作不记录密码、令牌或完整邮件内容"
       />

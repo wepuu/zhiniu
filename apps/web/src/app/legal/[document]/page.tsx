@@ -37,11 +37,11 @@ const documents = {
       ],
       [
         "安全措施",
-        "密码和访问 Token 不以明文保存；敏感写操作使用会话、CSRF、Origin 校验和速率限制保护。",
+        "密码和访问令牌（Token）不以明文保存；敏感写操作使用会话、跨站请求伪造（CSRF）防护、来源校验（Origin）和速率限制保护。",
       ],
       [
         "第三方服务",
-        "事务邮件、模型和数据 Provider 仅在相应能力启用时使用，具体生产供应商需在上线前完成审查。",
+        "事务邮件、模型和数据服务商仅在相应能力启用时使用，具体生产供应商需在上线前完成审查。",
       ],
       [
         "联系与申请",
@@ -116,7 +116,7 @@ export default async function LegalDocumentPage({
           </span>
           <div>
             <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-              Version {content.version}
+              版本 {content.version}
             </p>
             <h1 className="font-display mt-2 text-3xl font-semibold sm:text-4xl">
               {content.title}
@@ -133,7 +133,7 @@ export default async function LegalDocumentPage({
           ))}
         </div>
         <p className="border-risk/15 bg-risk/5 text-slate mt-9 rounded-xl border px-4 py-3 text-xs leading-6">
-          当前文本为受控 Beta
+          当前文本为受控内测版本
           工程版本，正式对外开放前仍需由产品与法律负责人确认。
         </p>
       </article>

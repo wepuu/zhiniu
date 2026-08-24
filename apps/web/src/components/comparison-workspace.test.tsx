@@ -130,6 +130,46 @@ describe("ComparisonWorkspace", () => {
               basis: "fy",
             },
           },
+          {
+            code: "operating_cash_flow",
+            label: "经营现金流",
+            dimension: "现金流",
+            comparability: "comparable",
+            left: {
+              value: "70690750119.06",
+              unit: "CNY",
+              status: "available",
+              period_end: "2026-06-30",
+              basis: "ytd",
+            },
+            right: {
+              value: "60216851000",
+              unit: "CNY",
+              status: "available",
+              period_end: "2026-06-30",
+              basis: "ytd",
+            },
+          },
+          {
+            code: "pe_ttm",
+            label: "市盈率 TTM",
+            dimension: "估值",
+            comparability: "comparable",
+            left: {
+              value: "19.54",
+              unit: "multiple",
+              status: "available",
+              period_end: "2026-08-21",
+              basis: "market_observation",
+            },
+            right: {
+              value: "21.29",
+              unit: "multiple",
+              status: "available",
+              period_end: "2026-08-21",
+              basis: "market_observation",
+            },
+          },
         ],
         recent_signals: [],
         limitations: ["两家公司不在同一可验证行业口径。"],
@@ -139,5 +179,8 @@ describe("ComparisonWorkspace", () => {
     expect(await screen.findByText("贵州茅台 / 宁德时代")).toBeInTheDocument();
     expect(screen.getByText("AI 对比解读当前未启用")).toBeInTheDocument();
     expect(screen.getAllByText("净资产收益率").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("706.91 亿元").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("19.54 倍").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/年初至报告期末累计/).length).toBeGreaterThan(0);
   });
 });

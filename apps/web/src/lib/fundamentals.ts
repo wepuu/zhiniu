@@ -6,6 +6,7 @@ import type {
 } from "@zhaoniu/api-client";
 
 import { parseFiniteDecimal } from "./market-data";
+import { formatFinancialValue as formatPresentedFinancialValue } from "./presentation";
 
 export const metricStatusCopy: Record<string, string> = {
   available: "可用",
@@ -66,26 +67,14 @@ export function metricByCode(
 export function formatFinancialValue(
   value: string | null | undefined,
   unit: string,
+  metricCode?: string,
 ): string {
-  if (value == null) return "—";
-  const number = parseFiniteDecimal(value, "financial display value");
-  if (unit === "CNY") {
-    const absolute = Math.abs(number);
-    if (absolute >= 100_000_000) {
-      return `${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(number / 100_000_000)} 亿`;
-    }
-    if (absolute >= 10_000) {
-      return `${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(number / 10_000)} 万`;
-    }
-    return new Intl.NumberFormat("zh-CN", {
-      maximumFractionDigits: 2,
-    }).format(number);
-  }
-  if (unit === "percent") return `${number.toFixed(2)}%`;
-  if (unit === "multiple") return `${number.toFixed(2)}×`;
-  return new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(
-    number,
-  );
+  return formatPresentedFinancialValue({
+    metricCode,
+    value,
+    unit,
+    context: "detail",
+  });
 }
 
 export function valuationSeries(value: ValuationListResponse) {

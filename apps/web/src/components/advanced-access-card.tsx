@@ -72,7 +72,7 @@ export function AdvancedAccessCard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Access
+            高级功能权限
           </p>
           <h1 className="font-display mt-2 text-2xl font-semibold">高级功能</h1>
           <p className="text-slate mt-2 text-sm leading-6">

@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { translateEnum } from "@/lib/presentation";
+
 import { Card } from "./ui/card";
 
 const familyLabels: Record<string, string> = {
@@ -57,7 +59,7 @@ function StateCard({
     ],
     transport_error: [
       "事件雷达暂时不可用",
-      "其他研究内容不受影响，请检查 API 服务后重试。",
+      "其他研究内容不受影响，请检查应用服务后重试。",
     ],
     ready: ["", ""],
   }[status];
@@ -104,7 +106,8 @@ function EventCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="bg-mist rounded-full px-2.5 py-1 text-[10px] font-medium">
-              {familyLabels[item.event.event_family] ?? item.event.event_family}
+              {familyLabels[item.event.event_family] ??
+                translateEnum("event_type", item.event.event_family)}
             </span>
             <span
               className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${
@@ -180,7 +183,10 @@ function EvidencePanel({
         <dl className="border-ink/10 mt-6 divide-y border-y text-sm">
           <div className="flex justify-between gap-4 py-3">
             <dt className="text-slate">事件类型</dt>
-            <dd>{familyLabels[event.event_family]}</dd>
+            <dd>
+              {familyLabels[event.event_family] ??
+                translateEnum("event_type", event.event_family)}
+            </dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="text-slate">提取状态</dt>
@@ -205,8 +211,9 @@ function EvidencePanel({
                 className="border-ink/10 hover:border-blue/40 block rounded-xl border p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate text-xs uppercase">
-                    {source.source_owner}
+                  <span className="text-slate text-xs">
+                    披露来源：
+                    <span className="font-data">{source.source_owner}</span>
                   </span>
                   {source.source_url && <ExternalLink className="size-3.5" />}
                 </div>
@@ -251,9 +258,7 @@ export function EventRadarPanel({
       <Card className="overflow-hidden p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-blue text-xs font-medium tracking-wide">
-              CORPORATE DISCLOSURE
-            </p>
+            <p className="text-blue text-xs font-medium">公司公告与事件</p>
             <h3 className="font-display mt-2 text-2xl font-semibold">
               事件雷达
             </h3>

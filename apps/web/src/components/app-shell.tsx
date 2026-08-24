@@ -70,7 +70,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
             知牛研究
           </span>
           <span className="font-data text-slate mt-1 block text-[9px] uppercase tracking-[0.2em]">
-            Zhaoniu Research
+            A 股研究工作台
           </span>
         </span>
       )}

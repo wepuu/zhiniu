@@ -19,6 +19,7 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
+import { providerDisplayName, translateEnum } from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 const FLASH = "deepseek/deepseek-v4-flash";
@@ -151,7 +152,7 @@ export function ProviderConfigurationPanel({
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Managed configuration
+            托管服务配置
           </p>
           <h2 className="font-display mt-1 text-xl font-semibold">
             服务配置发布台
@@ -234,19 +235,25 @@ function ProviderSummary({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-medium capitalize">{view.provider}</p>
-          <p className="text-slate mt-0.5 text-[11px]">
-            {view.source} · {view.environment}
+          <p className="font-medium">{providerDisplayName(view.provider)}</p>
+          <p className="text-slate mt-0.5 text-xs">
+            {translateEnum("configuration_source", view.source)} ·{" "}
+            {translateEnum("environment", view.environment)}
           </p>
         </div>
         <span
           className={`rounded-full px-2 py-1 text-[10px] ${statusTone(view.diagnostic_status)}`}
         >
-          {view.diagnostic_status}
+          {translateEnum("status", view.diagnostic_status)}
+          <span className="font-data ml-1 opacity-65">
+            {view.diagnostic_status}
+          </span>
         </span>
       </div>
       <div className="text-slate mt-4 flex items-center justify-between text-[11px]">
-        <span>凭据：{view.credential_state}</span>
+        <span>
+          凭据：{translateEnum("credential_state", view.credential_state)}
+        </span>
         <span>
           {view.draft
             ? `草稿 v${view.draft.revision}`
@@ -306,7 +313,7 @@ function DeepSeekEditor({
           }
         />
         <SecretField
-          label="DeepSeek API Key"
+          label="DeepSeek 接口密钥（API Key）"
           value={apiKey}
           configured={view.credential_state !== "missing"}
           disabled={!editable}
@@ -352,7 +359,7 @@ function DeepSeekEditor({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField
-            label="Provider 最大并发"
+            label="服务商最大并发数"
             value={configuration.max_concurrency}
             min={1}
             max={16}
@@ -478,14 +485,14 @@ function ResendEditor({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <SecretField
-            label="Resend Sending access Key"
+            label="Resend 发送权限密钥"
             value={apiKey}
             configured={view.credential_state !== "missing"}
             disabled={!editable}
             onChange={setApiKey}
           />
           <SecretField
-            label="Webhook Signing Secret"
+            label="Webhook 签名密钥"
             value={webhookSecret}
             configured={view.credential_state !== "missing"}
             disabled={!editable}
@@ -534,7 +541,8 @@ function EditorHeader({
           <p className="mt-1 text-xs text-white/55">{detail}</p>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px]">
-          {view.source} · row {view.row_version}
+          {translateEnum("configuration_source", view.source)} · 配置行版本{" "}
+          <span className="font-data">{view.row_version}</span>
         </span>
       </div>
       <div className="mt-6 grid grid-cols-4 gap-2 text-[10px]">
@@ -632,7 +640,7 @@ function EditorActions({
           }
           onClick={() =>
             window.confirm(
-              "发布后 API 与 Worker 将立即切换到该版本。确认发布？",
+              "发布后接口服务与后台任务进程将立即切换到该版本。确认发布？",
             ) && publish.mutate()
           }
         >
@@ -709,8 +717,8 @@ function RouteEditor({
             }
             className="border-ink/10 bg-paper text-ink mt-1.5 w-full rounded-xl border px-3 py-2.5"
           >
-            <option value={FLASH}>V4 Flash</option>
-            <option value={PRO}>V4 Pro</option>
+            <option value={FLASH}>V4 Flash（快速模型）</option>
+            <option value={PRO}>V4 Pro（增强模型）</option>
           </select>
         </label>
         {!locked && (

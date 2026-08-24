@@ -67,7 +67,7 @@ export function BetaFeedbackCard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Beta feedback
+            内测体验反馈
           </p>
           <h2 className="font-display mt-2 text-2xl font-semibold">体验反馈</h2>
           <p className="text-slate mt-2 text-sm leading-6">

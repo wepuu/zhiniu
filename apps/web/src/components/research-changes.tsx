@@ -20,6 +20,12 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { formatEvidenceValue } from "@/lib/research";
+import {
+  financialMetricLabel,
+  providerDisplayName,
+  researchTitle,
+  translateEnum,
+} from "@/lib/presentation";
 
 import { Card } from "./ui/card";
 
@@ -71,7 +77,7 @@ function ChangeCard({
       type="button"
       className="border-ink/10 bg-paper hover:border-blue/45 group w-full rounded-2xl border p-5 text-left shadow-[0_1px_1px_rgba(24,32,43,0.03)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(41,95,143,0.09)]"
       onClick={(event) => onOpen(event.currentTarget)}
-      aria-label={`查看证据：${observation.title}`}
+      aria-label={`查看证据：${researchTitle(observation.observation_family, observation.title)}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -93,7 +99,7 @@ function ChangeCard({
         <MovementIcon movement={observation.movement} />
       </div>
       <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
-        {observation.title}
+        {researchTitle(observation.observation_family, observation.title)}
       </h3>
       <p className="text-slate mt-2 line-clamp-2 text-sm leading-6">
         {observation.summary}
@@ -131,11 +137,12 @@ function EvidenceBody({ observation }: { observation: ResearchObservation }) {
       <div className="bg-ink px-6 pb-6 pt-5 text-white">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-data text-[10px] uppercase tracking-[0.2em] text-white/50">
-              Evidence trace · {observation.rule_id}
+            <p className="text-xs font-medium text-white/60">
+              证据追踪 · 规则{" "}
+              <span className="font-data">{observation.rule_id}</span>
             </p>
             <h2 className="font-display mt-3 text-2xl font-semibold">
-              {observation.title}
+              {researchTitle(observation.observation_family, observation.title)}
             </h2>
           </div>
         </div>
@@ -171,9 +178,15 @@ function EvidenceBody({ observation }: { observation: ResearchObservation }) {
                 className={`flex items-start justify-between gap-4 px-4 py-3 ${index ? "border-ink/8 border-t" : ""}`}
               >
                 <div>
-                  <p className="text-sm font-medium">{metric.display_name}</p>
-                  <p className="font-data text-slate mt-1 text-[10px]">
-                    {metric.period_end} · {metric.role}
+                  <p className="text-sm font-medium">
+                    {financialMetricLabel(
+                      metric.metric_code,
+                      metric.display_name,
+                    )}
+                  </p>
+                  <p className="text-slate mt-1 text-xs">
+                    {metric.period_end} ·{" "}
+                    {translateEnum("metric_role", metric.role)}
                   </p>
                 </div>
                 <p className="font-data text-sm font-semibold">
@@ -224,7 +237,7 @@ function EvidenceBody({ observation }: { observation: ResearchObservation }) {
                   className="border-ink/10 rounded-xl border p-4 text-sm"
                 >
                   <p className="font-medium">
-                    {source.provider} 规范化财报记录
+                    {providerDisplayName(source.provider)} 规范化财报记录
                   </p>
                   <p className="text-slate font-data mt-1 break-all text-[10px]">
                     {source.provider_record_id}
@@ -250,7 +263,9 @@ function EvidenceBody({ observation }: { observation: ResearchObservation }) {
                   key={source.id}
                   className="border-ink/10 rounded-xl border p-4 text-sm"
                 >
-                  <p className="font-medium">{source.provider} 估值观测记录</p>
+                  <p className="font-medium">
+                    {providerDisplayName(source.provider)} 估值观测记录
+                  </p>
                   <p className="text-slate font-data mt-1 break-all text-[10px]">
                     {source.id}
                   </p>
@@ -400,9 +415,7 @@ export function ResearchChanges({
     <div>
       <div className="border-ink/10 bg-paper mb-4 flex flex-wrap items-end justify-between gap-4 rounded-2xl border px-5 py-4">
         <div>
-          <p className="font-data text-blue text-[10px] uppercase tracking-[0.18em]">
-            Deterministic change engine
-          </p>
+          <p className="text-blue text-xs font-medium">确定性变化引擎</p>
           <h2 className="font-display mt-1 text-2xl font-semibold">关键变化</h2>
           <p className="text-slate mt-1 text-xs">
             截至 {new Date(snapshot.knowledge_cutoff).toLocaleString("zh-CN")}{" "}
