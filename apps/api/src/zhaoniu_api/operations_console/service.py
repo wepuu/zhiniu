@@ -58,7 +58,14 @@ from zhaoniu_api.system import MIGRATION_HEAD
 
 CAPABILITIES: dict[str, frozenset[str]] = {
     "viewer": frozenset(
-        {"dashboard.read", "coverage.read", "automation.read", "providers.read", "audit.read"}
+        {
+            "dashboard.read",
+            "coverage.read",
+            "automation.read",
+            "providers.read",
+            "releases.read",
+            "audit.read",
+        }
     ),
     "support": frozenset(
         {
@@ -72,6 +79,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "access_codes.manage",
             "feedback.manage",
             "providers.read",
+            "releases.read",
             "audit.read",
         }
     ),
@@ -91,6 +99,10 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "automation.manage",
             "automation.run",
             "automation.resume",
+            "releases.read",
+            "releases.manage",
+            "releases.approve",
+            "releases.record",
             "audit.read",
         }
     ),
@@ -118,6 +130,10 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "automation.manage",
             "automation.run",
             "automation.resume",
+            "releases.read",
+            "releases.manage",
+            "releases.approve",
+            "releases.record",
             "audit.read",
         }
     ),
@@ -577,9 +593,7 @@ class OperatorService:
         rows = (await self._session.scalars(statement.limit(limit))).all()
         return [OperatorFeedbackItem.model_validate(row) for row in rows]
 
-    async def update_feedback(
-        self, feedback_id: UUID, payload: OperatorFeedbackUpdate
-    ) -> bool:
+    async def update_feedback(self, feedback_id: UUID, payload: OperatorFeedbackUpdate) -> bool:
         row = await self._session.get(BetaFeedbackItemRecord, feedback_id)
         if row is None:
             return False
@@ -588,8 +602,7 @@ class OperatorService:
         if payload.assigned_operator_user_id is not None:
             assignee = await self._session.scalar(
                 select(OperatorMembershipRecord.id).where(
-                    OperatorMembershipRecord.user_id
-                    == payload.assigned_operator_user_id,
+                    OperatorMembershipRecord.user_id == payload.assigned_operator_user_id,
                     OperatorMembershipRecord.revoked_at.is_(None),
                 )
             )

@@ -26,7 +26,7 @@ from zhaoniu_api.composition import (
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.models import EventBuildResult
 from zhaoniu_api.database import engine, session_factory
-from zhaoniu_api.db import User
+from zhaoniu_api.db import OperatorMembershipRecord, User
 from zhaoniu_api.domain.models import resolve_symbol
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
 from zhaoniu_api.invite_beta.service import InviteBetaService
@@ -37,6 +37,12 @@ from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
+from zhaoniu_api.production_release.models import (
+    ProductionDeploymentEventCreate,
+    ProductionReleaseApprovalCreate,
+    ProductionReleaseCandidateCreate,
+)
+from zhaoniu_api.production_release.service import ProductionReleaseService
 from zhaoniu_api.provider_acceptance.service import ProviderAcceptanceService
 from zhaoniu_api.provider_configuration.crypto import generate_key
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
@@ -176,6 +182,34 @@ def _parser() -> argparse.ArgumentParser:
     reencrypt = subcommands.add_parser("reencrypt-provider-credentials")
     reencrypt.add_argument("--to-key-id", required=True)
     reencrypt.add_argument("--operator-email", required=True)
+    create_release = subcommands.add_parser("create-production-release")
+    create_release.add_argument("--evidence-file", type=Path, required=True)
+    create_release.add_argument("--operator-email", required=True)
+    release_status = subcommands.add_parser("production-release-status")
+    release_status.add_argument("candidate_id", type=UUID, nargs="?")
+    release_gate = subcommands.add_parser("run-production-release-gate")
+    release_gate.add_argument("candidate_id", type=UUID)
+    release_gate.add_argument(
+        "--gate", choices=("closed_deployment", "invite_activation"), required=True
+    )
+    release_approval = subcommands.add_parser("approve-production-release")
+    release_approval.add_argument("candidate_id", type=UUID)
+    release_approval.add_argument(
+        "--approval-role",
+        choices=("engineering", "data_compliance", "product_operations"),
+        required=True,
+    )
+    release_approval.add_argument("--decision", choices=("approved", "rejected"), required=True)
+    release_approval.add_argument("--operator-email", required=True)
+    release_approval.add_argument("--note")
+    deployment = subcommands.add_parser("record-production-deployment")
+    deployment.add_argument("candidate_id", type=UUID)
+    deployment.add_argument(
+        "--event", choices=("deployed", "released", "failed", "rolled_back"), required=True
+    )
+    deployment.add_argument("--deployment-ref", required=True)
+    deployment.add_argument("--reason-code")
+    deployment.add_argument("--operator-email", required=True)
     return parser
 
 
@@ -327,9 +361,7 @@ async def _run(args: argparse.Namespace) -> None:
             elif args.command == "provider-acceptance-status":
                 acceptance = ProviderAcceptanceService(session, get_settings())
                 result = (
-                    await acceptance.get(args.run_id)
-                    if args.run_id
-                    else await acceptance.latest()
+                    await acceptance.get(args.run_id) if args.run_id else await acceptance.latest()
                 )
                 if result is None:
                     result = {"status": "missing"}
@@ -442,6 +474,68 @@ async def _run(args: argparse.Namespace) -> None:
                     operator.id
                 )
                 result = {"status": "reencrypted", "credential_count": count}
+            elif args.command == "create-production-release":
+                actor = await session.scalar(
+                    select(User).where(User.email == args.operator_email.strip().lower())
+                )
+                if actor is None:
+                    raise ValueError("operator_not_found")
+                evidence = ProductionReleaseCandidateCreate.model_validate_json(
+                    args.evidence_file.read_text(encoding="utf-8")
+                )
+                result = await ProductionReleaseService(session, get_settings()).create(
+                    evidence, actor.id
+                )
+            elif args.command == "production-release-status":
+                releases = ProductionReleaseService(session, get_settings())
+                result = (
+                    await releases.get(args.candidate_id)
+                    if args.candidate_id
+                    else await releases.list_candidates()
+                )
+            elif args.command == "run-production-release-gate":
+                result = await ProductionReleaseService(session, get_settings()).evaluate(
+                    args.candidate_id, args.gate
+                )
+            elif args.command == "approve-production-release":
+                actor = await session.scalar(
+                    select(User).where(User.email == args.operator_email.strip().lower())
+                )
+                if actor is None:
+                    raise ValueError("operator_not_found")
+                release_membership = await session.scalar(
+                    select(OperatorMembershipRecord).where(
+                        OperatorMembershipRecord.user_id == actor.id,
+                        OperatorMembershipRecord.revoked_at.is_(None),
+                    )
+                )
+                if release_membership is None:
+                    raise ValueError("operator_membership_not_found")
+                result = await ProductionReleaseService(session, get_settings()).approve(
+                    args.candidate_id,
+                    ProductionReleaseApprovalCreate(
+                        approval_role=args.approval_role,
+                        decision=args.decision,
+                        note=args.note,
+                    ),
+                    actor.id,
+                    release_membership.role,
+                )
+            elif args.command == "record-production-deployment":
+                actor = await session.scalar(
+                    select(User).where(User.email == args.operator_email.strip().lower())
+                )
+                if actor is None:
+                    raise ValueError("operator_not_found")
+                result = await ProductionReleaseService(session, get_settings()).record_event(
+                    args.candidate_id,
+                    ProductionDeploymentEventCreate(
+                        event_type=args.event,
+                        deployment_ref=args.deployment_ref,
+                        reason_code=args.reason_code,
+                    ),
+                    actor.id,
+                )
             elif args.command == "automation-tick":
                 result = await build_automation_service(session).tick()
             elif args.command == "automation-run":

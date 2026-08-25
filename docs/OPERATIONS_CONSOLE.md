@@ -5,12 +5,13 @@ boundary; operator membership is an additional server-side authorization layer.
 
 ## Roles
 
-- `viewer`: dashboard, coverage, automation, provider and audit reads only.
+- `viewer`: dashboard, coverage, automation, provider, release and audit reads only.
 - `support`: exact user lookup, session revocation, email-verification resend, invitations,
   user-bound access codes and feedback triage.
 - `operations`: coverage/AI/automation task dispatch, automation policy management, feedback
-  triage and provider diagnostics.
-- `security_admin`: the combined capability set plus account status changes.
+  triage, provider diagnostics, release evaluation/event recording and product-operations approval.
+- `security_admin`: the combined capability set plus account status, release evaluation/event
+  recording, and exactly one of engineering or data-compliance approval for each candidate.
 
 Grant or revoke membership through the explicit CLI. Membership changes and all sensitive console
 actions are audited.
@@ -53,4 +54,6 @@ uv run python -m zhaoniu_api.cli check-production-readiness
 ```
 
 This command only reports `configuration_valid` when `APP_ENV=production` and all production
-security constraints pass.
+security constraints pass. It is diagnostic only; Phase 22 deployment authorization comes from the
+immutable production release candidate and its two gates. See
+`docs/PHASE_22_PRODUCTION_RELEASE_GATE.md`.

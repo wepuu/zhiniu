@@ -39,6 +39,7 @@ from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
+from zhaoniu_api.production_release.service import ProductionReleaseService
 from zhaoniu_api.provider_acceptance.service import ProviderAcceptanceService
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.service import DeterministicResearchService
@@ -194,6 +195,13 @@ def get_invite_beta_service(
     return InviteBetaService(session, settings)
 
 
+def get_production_release_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ProductionReleaseService:
+    return ProductionReleaseService(session, settings)
+
+
 def get_automation_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AutomationService:
@@ -277,6 +285,9 @@ ProviderAcceptanceServiceDependency = Annotated[
     ProviderAcceptanceService, Depends(get_provider_acceptance_service)
 ]
 InviteBetaServiceDependency = Annotated[InviteBetaService, Depends(get_invite_beta_service)]
+ProductionReleaseServiceDependency = Annotated[
+    ProductionReleaseService, Depends(get_production_release_service)
+]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
 ComparisonServiceDependency = Annotated[ComparisonService, Depends(get_comparison_service)]
 ComparisonDispatcherDependency = Annotated[ComparisonDispatcher, Depends(get_comparison_dispatcher)]

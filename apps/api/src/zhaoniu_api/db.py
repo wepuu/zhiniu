@@ -548,7 +548,11 @@ class ProviderAcceptanceItemRecord(Base):
     __tablename__ = "provider_acceptance_items"
     __table_args__ = (
         UniqueConstraint(
-            "run_id", "provider", "dataset", "symbol", "scenario",
+            "run_id",
+            "provider",
+            "dataset",
+            "symbol",
+            "scenario",
             name="uq_provider_acceptance_item",
         ),
         CheckConstraint(
@@ -2773,4 +2777,160 @@ class BetaFeedbackItemRecord(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ProductionReleaseCandidateRecord(Base):
+    __tablename__ = "production_release_candidates"
+    __table_args__ = (
+        UniqueConstraint(
+            "target_environment",
+            "commit_sha",
+            "configuration_fingerprint",
+            name="uq_release_candidate_identity",
+        ),
+        CheckConstraint("target_environment = 'production'", name="ck_release_candidate_env"),
+        CheckConstraint(
+            "status IN ('draft', 'blocked', 'ready_closed', 'deployed_observing', "
+            "'ready_invites', 'released', 'rolled_back', 'rejected')",
+            name="ck_release_candidate_status",
+        ),
+        CheckConstraint(
+            "quality_gate_status IN ('passed', 'failed') AND "
+            "e2e_status IN ('passed', 'failed') AND "
+            "security_scan_status IN ('passed', 'failed')",
+            name="ck_release_candidate_evidence_status",
+        ),
+        Index("ix_release_candidate_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    target_environment: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    commit_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    migration_head: Mapped[str] = mapped_column(String(32), nullable=False)
+    api_image_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    web_image_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    configuration_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    sbom_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    backup_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    restore_verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    quality_gate_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    e2e_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    security_scan_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProductionReleaseGateRunRecord(Base):
+    __tablename__ = "production_release_gate_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "gate_type IN ('closed_deployment', 'invite_activation')",
+            name="ck_release_gate_type",
+        ),
+        CheckConstraint("status IN ('passed', 'blocked')", name="ck_release_gate_status"),
+        Index("ix_release_gate_candidate_started", "candidate_id", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("production_release_candidates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    gate_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ProductionReleaseGateItemRecord(Base):
+    __tablename__ = "production_release_gate_items"
+    __table_args__ = (
+        UniqueConstraint("run_id", "check_key", name="uq_release_gate_item_key"),
+        CheckConstraint(
+            "status IN ('passed', 'failed', 'not_applicable')", name="ck_release_item_status"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("production_release_gate_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    check_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    mandatory: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(120))
+    evidence_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    evidence_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProductionReleaseApprovalRecord(Base):
+    __tablename__ = "production_release_approvals"
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "approval_role", name="uq_release_approval_role"),
+        UniqueConstraint("candidate_id", "actor_user_id", name="uq_release_approval_actor"),
+        CheckConstraint(
+            "approval_role IN ('engineering', 'data_compliance', 'product_operations')",
+            name="ck_release_approval_role",
+        ),
+        CheckConstraint(
+            "decision IN ('approved', 'rejected')", name="ck_release_approval_decision"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("production_release_candidates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    approval_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    note: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProductionDeploymentEventRecord(Base):
+    __tablename__ = "production_deployment_events"
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "event_type", name="uq_deployment_candidate_event"),
+        CheckConstraint(
+            "event_type IN ('deployed', 'released', 'failed', 'rolled_back')",
+            name="ck_deployment_event_type",
+        ),
+        Index("ix_deployment_event_candidate_created", "candidate_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("production_release_candidates.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    event_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    deployment_ref: Mapped[str] = mapped_column(String(160), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(120))
+    recorded_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )

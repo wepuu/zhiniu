@@ -79,13 +79,15 @@ uv run python -m zhaoniu_api.cli run-coverage-backfill RUN_ID
 uv run python -m zhaoniu_api.cli generate-beta-learning-report --days 7
 uv run python -m zhaoniu_api.cli beta-cohort-status
 uv run python -m zhaoniu_api.cli invite-beta-gates
+uv run python -m zhaoniu_api.cli production-release-status
 uv run python scripts/postgres_ops.py backup --output .local/backups/zhaoniu.dump
 uv run python scripts/postgres_ops.py verify --artifact .local/backups/zhaoniu.dump
 ```
 
 AI is disabled by default. Before enabling it, explicitly configure `LLM_ENABLED=true`,
-`LLM_MODEL_CHAIN` and provider API keys. Model names have no non-disabled defaults. Secrets must
-not enter logs, the database or version control.
+`LLM_MODEL_CHAIN` and provider credentials. Model names have no non-disabled defaults. Plaintext
+secrets must not enter logs, ordinary domain tables or version control; managed provider
+credentials may only enter the encrypted credential vault.
 
 AKShare is not approved here for commercial display or redistribution. Read
 `docs/DATA_SOURCE_POLICY.md` and `docs/FINANCIAL_DATA_SOURCE_DECISION.md` before using the data
@@ -167,6 +169,7 @@ POST /api/v1/comparisons
 GET /api/v1/comparisons/{request_id}
 GET /api/v1/admin/context
 GET /api/v1/admin/providers/configurations
+GET /api/v1/admin/releases
 ```
 
 Watchlist endpoints require a valid HttpOnly session cookie and persist user-owned records in
@@ -179,5 +182,6 @@ Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [LLM policy](docs/LLM_POLICY.md), [screening engine](docs/SCREENING_ENGINE.md),
 [company research timeline](docs/COMPANY_RESEARCH_TIMELINE.md),
 [event engine V2](docs/EVENT_ENGINE_V2.md),
+[production release gate](docs/PHASE_22_PRODUCTION_RELEASE_GATE.md),
 [screen query DSL](docs/SCREEN_QUERY_DSL.md), and [Engineering rules](AGENTS.md) before extending
 the system.

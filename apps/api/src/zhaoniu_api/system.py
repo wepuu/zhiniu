@@ -11,7 +11,7 @@ from zhaoniu_api.config import Settings, get_settings
 from zhaoniu_api.database import get_session
 from zhaoniu_api.schemas import DependencyStatus, HealthResponse, ReadinessResponse
 
-MIGRATION_HEAD = "20260825_0026"
+MIGRATION_HEAD = "20260826_0027"
 router = APIRouter(tags=["system"])
 
 

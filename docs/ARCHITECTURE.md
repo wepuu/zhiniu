@@ -224,3 +224,11 @@ and dispatch independently re-evaluate provider acceptance, policy, legal, trans
 capacity gates. Registration performs the final server-side cohort-state and email-binding check
 before consuming an invitation. The web client renders this state and does not calculate
 eligibility or funnel facts.
+
+## Production release boundary
+
+Phase 22 adds a `production_release` application module over runtime configuration, migration,
+Provider acceptance, managed Resend diagnostics, email lifecycle, feedback and operator facts. It
+does not build images, run infrastructure, store deployment credentials or bypass CI/CD. Gate runs
+are append-only evidence projections; deployment events are state-machine assertions with a final
+live gate recheck. The frontend renders server decisions and never calculates release eligibility.

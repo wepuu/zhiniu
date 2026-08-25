@@ -165,6 +165,17 @@ external invitation until a passing Beta-eligible Phase 20 run and a published, 
 Resend configuration exist. Draft creation and gate inspection remain available for internal
 acceptance without simulating approval.
 
+## Phase 22 - Production Release Gate (implemented, release not executed)
+
+Immutable release candidates bind commit, migration, image digests, configuration fingerprint,
+SBOM, backup/restore and continuous quality evidence. Separate closed-deployment and
+invite-activation gates retain append-only item results, enforce independent engineering,
+data-compliance and product-operations approvals, recheck live evidence before deployment/release
+events, and preserve rollback history. The operations UI is desktop-action/mobile-read-only and
+does not hold deployment credentials or deploy infrastructure. A real production candidate has not
+been released by this implementation; missing production Provider and Resend evidence remains
+fail-closed.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

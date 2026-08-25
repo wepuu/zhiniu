@@ -186,20 +186,16 @@ class Settings(BaseSettings):
             not self.smtp_host or not self.email_from_address
         ):
             raise ValueError("production_email_configuration_incomplete")
-        if self.email_delivery_mode == "resend" and (
-            not self.resend_api_key
-            or not self.resend_from_email
-            or not self.resend_sending_domain
-            or not self.resend_webhook_secret
-        ):
-            raise ValueError("production_resend_configuration_incomplete")
+        # Resend credentials may live only in the encrypted managed-provider vault.
+        # ProviderConfigurationService validates the exact active revision at the
+        # release gate, so this settings-only check must not require env secrets.
         if self.screen_parser_enabled and (
             len(self.screen_parser_hmac_secret) < 32
             or self.screen_parser_hmac_secret == "development-only-change-me"
         ):
             raise ValueError("production_screen_parser_secret_is_unsafe")
         if self.ai_explanation_enabled:
-            if not self.llm_enabled or not self.ai_explanation_models or not self.deepseek_api_key:
+            if not self.llm_enabled or not self.ai_explanation_models:
                 raise ValueError("production_ai_explanation_configuration_incomplete")
             if any(model != "deepseek/deepseek-v4-flash" for model in self.ai_explanation_models):
                 raise ValueError("production_ai_explanation_model_not_approved")

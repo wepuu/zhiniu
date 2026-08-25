@@ -6545,6 +6545,390 @@
         }
       }
     },
+    "/api/v1/admin/releases": {
+      "get": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "List Candidates",
+        "operationId": "list_candidates_api_v1_admin_releases_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseCandidateList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "Create Candidate",
+        "operationId": "create_candidate_api_v1_admin_releases_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductionReleaseCandidateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseCandidate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{candidate_id}": {
+      "get": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "Get Candidate",
+        "operationId": "get_candidate_api_v1_admin_releases__candidate_id__get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseCandidate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{candidate_id}/gates": {
+      "post": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "Evaluate Gate",
+        "operationId": "evaluate_gate_api_v1_admin_releases__candidate_id__gates_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductionReleaseGateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseGateRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{candidate_id}/approvals": {
+      "post": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "Create Approval",
+        "operationId": "create_approval_api_v1_admin_releases__candidate_id__approvals_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductionReleaseApprovalCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseCandidate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{candidate_id}/deployment-events": {
+      "post": {
+        "tags": [
+          "production releases"
+        ],
+        "summary": "Record Deployment Event",
+        "operationId": "record_deployment_event_api_v1_admin_releases__candidate_id__deployment_events_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductionDeploymentEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReleaseCandidate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/automation/policies": {
       "get": {
         "tags": [
@@ -14548,6 +14932,593 @@
           "status"
         ],
         "title": "PeerUniverseResponse"
+      },
+      "ProductionDeploymentEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "deployed",
+              "released",
+              "failed",
+              "rolled_back"
+            ],
+            "title": "Event Type"
+          },
+          "deployment_ref": {
+            "type": "string",
+            "title": "Deployment Ref"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "recorded_by_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Recorded By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "event_type",
+          "deployment_ref",
+          "recorded_by_user_id",
+          "created_at"
+        ],
+        "title": "ProductionDeploymentEvent"
+      },
+      "ProductionDeploymentEventCreate": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "deployed",
+              "released",
+              "failed",
+              "rolled_back"
+            ],
+            "title": "Event Type"
+          },
+          "deployment_ref": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Deployment Ref"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_type",
+          "deployment_ref"
+        ],
+        "title": "ProductionDeploymentEventCreate"
+      },
+      "ProductionReleaseApproval": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "approval_role": {
+            "type": "string",
+            "enum": [
+              "engineering",
+              "data_compliance",
+              "product_operations"
+            ],
+            "title": "Approval Role"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "actor_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Actor User Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "approval_role",
+          "decision",
+          "actor_user_id",
+          "created_at"
+        ],
+        "title": "ProductionReleaseApproval"
+      },
+      "ProductionReleaseApprovalCreate": {
+        "properties": {
+          "approval_role": {
+            "type": "string",
+            "enum": [
+              "engineering",
+              "data_compliance",
+              "product_operations"
+            ],
+            "title": "Approval Role"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "approval_role",
+          "decision"
+        ],
+        "title": "ProductionReleaseApprovalCreate"
+      },
+      "ProductionReleaseCandidate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "target_environment": {
+            "type": "string",
+            "const": "production",
+            "title": "Target Environment"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "blocked",
+              "ready_closed",
+              "deployed_observing",
+              "ready_invites",
+              "released",
+              "rolled_back",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "commit_sha": {
+            "type": "string",
+            "title": "Commit Sha"
+          },
+          "migration_head": {
+            "type": "string",
+            "title": "Migration Head"
+          },
+          "api_image_digest": {
+            "type": "string",
+            "title": "Api Image Digest"
+          },
+          "web_image_digest": {
+            "type": "string",
+            "title": "Web Image Digest"
+          },
+          "configuration_fingerprint": {
+            "type": "string",
+            "title": "Configuration Fingerprint"
+          },
+          "sbom_sha256": {
+            "type": "string",
+            "title": "Sbom Sha256"
+          },
+          "backup_sha256": {
+            "type": "string",
+            "title": "Backup Sha256"
+          },
+          "restore_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Restore Verified At"
+          },
+          "quality_gate_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Quality Gate Status"
+          },
+          "e2e_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "E2E Status"
+          },
+          "security_scan_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Security Scan Status"
+          },
+          "created_by_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Created By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/ProductionReleaseApproval"
+            },
+            "type": "array",
+            "title": "Approvals"
+          },
+          "latest_gates": {
+            "items": {
+              "$ref": "#/components/schemas/ProductionReleaseGateRun"
+            },
+            "type": "array",
+            "title": "Latest Gates"
+          },
+          "deployment_events": {
+            "items": {
+              "$ref": "#/components/schemas/ProductionDeploymentEvent"
+            },
+            "type": "array",
+            "title": "Deployment Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "target_environment",
+          "status",
+          "commit_sha",
+          "migration_head",
+          "api_image_digest",
+          "web_image_digest",
+          "configuration_fingerprint",
+          "sbom_sha256",
+          "backup_sha256",
+          "restore_verified_at",
+          "quality_gate_status",
+          "e2e_status",
+          "security_scan_status",
+          "created_by_user_id",
+          "created_at"
+        ],
+        "title": "ProductionReleaseCandidate"
+      },
+      "ProductionReleaseCandidateCreate": {
+        "properties": {
+          "commit_sha": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 40,
+            "title": "Commit Sha"
+          },
+          "migration_head": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Migration Head"
+          },
+          "api_image_digest": {
+            "type": "string",
+            "maxLength": 71,
+            "minLength": 71,
+            "title": "Api Image Digest"
+          },
+          "web_image_digest": {
+            "type": "string",
+            "maxLength": 71,
+            "minLength": 71,
+            "title": "Web Image Digest"
+          },
+          "configuration_fingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Configuration Fingerprint"
+          },
+          "sbom_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Sbom Sha256"
+          },
+          "backup_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Backup Sha256"
+          },
+          "restore_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Restore Verified At"
+          },
+          "quality_gate_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Quality Gate Status"
+          },
+          "e2e_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "E2E Status"
+          },
+          "security_scan_status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Security Scan Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commit_sha",
+          "migration_head",
+          "api_image_digest",
+          "web_image_digest",
+          "configuration_fingerprint",
+          "sbom_sha256",
+          "backup_sha256",
+          "restore_verified_at",
+          "quality_gate_status",
+          "e2e_status",
+          "security_scan_status"
+        ],
+        "title": "ProductionReleaseCandidateCreate"
+      },
+      "ProductionReleaseCandidateList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductionReleaseCandidate"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProductionReleaseCandidateList"
+      },
+      "ProductionReleaseGateItem": {
+        "properties": {
+          "check_key": {
+            "type": "string",
+            "title": "Check Key"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "mandatory": {
+            "type": "boolean",
+            "title": "Mandatory"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence"
+          },
+          "evidence_fingerprint": {
+            "type": "string",
+            "title": "Evidence Fingerprint"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "check_key",
+          "category",
+          "mandatory",
+          "status",
+          "evidence_fingerprint",
+          "checked_at"
+        ],
+        "title": "ProductionReleaseGateItem"
+      },
+      "ProductionReleaseGateRequest": {
+        "properties": {
+          "gate_type": {
+            "type": "string",
+            "enum": [
+              "closed_deployment",
+              "invite_activation"
+            ],
+            "title": "Gate Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gate_type"
+        ],
+        "title": "ProductionReleaseGateRequest"
+      },
+      "ProductionReleaseGateRun": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "gate_type": {
+            "type": "string",
+            "enum": [
+              "closed_deployment",
+              "invite_activation"
+            ],
+            "title": "Gate Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "rule_set_version": {
+            "type": "string",
+            "title": "Rule Set Version"
+          },
+          "result_fingerprint": {
+            "type": "string",
+            "title": "Result Fingerprint"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductionReleaseGateItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "gate_type",
+          "status",
+          "rule_set_version",
+          "result_fingerprint",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "ProductionReleaseGateRun"
       },
       "ProviderAcceptanceItem": {
         "properties": {

@@ -23,6 +23,7 @@ import {
   Users,
   UserRoundPlus,
   Workflow,
+  Rocket,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -31,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
 import { ProviderAcceptancePanel } from "@/components/provider-acceptance-panel";
 import { BetaCohortPanel } from "@/components/beta-cohort-panel";
+import { ProductionReleasePanel } from "@/components/production-release-panel";
 import {
   providerDisplayName,
   translateEnum,
@@ -45,6 +47,7 @@ type View =
   | "feedback"
   | "beta"
   | "providers"
+  | "releases"
   | "audit";
 
 const views = [
@@ -54,6 +57,7 @@ const views = [
   { id: "feedback" as const, label: "反馈队列", icon: MessageSquareText },
   { id: "beta" as const, label: "邀请内测", icon: UserRoundPlus },
   { id: "providers" as const, label: "服务商", icon: ServerCog },
+  { id: "releases" as const, label: "生产发布", icon: Rocket },
   { id: "audit" as const, label: "审计记录", icon: ClipboardList },
 ];
 
@@ -227,6 +231,13 @@ export function AdminWorkspace() {
           {view === "beta" && <BetaCohortPanel elevated={operator.elevated} />}
           {view === "providers" && (
             <ProvidersPanel
+              capabilities={operator.capabilities}
+              elevated={operator.elevated}
+            />
+          )}
+          {view === "releases" && (
+            <ProductionReleasePanel
+              role={operator.role}
               capabilities={operator.capabilities}
               elevated={operator.elevated}
             />

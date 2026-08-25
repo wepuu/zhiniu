@@ -1766,6 +1766,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Candidates */
+        get: operations["list_candidates_api_v1_admin_releases_get"];
+        put?: never;
+        /** Create Candidate */
+        post: operations["create_candidate_api_v1_admin_releases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/releases/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate */
+        get: operations["get_candidate_api_v1_admin_releases__candidate_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/releases/{candidate_id}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate Gate */
+        post: operations["evaluate_gate_api_v1_admin_releases__candidate_id__gates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/releases/{candidate_id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Approval */
+        post: operations["create_approval_api_v1_admin_releases__candidate_id__approvals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/releases/{candidate_id}/deployment-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Deployment Event */
+        post: operations["record_deployment_event_api_v1_admin_releases__candidate_id__deployment_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/automation/policies": {
         parameters: {
             query?: never;
@@ -4758,6 +4844,271 @@ export interface components {
             sample_size: number;
             /** Stocks */
             stocks?: components["schemas"]["PeerStockResponse"][];
+        };
+        /** ProductionDeploymentEvent */
+        ProductionDeploymentEvent: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "deployed" | "released" | "failed" | "rolled_back";
+            /** Deployment Ref */
+            deployment_ref: string;
+            /** Reason Code */
+            reason_code?: string | null;
+            /**
+             * Recorded By User Id
+             * Format: uuid
+             */
+            recorded_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ProductionDeploymentEventCreate */
+        ProductionDeploymentEventCreate: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "deployed" | "released" | "failed" | "rolled_back";
+            /** Deployment Ref */
+            deployment_ref: string;
+            /** Reason Code */
+            reason_code?: string | null;
+        };
+        /** ProductionReleaseApproval */
+        ProductionReleaseApproval: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Approval Role
+             * @enum {string}
+             */
+            approval_role: "engineering" | "data_compliance" | "product_operations";
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ProductionReleaseApprovalCreate */
+        ProductionReleaseApprovalCreate: {
+            /**
+             * Approval Role
+             * @enum {string}
+             */
+            approval_role: "engineering" | "data_compliance" | "product_operations";
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+            /** Note */
+            note?: string | null;
+        };
+        /** ProductionReleaseCandidate */
+        ProductionReleaseCandidate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Target Environment
+             * @constant
+             */
+            target_environment: "production";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "blocked" | "ready_closed" | "deployed_observing" | "ready_invites" | "released" | "rolled_back" | "rejected";
+            /** Commit Sha */
+            commit_sha: string;
+            /** Migration Head */
+            migration_head: string;
+            /** Api Image Digest */
+            api_image_digest: string;
+            /** Web Image Digest */
+            web_image_digest: string;
+            /** Configuration Fingerprint */
+            configuration_fingerprint: string;
+            /** Sbom Sha256 */
+            sbom_sha256: string;
+            /** Backup Sha256 */
+            backup_sha256: string;
+            /**
+             * Restore Verified At
+             * Format: date-time
+             */
+            restore_verified_at: string;
+            /**
+             * Quality Gate Status
+             * @enum {string}
+             */
+            quality_gate_status: "passed" | "failed";
+            /**
+             * E2E Status
+             * @enum {string}
+             */
+            e2e_status: "passed" | "failed";
+            /**
+             * Security Scan Status
+             * @enum {string}
+             */
+            security_scan_status: "passed" | "failed";
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Approvals */
+            approvals?: components["schemas"]["ProductionReleaseApproval"][];
+            /** Latest Gates */
+            latest_gates?: components["schemas"]["ProductionReleaseGateRun"][];
+            /** Deployment Events */
+            deployment_events?: components["schemas"]["ProductionDeploymentEvent"][];
+        };
+        /** ProductionReleaseCandidateCreate */
+        ProductionReleaseCandidateCreate: {
+            /** Commit Sha */
+            commit_sha: string;
+            /** Migration Head */
+            migration_head: string;
+            /** Api Image Digest */
+            api_image_digest: string;
+            /** Web Image Digest */
+            web_image_digest: string;
+            /** Configuration Fingerprint */
+            configuration_fingerprint: string;
+            /** Sbom Sha256 */
+            sbom_sha256: string;
+            /** Backup Sha256 */
+            backup_sha256: string;
+            /**
+             * Restore Verified At
+             * Format: date-time
+             */
+            restore_verified_at: string;
+            /**
+             * Quality Gate Status
+             * @enum {string}
+             */
+            quality_gate_status: "passed" | "failed";
+            /**
+             * E2E Status
+             * @enum {string}
+             */
+            e2e_status: "passed" | "failed";
+            /**
+             * Security Scan Status
+             * @enum {string}
+             */
+            security_scan_status: "passed" | "failed";
+        };
+        /** ProductionReleaseCandidateList */
+        ProductionReleaseCandidateList: {
+            /** Items */
+            items: components["schemas"]["ProductionReleaseCandidate"][];
+        };
+        /** ProductionReleaseGateItem */
+        ProductionReleaseGateItem: {
+            /** Check Key */
+            check_key: string;
+            /** Category */
+            category: string;
+            /** Mandatory */
+            mandatory: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "failed" | "not_applicable";
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
+            /** Evidence Fingerprint */
+            evidence_fingerprint: string;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Expires At */
+            expires_at?: string | null;
+        };
+        /** ProductionReleaseGateRequest */
+        ProductionReleaseGateRequest: {
+            /**
+             * Gate Type
+             * @enum {string}
+             */
+            gate_type: "closed_deployment" | "invite_activation";
+        };
+        /** ProductionReleaseGateRun */
+        ProductionReleaseGateRun: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Gate Type
+             * @enum {string}
+             */
+            gate_type: "closed_deployment" | "invite_activation";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "blocked";
+            /** Rule Set Version */
+            rule_set_version: string;
+            /** Result Fingerprint */
+            result_fingerprint: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+            /** Items */
+            items?: components["schemas"]["ProductionReleaseGateItem"][];
         };
         /** ProviderAcceptanceItem */
         ProviderAcceptanceItem: {
@@ -9710,6 +10061,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderAcceptanceRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_candidates_api_v1_admin_releases_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseCandidateList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_candidate_api_v1_admin_releases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductionReleaseCandidateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseCandidate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_candidate_api_v1_admin_releases__candidate_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseCandidate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_gate_api_v1_admin_releases__candidate_id__gates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductionReleaseGateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseGateRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_approval_api_v1_admin_releases__candidate_id__approvals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductionReleaseApprovalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseCandidate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_deployment_event_api_v1_admin_releases__candidate_id__deployment_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductionDeploymentEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReleaseCandidate"];
                 };
             };
             /** @description Validation Error */

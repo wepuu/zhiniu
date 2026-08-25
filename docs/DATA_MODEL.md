@@ -321,3 +321,16 @@ displayed as unavailable or not comparable and is never normalized by the fronte
 Migration `20260825_0025` adds this projection without duplicating stock or research data.
 Migration head `20260825_0026` adds feedback severity, assignment, due time and bounded resolution
 metadata so operations can close the learning loop without changing the user's original message.
+
+## Phase 22 production release evidence
+
+- `production_release_candidates` binds one production candidate to immutable commit, migration,
+  API/Web image digest, configuration fingerprint, SBOM, backup/restore and quality evidence.
+- `production_release_gate_runs` and `production_release_gate_items` retain every evaluation and
+  bounded per-check evidence fingerprint. A later passing run never overwrites an earlier failure.
+- `production_release_approvals` enforces one decision per duty and one duty per actor for a
+  candidate. Candidate creators cannot approve their own candidate at the service boundary.
+- `production_deployment_events` stores immutable pipeline references for deployed, released,
+  failed and rolled-back transitions. It stores no cloud credential or deployment payload.
+
+Migration `20260826_0027` adds these records without changing public research contracts.

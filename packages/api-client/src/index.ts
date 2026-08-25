@@ -128,6 +128,18 @@ export type ProviderAcceptanceRun =
   components["schemas"]["ProviderAcceptanceRun"];
 export type ProviderAcceptanceRunList =
   components["schemas"]["ProviderAcceptanceRunList"];
+export type ProductionReleaseCandidate =
+  components["schemas"]["ProductionReleaseCandidate"];
+export type ProductionReleaseCandidateList =
+  components["schemas"]["ProductionReleaseCandidateList"];
+export type ProductionReleaseCandidateCreate =
+  components["schemas"]["ProductionReleaseCandidateCreate"];
+export type ProductionReleaseGateRun =
+  components["schemas"]["ProductionReleaseGateRun"];
+export type ProductionReleaseApprovalCreate =
+  components["schemas"]["ProductionReleaseApprovalCreate"];
+export type ProductionDeploymentEventCreate =
+  components["schemas"]["ProductionDeploymentEventCreate"];
 export type ProviderConfigurationListResponse =
   components["schemas"]["ProviderConfigurationListResponse"];
 export type ProviderConfigurationView =
@@ -826,6 +838,53 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       return request<ProviderAcceptanceRun>(
         "/api/v1/admin/provider-acceptance/runs",
         { method: "POST" },
+      );
+    },
+    getProductionReleases(limit = 20) {
+      return request<ProductionReleaseCandidateList>(
+        `/api/v1/admin/releases?limit=${limit}`,
+      );
+    },
+    getProductionRelease(candidateId: string) {
+      return request<ProductionReleaseCandidate>(
+        `/api/v1/admin/releases/${encodeURIComponent(candidateId)}`,
+      );
+    },
+    createProductionRelease(payload: ProductionReleaseCandidateCreate) {
+      return jsonRequest<ProductionReleaseCandidate>(
+        "/api/v1/admin/releases",
+        "POST",
+        payload,
+      );
+    },
+    evaluateProductionReleaseGate(
+      candidateId: string,
+      gateType: "closed_deployment" | "invite_activation",
+    ) {
+      return jsonRequest<ProductionReleaseGateRun>(
+        `/api/v1/admin/releases/${encodeURIComponent(candidateId)}/gates`,
+        "POST",
+        { gate_type: gateType },
+      );
+    },
+    approveProductionRelease(
+      candidateId: string,
+      payload: ProductionReleaseApprovalCreate,
+    ) {
+      return jsonRequest<ProductionReleaseCandidate>(
+        `/api/v1/admin/releases/${encodeURIComponent(candidateId)}/approvals`,
+        "POST",
+        payload,
+      );
+    },
+    recordProductionDeployment(
+      candidateId: string,
+      payload: ProductionDeploymentEventCreate,
+    ) {
+      return jsonRequest<ProductionReleaseCandidate>(
+        `/api/v1/admin/releases/${encodeURIComponent(candidateId)}/deployment-events`,
+        "POST",
+        payload,
       );
     },
     diagnoseProvider(provider: "deepseek" | "resend") {
