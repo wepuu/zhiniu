@@ -176,6 +176,15 @@ does not hold deployment credentials or deploy infrastructure. A real production
 been released by this implementation; missing production Provider and Resend evidence remains
 fail-closed.
 
+## Phase 23 - Hong Kong Staging & GitHub Delivery (implemented, external rollout pending)
+
+The deployment layer now supports protected-PR CI, immutable linux/amd64 images in GHCR, SBOM and
+vulnerability gates, serialized main-branch delivery to a dedicated Ubuntu host, BT Nginx over
+loopback-only application ports, bounded container resources, encrypted off-host PostgreSQL backup,
+one-shot migrations, health-based image rollback and exact release metadata. No public API or
+database contract changed. DNS, GitHub repository settings, VPS secrets, Resend verification and the
+first real deployment remain external operator actions; staging is not a Phase 22 production event.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

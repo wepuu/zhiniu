@@ -1,0 +1,184 @@
+name: Build and deploy staging
+
+on:
+  workflow_run:
+    workflows: ["Continuous integration"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: zhaoniu-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-scan-deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: staging
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      API_TAG: ghcr.io/wepuu/zhiniu-api:sha-${{ github.event.workflow_run.head_sha }}
+      WEB_TAG: ghcr.io/wepuu/zhiniu-web:sha-${{ github.event.workflow_run.head_sha }}
+      TRIVY_USERNAME: ${{ github.actor }}
+      TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build and push API image
+        id: api
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: infrastructure/docker/api.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.API_TAG }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/wepuu/zhiniu
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push Web image
+        id: web
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: infrastructure/docker/web.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.WEB_TAG }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/wepuu/zhiniu
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Export API vulnerability report
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.API_TAG }}
+          format: json
+          output: api-vulnerabilities.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Export Web vulnerability report
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.WEB_TAG }}
+          format: json
+          output: web-vulnerabilities.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Export API SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.API_TAG }}
+          format: cyclonedx
+          output: api.cdx.json
+
+      - name: Export Web SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.WEB_TAG }}
+          format: cyclonedx
+          output: web.cdx.json
+
+      - name: Record immutable release metadata
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          sha256sum api.cdx.json web.cdx.json > sbom.sha256
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          Path("release-metadata.json").write_text(
+              json.dumps(
+                  {
+                      "commit_sha": os.environ["RELEASE_SHA"],
+                      "api_image": f"ghcr.io/wepuu/zhiniu-api@{os.environ['API_DIGEST']}",
+                      "web_image": f"ghcr.io/wepuu/zhiniu-web@{os.environ['WEB_DIGEST']}",
+                      "environment": "staging",
+                  },
+                  indent=2,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-release-${{ env.RELEASE_SHA }}
+          path: |
+            api.cdx.json
+            web.cdx.json
+            api-vulnerabilities.json
+            web-vulnerabilities.json
+            sbom.sha256
+            release-metadata.json
+          retention-days: 30
+
+      - name: Enforce API vulnerability gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.API_TAG }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Enforce Web vulnerability gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.WEB_TAG }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Deploy exact digests over SSH
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          STAGING_USER: ${{ secrets.STAGING_SSH_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          [[ "$STAGING_PORT" =~ ^[0-9]+$ ]]
+          install -m 0700 -d "$HOME/.ssh"
+          printf '%s\n' "$STAGING_SSH_KEY" > "$HOME/.ssh/staging_key"
+          chmod 0600 "$HOME/.ssh/staging_key"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          ssh -i "$HOME/.ssh/staging_key" -p "$STAGING_PORT" \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$STAGING_USER@$STAGING_HOST" \
+            "sudo /usr/local/sbin/zhaoniu-deploy '$RELEASE_SHA' 'ghcr.io/wepuu/zhiniu-api@$API_DIGEST' 'ghcr.io/wepuu/zhiniu-web@$WEB_DIGEST'"

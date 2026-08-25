@@ -1,6 +1,12 @@
 .next
 node_modules
 .local
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+playwright-report
+test-results
 pnpm-lock.yaml
 uv.lock
 references

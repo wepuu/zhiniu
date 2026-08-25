@@ -1,0 +1,11 @@
+[Unit]
+Description=Run ZhiNiu backup daily at 02:00 Asia/Shanghai
+
+[Timer]
+OnCalendar=*-*-* 18:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=zhaoniu-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,4 +1,15 @@
-name: zhaoniu-production
+name: ${COMPOSE_PROJECT_NAME:-zhaoniu-staging}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api-runtime: &api-runtime
+  image: ${API_IMAGE:?set API_IMAGE to an immutable ghcr.io/wepuu/zhiniu-api digest}
+  env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+  logging: *default-logging
 
 services:
   postgres:
@@ -8,8 +19,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=30
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    mem_limit: 1280m
+    cpus: 1.0
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -19,9 +43,21 @@ services:
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
     volumes:
       - redis_data:/data
+    mem_limit: 384m
+    cpus: 0.25
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -29,10 +65,8 @@ services:
       retries: 10
 
   migrate:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/api.Dockerfile
-    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    <<: *api-runtime
+    profiles: ["tools"]
     command:
       [
         "alembic",
@@ -47,17 +81,17 @@ services:
     restart: "no"
 
   api:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/api.Dockerfile
+    <<: *api-runtime
     restart: unless-stopped
-    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
-    expose: ["8000"]
+    mem_limit: 768m
+    cpus: 0.75
     healthcheck:
       test:
         [
@@ -71,11 +105,8 @@ services:
       retries: 10
 
   worker:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/api.Dockerfile
+    <<: *api-runtime
     restart: unless-stopped
-    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
     environment:
       ZHAONIU_DISABLE_DB_POOL: "1"
     command:
@@ -88,19 +119,22 @@ services:
         "apps/worker/src",
         "--loglevel",
         "INFO",
+        "--concurrency",
+        "1",
+        "--max-tasks-per-child",
+        "50",
       ]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+    mem_limit: 1536m
+    cpus: 1.0
 
   beat:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/api.Dockerfile
+    <<: *api-runtime
     restart: unless-stopped
-    env_file: ${PRODUCTION_ENV_FILE:-../../.env.production}
     environment:
       ZHAONIU_DISABLE_DB_POOL: "1"
     command:
@@ -117,41 +151,41 @@ services:
         "/tmp/zhaoniu-beat.pid",
       ]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.25
 
   web:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/web.Dockerfile
+    image: ${WEB_IMAGE:?set WEB_IMAGE to an immutable ghcr.io/wepuu/zhiniu-web digest}
     restart: unless-stopped
     environment:
       API_BASE_URL: http://api:8000
-    expose: ["3000"]
+      NODE_OPTIONS: --max-old-space-size=512
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_healthy
-
-  proxy:
-    image: caddy:2.10-alpine
-    restart: unless-stopped
-    environment:
-      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      web:
-        condition: service_started
+    mem_limit: 768m
+    cpus: 0.5
+    logging: *default-logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-zhaoniu_staging_postgres_data}
   redis_data:
-  caddy_data:
-  caddy_config:
+    name: ${REDIS_VOLUME_NAME:-zhaoniu_staging_redis_data}

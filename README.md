@@ -98,6 +98,10 @@ API docs: `http://localhost:8000/docs`
 Liveness: `http://localhost:8000/livez`
 Readiness: `http://localhost:8000/readyz`
 
+The concrete staging deployment uses GitHub Actions -> GHCR -> a dedicated Ubuntu 24.04 VPS, with
+BT Nginx proxying loopback-only Web/API ports. It does not build on the server or run Caddy. See
+`docs/PHASE_23_STAGING_DEPLOYMENT.md` for the fail-closed deployment, backup and rollback runbook.
+
 ## Quality commands
 
 ```text
@@ -183,5 +187,6 @@ Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [company research timeline](docs/COMPANY_RESEARCH_TIMELINE.md),
 [event engine V2](docs/EVENT_ENGINE_V2.md),
 [production release gate](docs/PHASE_22_PRODUCTION_RELEASE_GATE.md),
+[staging deployment](docs/PHASE_23_STAGING_DEPLOYMENT.md),
 [screen query DSL](docs/SCREEN_QUERY_DSL.md), and [Engineering rules](AGENTS.md) before extending
 the system.

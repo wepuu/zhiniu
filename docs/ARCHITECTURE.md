@@ -103,11 +103,13 @@ data-rights workflows and public launch remain deferred.
 
 ## Production runtime
 
-The production Compose topology places Caddy in front of separately built web and API containers,
-runs Alembic as a one-shot dependency, and keeps PostgreSQL and Redis private to the network. `/livez`
-proves the process is responsive; `/readyz` independently reports PostgreSQL, migration-head and
-Redis state. PostgreSQL or schema mismatch blocks readiness. Redis degradation is visible but does
-not misrepresent the durable database as unavailable.
+The concrete Phase 23 runtime uses BT-managed host Nginx in front of loopback-only Web and API
+container ports. GitHub-hosted runners build and scan immutable GHCR images; the server never builds
+application code. Compose runs Alembic once before updating API, Worker, Beat and Web, while
+PostgreSQL and Redis remain private to the Docker network. `/livez` proves the process is responsive;
+restricted `/readyz` independently reports PostgreSQL, migration-head and Redis state. PostgreSQL or
+schema mismatch blocks readiness. Redis degradation is visible but does not misrepresent the durable
+database as unavailable.
 
 ## Module boundaries
 
