@@ -8,6 +8,7 @@ const distDir = process.env.ZHAONIU_NEXT_DIST_DIR ?? ".next";
 const nextConfig: NextConfig = {
   distDir,
   poweredByHeader: false,
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     return [
       {

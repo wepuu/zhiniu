@@ -19,6 +19,7 @@ import { FormEvent, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
+import { StockSearchDialog } from "@/components/stock-search-dialog";
 import { Card } from "@/components/ui/card";
 
 const api = createZhaoniuClient();
@@ -26,7 +27,7 @@ const api = createZhaoniuClient();
 export default function WatchlistPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const watchlists = useQuery({
     queryKey: ["watchlists"],
@@ -53,7 +54,6 @@ export default function WatchlistPage() {
       value: string;
     }) => api.addWatchlistItem(watchlistId, value.toUpperCase()),
     onSuccess: async () => {
-      setSymbol("");
       setError(null);
       await queryClient.invalidateQueries({ queryKey: ["watchlists"] });
     },
@@ -83,14 +83,6 @@ export default function WatchlistPage() {
     event.preventDefault();
     const trimmed = name.trim();
     if (trimmed) createList.mutate(trimmed);
-  }
-
-  function submitSymbol(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!defaultList) return;
-    const trimmed = symbol.trim().toUpperCase();
-    if (trimmed)
-      addItem.mutate({ watchlistId: defaultList.id, value: trimmed });
   }
 
   return (
@@ -154,22 +146,15 @@ export default function WatchlistPage() {
                     {watchlists.data.length}/5 个分组，{totalItems}/30 只股票
                   </p>
                 </div>
-                <form className="flex gap-2" onSubmit={submitSymbol}>
-                  <input
-                    className="border-ink/15 focus:border-blue min-h-10 rounded-xl border bg-white px-3 text-sm outline-none"
-                    placeholder="600519"
-                    value={symbol}
-                    onChange={(event) => setSymbol(event.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    className="bg-blue inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium text-white disabled:opacity-50"
-                    disabled={!defaultList || addItem.isPending}
-                  >
-                    <Plus className="size-4" />
-                    添加
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  className="bg-blue inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium text-white disabled:opacity-50"
+                  disabled={!defaultList || addItem.isPending}
+                >
+                  <Plus className="size-4" />
+                  搜索并添加股票
+                </button>
               </div>
               {error && (
                 <p className="border-risk/20 bg-risk/5 text-risk mt-4 rounded-xl border px-3 py-2 text-sm">
@@ -219,6 +204,20 @@ export default function WatchlistPage() {
           )}
         </>
       )}
+      <StockSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        title="添加到默认自选分组"
+        description="按股票代码或中文名称查找，选择后直接添加"
+        onSelect={(stock) => {
+          if (defaultList) {
+            addItem.mutate({
+              watchlistId: defaultList.id,
+              value: stock.canonical_symbol,
+            });
+          }
+        }}
+      />
     </AppShell>
   );
 }

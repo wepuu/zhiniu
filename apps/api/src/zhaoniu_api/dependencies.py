@@ -38,6 +38,7 @@ from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.ports.repositories import DailyBarRepository, StockRepository, WatchlistRepository
+from zhaoniu_api.provider_acceptance.service import ProviderAcceptanceService
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.service import DeterministicResearchService
 from zhaoniu_api.research_feed.service import ResearchFeedService
@@ -178,6 +179,13 @@ def get_provider_configuration_service(
     return ProviderConfigurationService(session, settings)
 
 
+def get_provider_acceptance_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ProviderAcceptanceService:
+    return ProviderAcceptanceService(session, settings)
+
+
 def get_automation_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AutomationService:
@@ -256,6 +264,9 @@ CoverageServiceDependency = Annotated[ResearchCoverageService, Depends(get_cover
 OperatorServiceDependency = Annotated[OperatorService, Depends(get_operator_service)]
 ProviderConfigurationServiceDependency = Annotated[
     ProviderConfigurationService, Depends(get_provider_configuration_service)
+]
+ProviderAcceptanceServiceDependency = Annotated[
+    ProviderAcceptanceService, Depends(get_provider_acceptance_service)
 ]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
 ComparisonServiceDependency = Annotated[ComparisonService, Depends(get_comparison_service)]

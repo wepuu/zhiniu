@@ -38,6 +38,30 @@ def _filter_hash(source_kind: str | None, minimum_attention: str | None) -> str:
     return sha256(f"{source_kind or 'all'}|{minimum_attention or 'all'}".encode()).hexdigest()
 
 
+def _latest_signal_ids(*conditions: Any) -> Any:
+    ranked = (
+        select(
+            ResearchSignalRecord.id.label("signal_id"),
+            func.row_number()
+            .over(
+                partition_by=(
+                    ResearchSignalRecord.symbol,
+                    ResearchSignalRecord.source_kind,
+                    ResearchSignalRecord.dedup_group_key,
+                ),
+                order_by=(
+                    ResearchSignalRecord.known_at.desc(),
+                    ResearchSignalRecord.id.desc(),
+                ),
+            )
+            .label("dedup_rank"),
+        )
+        .where(*conditions)
+        .subquery()
+    )
+    return select(ranked.c.signal_id).where(ranked.c.dedup_rank == 1)
+
+
 def _encode_cursor(cutoff: datetime, row: ResearchSignalRecord, filter_hash: str) -> str:
     payload = {
         "query_cutoff": cutoff.isoformat(),
@@ -94,12 +118,15 @@ class CompanyTimelineQueryService:
             except (KeyError, ValueError) as exc:
                 raise ValueError("invalid_cursor") from exc
 
-        conditions: list[Any] = [
+        base_conditions: list[Any] = [
             ResearchSignalRecord.symbol == canonical,
             ResearchSignalRecord.known_at <= cutoff,
         ]
         if source_kind:
-            conditions.append(ResearchSignalRecord.source_kind == source_kind)
+            base_conditions.append(ResearchSignalRecord.source_kind == source_kind)
+        conditions: list[Any] = [
+            ResearchSignalRecord.id.in_(_latest_signal_ids(*base_conditions))
+        ]
         if minimum_attention:
             rank = ATTENTION_RANK[minimum_attention]
             conditions.append(
@@ -186,6 +213,10 @@ class CompanyTimelineQueryService:
     async def _summary(
         self, symbol: str, cutoff: datetime, upcoming_count: int
     ) -> CompanyTimelineSummary:
+        latest_ids = _latest_signal_ids(
+            ResearchSignalRecord.symbol == symbol,
+            ResearchSignalRecord.known_at <= cutoff,
+        )
         row = (
             await self._session.execute(
                 select(
@@ -199,8 +230,7 @@ class CompanyTimelineQueryService:
                         case((ResearchSignalRecord.attention_level == "important", 1), else_=0)
                     ),
                 ).where(
-                    ResearchSignalRecord.symbol == symbol,
-                    ResearchSignalRecord.known_at <= cutoff,
+                    ResearchSignalRecord.id.in_(latest_ids),
                     ResearchSignalRecord.known_at >= cutoff - timedelta(days=30),
                 )
             )

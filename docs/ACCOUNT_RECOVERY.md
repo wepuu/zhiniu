@@ -10,4 +10,5 @@ known and unknown addresses. Rate limiting is Redis-backed and fail-closed in pr
 database rows and API errors must not contain plaintext tokens, message bodies or SMTP credentials.
 
 Development may set `EMAIL_DELIVERY_MODE=disabled`; delivery attempts are then audited as disabled.
-A controlled Beta release requires a complete SMTP configuration and a public HTTPS base URL.
+A controlled Beta release requires a complete, diagnosed transactional-email configuration
+(currently SMTP or Resend) and a public HTTPS base URL.

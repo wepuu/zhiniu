@@ -242,6 +242,10 @@ class ProviderDiagnosticRunRecord(Base):
             "status IN ('disabled', 'unknown', 'healthy', 'degraded', 'unavailable')",
             name="ck_provider_diagnostic_status",
         ),
+        CheckConstraint(
+            "target IN ('active', 'draft')",
+            name="ck_provider_diagnostic_target",
+        ),
         Index("ix_provider_diagnostic_latest", "provider", "capability", "checked_at"),
     )
 
@@ -504,6 +508,82 @@ class DataSyncRunRecord(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ProviderAcceptanceRunRecord(Base):
+    __tablename__ = "provider_acceptance_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('passed', 'failed', 'blocked')",
+            name="ck_provider_acceptance_run_status",
+        ),
+        Index("ix_provider_acceptance_latest", "environment", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    environment: Mapped[str] = mapped_column(String(32), nullable=False)
+    profile_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    usage_scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    knowledge_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    mandatory_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    succeeded_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    failed_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    blocked_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    unsupported_items: Mapped[int] = mapped_column(default=0, nullable=False)
+    beta_eligible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProviderAcceptanceItemRecord(Base):
+    __tablename__ = "provider_acceptance_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "provider", "dataset", "symbol", "scenario",
+            name="uq_provider_acceptance_item",
+        ),
+        CheckConstraint(
+            "requirement IN ('mandatory', 'conditional', 'optional')",
+            name="ck_provider_acceptance_item_requirement",
+        ),
+        CheckConstraint(
+            "status IN ('passed', 'failed', 'blocked', 'unsupported')",
+            name="ck_provider_acceptance_item_status",
+        ),
+        Index("ix_provider_acceptance_item_run_status", "run_id", "status", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("provider_acceptance_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(48), nullable=False)
+    dataset: Mapped[str] = mapped_column(String(64), nullable=False)
+    symbol: Mapped[str | None] = mapped_column(
+        String(16), ForeignKey("stocks.symbol", ondelete="RESTRICT")
+    )
+    scenario: Mapped[str] = mapped_column(String(64), nullable=False)
+    requirement: Mapped[str] = mapped_column(String(24), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(120))
+    observed_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    latest_artifact_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    detail_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    evidence_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class FinancialReportRevisionRecord(Base):
@@ -1113,6 +1193,12 @@ class AIResearchOutputRecord(Base):
         UniqueConstraint("run_id", name="uq_ai_research_output_run"),
         UniqueConstraint("idempotency_key", name="uq_ai_research_output_idempotency"),
         Index("ix_ai_research_output_symbol_generated", "symbol", "generated_at"),
+        Index(
+            "ix_ai_research_output_explanation",
+            "symbol",
+            "question_key",
+            "generated_at",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -1186,7 +1272,10 @@ class AIExplanationRequestRecord(Base):
 
 class AIExplanationDailyUsageRecord(Base):
     __tablename__ = "ai_explanation_daily_usage"
-    __table_args__ = (UniqueConstraint("user_id", "quota_day", name="uq_ai_explanation_usage_day"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "quota_day", name="uq_ai_explanation_usage_day"),
+        CheckConstraint("used_count >= 0", name="ck_ai_explanation_usage_nonnegative"),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(

@@ -14,6 +14,7 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter @zhaoniu/web typecheck",
     "test": "pnpm --filter @zhaoniu/web test",
+    "e2e": "pnpm --filter @zhaoniu/web e2e",
     "api:generate": "pnpm --filter @zhaoniu/api-client generate",
     "api:check": "pnpm --filter @zhaoniu/api-client generate:check"
   },

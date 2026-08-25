@@ -1,6 +1,7 @@
 # Zhaoniu Architecture
 
-Zhaoniu is a browser-based, multi-user A-share research SaaS. Phase 16 remains a modular monolith:
+Zhaoniu is a browser-based, multi-user A-share research SaaS. The Phase 18 implementation remains
+a modular monolith:
 one Next.js web app, one FastAPI app, Celery workers, PostgreSQL/pgvector, and Redis. It optimizes
 for traceable research, not trading or investment advice.
 
@@ -70,13 +71,17 @@ Celery entry points call the same application services as CLI commands. Statemen
 syncs use deterministic idempotency keys, bounded retries, queryable sync runs and batched
 PostgreSQL Upserts. Research snapshot jobs deduplicate by symbol, data version, metric version,
 rule-set version and template version; stale build leases may be reclaimed after 30 minutes.
-Celery Beat is intentionally deferred.
+Celery Beat has exactly one fixed `automation.tick` entry. PostgreSQL policies, immutable
+revisions, runs, steps and leases own business state; the Beat timestamp never replaces source
+`known_at`.
 
 AI jobs use the same application service from CLI and Celery. An atomic idempotency key covers the
 snapshot, canonical context, prompt, schema and ordered model route. Each configured model is
 attempted at most once, calls have bounded timeouts, and only a fully schema/citation/safety-valid
 result is persisted. An expired 30-minute lease may be reclaimed; a failed run requires explicit
-retry. API routes remain read-only and cannot trigger generation.
+retry. Stock-health read routes do not trigger generation. Phase 17 explanation requests and
+Phase 18 comparison requests are authenticated, quota- or entitlement-gated wrappers that enqueue
+bounded work and deduplicate shared immutable outputs.
 
 Peer benchmark jobs use the Phase 6 application service. They resolve the deterministic industry
 universe first, then select already materialized metric points or valuation observations, calculate
@@ -88,7 +93,8 @@ results only; the frontend never calculates peer statistics.
 Shared: stocks, bars, financial reports, valuation observations, deterministic metrics, events,
 evidence, public research snapshots, industry classifications and peer benchmark research.
 
-User-owned: users, sessions, watchlists/items, alerts, preferences, chats, access grants and usage.
+User-owned: users, sessions, watchlists/items, alerts, preferences, access grants, usage,
+AI-explanation requests, comparison requests and saved comparisons.
 Every user-owned record and query carries `user_id`. Phase 8 implements alert preferences and
 deliveries while keeping research signals global. Phase 11 adds invitation registration and
 operator-issued activation without an in-product commerce flow. Phase 12 adds verified account
@@ -130,6 +136,12 @@ not misrepresent the durable database as unavailable.
 - `operations_console`: role capabilities, step-up authorization, bounded operational actions,
   provider diagnostics and immutable audit; it coordinates existing services rather than bypassing
   their domain boundaries.
+- `provider_configuration`: encrypted, revisioned DeepSeek and Resend drafts, exact-version
+  diagnostics, publication and call-time credential resolution without secret read-back.
+- `automation`: the single fixed scheduler policy, frozen-universe runs, ordered steps, leases,
+  resume semantics and operational counters.
+- `comparisons`: user-owned request/saved-definition wrappers over global immutable deterministic
+  pair snapshots and independently gated evidence-grounded explanations.
 - `llm`: provider-neutral structured generation and per-attempt usage audit through LiteLLM SDK.
 
 ## Personalized research projection
@@ -181,3 +193,24 @@ Phase 16 adds a query-only `company_timeline` application module over global `re
 It does not recalculate metrics, classify disclosures, mutate source artifacts, or create a worker.
 Known-time ordering and upcoming effective-time ordering remain separate. Event Thread hydration
 reads immutable event versions in ascending known-time order.
+
+## Managed providers and evidence-grounded requests
+
+DeepSeek and Resend configuration uses draft, diagnostic and publish revisions. Credentials are
+AES-256-GCM encrypted in PostgreSQL using a deployment-injected key ring; secret values are
+write-only and never returned by the API. Published revisions are resolved by API and workers at
+call time, while environment configuration remains a bootstrap source only before publication.
+
+Phase 17 AI explanations accept four fixed server-owned question keys. Phase 18 comparisons build
+deterministic, point-in-time pair snapshots before any optional AI call. Both flows keep user-owned
+request state separate from shared immutable research outputs and preserve existing evidence,
+entitlement and safety gates.
+
+## Provider acceptance boundary
+
+Phase 20 adds a read-and-evaluate `provider_acceptance` application module. It never calls vendor
+SDKs and does not repair data: it evaluates retained canonical records at a fixed knowledge cutoff,
+then writes immutable run/item evidence. The administrator API is cookie-authenticated, CSRF
+protected, capability gated, and requires step-up authentication to start a run. Provider usage
+scope is evaluated separately from legal/data-use approval so a development adapter cannot become
+Beta-eligible through an unrelated global flag.

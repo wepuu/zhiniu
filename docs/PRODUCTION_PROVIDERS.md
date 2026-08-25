@@ -30,6 +30,12 @@ The console diagnostic sends one clearly labelled message to the current verifie
 domain-scoped Sending access key. Delivery acceptance is not proof of inbox placement; use the webhook lifecycle
 for submitted, delivered, delayed, bounced, failed, complained and suppressed states.
 
+Phase 19 non-production acceptance must use a verified test domain and mailbox. Run the desktop
+Playwright account lane with one-time environment values `E2E_INVITE_CODE`, `E2E_ACCOUNT_EMAIL`
+and `E2E_ACCOUNT_PASSWORD`; then supply the received links as `E2E_VERIFICATION_URL` and
+`E2E_RESET_URL` with `E2E_REPLACEMENT_PASSWORD`. These values must never be written to the
+repository or baseline report. A skipped account lane is not evidence of email readiness.
+
 ## DeepSeek through LiteLLM
 
 Stock-health model identifiers remain deployment configuration. The Phase 17 explanation lane is

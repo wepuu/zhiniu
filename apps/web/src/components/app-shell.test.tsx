@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "./app-shell";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/watchlist" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/watchlist",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 afterEach(cleanup);
 
 function renderShell(children: ReactNode) {
@@ -40,5 +43,16 @@ describe("AppShell", () => {
     expect(screen.getAllByRole("link", { current: "page" })).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: "提醒" })).toHaveLength(2);
     expect(document.querySelectorAll('a[href="/research"]')).toHaveLength(0);
+  });
+
+  it("opens the real stock search from the keyboard and mobile entry", () => {
+    renderShell(<span>content</span>);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(
+      screen.getByRole("dialog", { name: "搜索 A 股公司" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "关闭股票搜索" }));
+    fireEvent.click(screen.getByRole("button", { name: "搜索股票" }));
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 });

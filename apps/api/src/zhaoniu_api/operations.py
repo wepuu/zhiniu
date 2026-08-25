@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from zhaoniu_api.config import Settings
-from zhaoniu_api.db import User
+from zhaoniu_api.db import ProviderAcceptanceRunRecord, User
 from zhaoniu_api.system import MIGRATION_HEAD
 
 
@@ -35,6 +36,24 @@ async def evaluate_beta_readiness(session: AsyncSession, settings: Settings) -> 
         blocking.append("legal_review_not_approved")
     if settings.data_use_status != "approved":
         blocking.append("data_use_not_approved")
+    if current == MIGRATION_HEAD:
+        acceptance = await session.scalar(
+            select(ProviderAcceptanceRunRecord)
+            .where(ProviderAcceptanceRunRecord.environment == settings.app_env)
+            .order_by(ProviderAcceptanceRunRecord.created_at.desc())
+            .limit(1)
+        )
+        if acceptance is None:
+            blocking.append("provider_acceptance_missing")
+        else:
+            if acceptance.status != "passed":
+                blocking.append("provider_acceptance_failed")
+            if acceptance.finished_at < datetime.now(UTC) - timedelta(
+                hours=settings.provider_acceptance_max_age_hours
+            ):
+                blocking.append("provider_acceptance_stale")
+            if not acceptance.beta_eligible:
+                blocking.append("provider_data_policy_not_beta_eligible")
     if settings.access_activation_enabled and settings.commercialization_status != "approved":
         blocking.append("commercial_activation_not_approved")
     if settings.app_env != "production":

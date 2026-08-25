@@ -11,6 +11,8 @@ node_modules/
 .next-phase*/
 out/
 coverage/
+playwright-report/
+test-results/
 !apps/api/src/zhaoniu_api/coverage/
 !apps/api/src/zhaoniu_api/coverage/**
 *.tsbuildinfo

@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import case, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -85,12 +85,29 @@ class SQLAlchemyStockRepository:
         )
 
     async def search(self, query: str, limit: int = 10) -> list[Stock]:
-        needle = f"%{query.strip()}%"
+        normalized = query.strip()
+        escaped = (
+            normalized.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        needle = f"%{escaped}%"
+        prefix = f"{escaped}%"
+        relevance = case(
+            (func.lower(StockRecord.ticker) == normalized.lower(), 0),
+            (func.lower(StockRecord.name) == normalized.lower(), 1),
+            (StockRecord.ticker.ilike(prefix, escape="\\"), 2),
+            (StockRecord.name.ilike(prefix, escape="\\"), 3),
+            else_=4,
+        )
         records = (
             await self._session.scalars(
                 select(StockRecord)
-                .where(or_(StockRecord.ticker.ilike(needle), StockRecord.name.ilike(needle)))
-                .order_by(StockRecord.ticker)
+                .where(
+                    or_(
+                        StockRecord.ticker.ilike(needle, escape="\\"),
+                        StockRecord.name.ilike(needle, escape="\\"),
+                    )
+                )
+                .order_by(relevance, StockRecord.ticker)
                 .limit(limit)
             )
         ).all()

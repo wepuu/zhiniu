@@ -42,3 +42,10 @@ AKShare is approved only as a Phase 7 development/evaluation adapter. Each store
 the actual upstream owner (CNInfo, Eastmoney or Sina). Commercial use, redistribution, attribution,
 availability and stability remain `TBD / requires legal review`. Unmatched structured facts stay
 staged and must not be exposed as source-backed public events.
+
+## Phase 20 acceptance policy
+
+Global `legal_review_status` and `data_use_status` flags do not grant a provider commercial or Beta
+license. Provider acceptance evaluates `coverage_usage_scope` independently and fails closed.
+AKShare evidence may pass technical retained-data checks under `development_evaluation`, but it
+cannot make an invited-Beta baseline eligible until an approved source and usage scope are recorded.

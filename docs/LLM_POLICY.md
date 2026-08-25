@@ -26,7 +26,9 @@
   thinking. Raw responses and reasoning content are never stored.
 - There is one application attempt and no hidden SDK retry. HTTP 402 is classified as
   `provider_balance`; public users receive only a temporary-unavailability category.
-- No custom production base URL is accepted. Credentials remain in `DEEPSEEK_API_KEY` only.
+- No custom production base URL is accepted. After a managed revision is published, credentials
+  resolve from the encrypted Provider Configuration vault; `DEEPSEEK_API_KEY` is only a bootstrap
+  source before publication.
 - The four fixed question keys are the entire public input contract. Unknown keys and free text are
   rejected before quota consumption and before any provider call.
 

@@ -1,4 +1,4 @@
-# Phase 14 Data Model
+# Current Data Model (through Phase 18)
 
 ## Entity relationships
 
@@ -21,6 +21,20 @@ Stock 1--* IndustryMembership *--1 Industry
 Industry 1--* PeerBenchmarkSnapshot 1--* PeerBenchmarkMetricResult
 PeerBenchmarkMetricResult 1--* PeerBenchmarkInput
 Stock 1--* CompanyPeerMetricPosition
+Stock 1--* DisclosureDocument 1--* CorporateEvent
+Stock 1--* EventRadarSnapshot
+Stock 1--* ResearchSignal
+User 1--* UserResearchAlertDelivery
+ScreeningSnapshot 1--* ScreeningSnapshotMember
+User 1--* ScreenExecution 1--* ScreenResult
+User 1--* AIExplanationRequest
+ComparisonSnapshot 1--* ComparisonAIRun 1--0..1 ComparisonAIOutput
+User 1--* ComparisonRequest
+User 1--* SavedComparison
+AutomationPolicy 1--* AutomationPolicyRevision 1--* AutomationRun
+AutomationRun 1--* AutomationRunStep 1--* AutomationStepAttempt
+ProviderConfiguration 1--* ProviderConfigurationRevision
+ProviderConfiguration 1--* ProviderCredential
 ```
 
 Shared market and financial facts are stored once globally. User-owned identity, session and
@@ -177,11 +191,11 @@ records tied to an immutable screening snapshot.
   documents. Users and grants reference a version rather than mutable catalog state.
 - `users.base_plan_version_id`: the account baseline. Existing accounts are migrated to
   `legacy_beta`; invitation-created accounts use `basic`.
-- `registration_invite_batches` and `registration_invite_codes`: operator batch audit and
+- `registration_invite_batches` and `registration_invites`: operator batch audit and
   single-use invitation state. Only domain-separated HMAC digests and display prefixes are stored.
-- `activation_code_batches` and `activation_codes`: operator-issued, expiring, user-bound access
+- `access_activation_batches` and `access_activation_codes`: operator-issued, expiring, user-bound access
   codes. Plaintext values exist only at generation time.
-- `activation_redemptions`: immutable idempotency and audit link between one code, one user and one
+- `access_activation_redemptions`: immutable idempotency and audit link between one code, one user and one
   resulting access grant.
 - `subscriptions`: retained as the internal access-grant table. It records the immutable plan
   version, validity interval, source and revocation state; it is not a payment or order record.
@@ -280,3 +294,15 @@ research `knowledge_cutoff` field.
 Comparability requires the same metric code, period, fiscal period, basis, unit and metric version.
 Valuation observations additionally require the same observation date and unit. A missing match is
 displayed as unavailable or not comparable and is never normalized by the frontend or an LLM.
+
+## Phase 20 Provider acceptance evidence
+
+- `provider_acceptance_runs` stores the environment, profile/policy versions, usage scope,
+  knowledge cutoff, aggregate result, Beta eligibility, evidence fingerprint, requester, and timing.
+- `provider_acceptance_items` stores one result per provider/dataset/symbol/scenario with a
+  mandatory/conditional/optional requirement, stable reason code, retained row count, latest
+  artifact time, bounded non-secret detail manifest, and evidence fingerprint.
+- Runs and items are append-only acceptance evidence. They do not replace canonical market,
+  financial, industry, disclosure, event, or LLM-call records.
+- Migration head `20260825_0024` introduces these tables without changing public research response
+  contracts.

@@ -1,6 +1,7 @@
 import type { components } from "./schema";
 
 export type StockResponse = components["schemas"]["StockResponse"];
+export type StockSearchResponse = components["schemas"]["StockSearchResponse"];
 export type DailyBarResponse = components["schemas"]["DailyBarResponse"];
 export type DailyBarListResponse =
   components["schemas"]["DailyBarListResponse"];
@@ -119,6 +120,10 @@ export type OperatorAuditListResponse =
   components["schemas"]["OperatorAuditListResponse"];
 export type ProviderStatusListResponse =
   components["schemas"]["ProviderStatusListResponse"];
+export type ProviderAcceptanceRun =
+  components["schemas"]["ProviderAcceptanceRun"];
+export type ProviderAcceptanceRunList =
+  components["schemas"]["ProviderAcceptanceRunList"];
 export type ProviderConfigurationListResponse =
   components["schemas"]["ProviderConfigurationListResponse"];
 export type ProviderConfigurationView =
@@ -313,6 +318,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         `/api/v1/me/sessions/${encodeURIComponent(sessionId)}`,
         { method: "DELETE" },
       );
+    },
+    searchStocks(q: string, limit = 10) {
+      const query = new URLSearchParams({
+        q: q.trim(),
+        limit: String(limit),
+      });
+      return request<StockSearchResponse>(`/api/v1/stocks/search?${query}`);
     },
     getStock(symbol: string) {
       return request<StockResponse>(
@@ -744,6 +756,22 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     },
     getProviderStatuses() {
       return request<ProviderStatusListResponse>("/api/v1/admin/providers");
+    },
+    getLatestProviderAcceptance() {
+      return request<ProviderAcceptanceRun>(
+        "/api/v1/admin/provider-acceptance/runs/latest",
+      );
+    },
+    getProviderAcceptanceRuns(limit = 20) {
+      return request<ProviderAcceptanceRunList>(
+        `/api/v1/admin/provider-acceptance/runs?limit=${limit}`,
+      );
+    },
+    runProviderAcceptance() {
+      return request<ProviderAcceptanceRun>(
+        "/api/v1/admin/provider-acceptance/runs",
+        { method: "POST" },
+      );
     },
     diagnoseProvider(provider: "deepseek" | "resend") {
       return request<ProviderStatusListResponse>(

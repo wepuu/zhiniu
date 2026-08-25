@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     coverage_policy_version: str = "coverage-policy-v1"
     coverage_operator_pinned_symbols: str = "600519,300750,300376,000001"
     coverage_acceptance_symbols: str = "600519,300750,300376,000001"
+    provider_acceptance_max_age_hours: int = Field(default=72, ge=1, le=720)
     coverage_backfill_batch_size: int = Field(default=10, ge=1, le=50)
     coverage_backfill_max_concurrency: int = Field(default=2, ge=1, le=8)
     coverage_provider_rate_limit: int = Field(default=30, ge=1, le=600)

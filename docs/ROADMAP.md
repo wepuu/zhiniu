@@ -1,5 +1,8 @@
 # Product Roadmap
 
+本文件记录能力演进，不代表发布批准。Phase 0-18 的实现均已进入仓库；受控 Beta 和生产
+发布仍必须分别通过工程、数据授权、法律、Provider 与运营门禁。
+
 ## Phase 0 - Foundation
 
 Monorepo, responsive design system, versioned API, auth seam, repository/provider/LLM contracts,
@@ -91,7 +94,7 @@ leases and auditable item outcomes, structured in-product Beta feedback, and agg
 learning reports with small-cell suppression. There is no scheduled full-market backfill, automatic
 AI generation, behavioral telemetry, research score, or public launch expansion.
 
-## Phase 14 - Operations Console & Production Provider Readiness
+## Phase 14 - Operations Console & Production Provider Readiness (implemented)
 
 Internal role-based operations console, password-confirmed high-risk actions, immutable operator
 audit, exact account support lookup, coverage and AI job dispatch, provider health diagnostics,
@@ -99,7 +102,7 @@ Resend background delivery/webhook lifecycle, and explicit DeepSeek structured-o
 modes. The console is not a general admin CRUD system and does not expose provider secrets,
 passwords, tokens, raw prompts, private screening text, or unrestricted database access.
 
-## Phase 15 - Automated Research Operations & Scheduling
+## Phase 15 - Automated Research Operations & Scheduling (implemented)
 
 Database-owned automation policies and immutable revisions, a single Celery Beat tick, frozen
 priority-universe runs, allow-listed symbol/industry/run steps, change-aware downstream rebuilds,
@@ -107,7 +110,7 @@ leases and resumable failures, automatic signal and in-app alert projection, an 
 lane, and a desktop-first operations workspace. Full-market screening schedules, free-form cron,
 user schedules, exchange-calendar semantics and automated marketing email remain deferred.
 
-## Phase 16 - Company Research Timeline & Event Engine V2 (completed)
+## Phase 16 - Company Research Timeline & Event Engine V2 (implemented)
 
 A company-level, point-in-time research timeline over retained fundamental, peer and corporate-event
 signals; stable frozen cursors; separately hydrated upcoming events and event threads; explicit
@@ -115,7 +118,7 @@ historical alert safety; and deterministic shareholder-change and litigation/arb
 families. Timeline facts remain global projections with one upstream artifact. News, LLM fact
 extraction, event scoring, cross-domain event ratios and additional event families remain deferred.
 
-## Phase 17 - DeepSeek Production Enablement & Evidence-Grounded Research Assistant (completed)
+## Phase 17 - DeepSeek Production Enablement & Evidence-Grounded Research Assistant (implemented)
 
 A bounded DeepSeek production profile and four evidence-grounded research questions inside the
 existing AI interpretation experience. User-owned request wrappers, atomic daily entitlements,
@@ -123,7 +126,7 @@ shared run/output deduplication, strict structured validation, explicit retry, p
 and desktop/mobile evidence navigation are included. Free-form chat, tools, streaming, price
 questions, automated full-market generation and personalized advice remain out of scope.
 
-## Phase 18 - Evidence-Grounded Pairwise Company Comparison (current)
+## Phase 18 - Evidence-Grounded Pairwise Company Comparison (implemented; readiness hardening pending)
 
 User-owned comparison requests over global immutable pair snapshots, strict point-in-time metric
 comparability, explicit cross-industry and missing-data limits, recent research-signal context,
@@ -131,6 +134,27 @@ saved comparison definitions, and an independently gated DeepSeek explanation af
 facts. Desktop uses a two-column ledger and mobile uses dimension cards with the same evidence
 identities. Rankings, winners, scores, segment inference, LLM calculations, scheduling, exports and
 multi-company comparison remain out of scope.
+
+## Phase 19 - Launch Baseline & Core Loop Stabilization (internal baseline accepted)
+
+ORM and migration metadata alignment, deterministic stock search by code or Chinese name, shared
+global/watchlist stock selection, company-timeline latest-version projection, and independent
+desktop/mobile Chromium acceptance. The controlled non-production Resend lifecycle and a current
+backup/restore drill are implemented. Container build/startup and the restore drill pass locally;
+the Resend draft is configured for `info@zhiniu.cc` but its real delivery loop was explicitly
+deferred on 2026-08-25 until a verified public domain is available. The internal engineering and
+core-research baseline is accepted with that exception. Transactional email remains a fail-closed
+invited-Beta and production-release gate.
+
+## Phase 20 - Provider & Beta Data Acceptance (implemented, baseline blocked)
+
+The operator console and CLI now create immutable acceptance runs for `600519`, `300750`,
+`300376`, and `000001`. Each run retains per-dataset counts, freshness, reason codes, bounded
+manifests, and evidence fingerprints. Mandatory retained-data failures determine the technical
+status; source-usage policy independently determines Beta eligibility. The first local baseline is
+correctly blocked by incomplete `600519` daily-bar history and the development-only AKShare usage
+scope. Missing `300376` industry lineage and structured DeepSeek workload evidence remain visible
+non-mandatory gaps. Transactional email remains deferred and outside Phase 20 execution.
 
 ## Future - Factor / Backtest
 

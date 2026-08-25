@@ -11,8 +11,10 @@ import {
   Telescope,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+
+import { StockSearchDialog } from "./stock-search-dialog";
 
 const navigation = [
   { href: "/", label: "研究", icon: House },
@@ -79,22 +81,55 @@ function Brand({ compact = false }: { compact?: boolean }) {
 }
 
 export function Header() {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    function openSearch(event: KeyboardEvent) {
+      if (event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", openSearch);
+    return () => window.removeEventListener("keydown", openSearch);
+  }, []);
+
   return (
-    <header className="border-ink/8 bg-mist/90 sticky top-0 z-20 flex h-16 items-center border-b px-4 backdrop-blur md:px-8">
-      <div className="flex w-full items-center gap-3">
-        <div className="md:hidden">
-          <Brand compact />
+    <>
+      <header className="border-ink/8 bg-mist/90 sticky top-0 z-20 flex h-16 items-center border-b px-4 backdrop-blur md:px-8">
+        <div className="flex w-full items-center gap-3">
+          <div className="md:hidden">
+            <Brand compact />
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="border-ink/10 bg-paper text-slate hidden min-w-72 items-center gap-2 rounded-full border px-4 py-2 text-sm hover:border-black/20 md:flex"
+          >
+            <Search className="size-4" />
+            搜索股票代码或中文名称
+            <kbd className="font-data ml-auto text-xs">Ctrl K</kbd>
+          </button>
+          <button
+            type="button"
+            aria-label="搜索股票"
+            onClick={() => setSearchOpen(true)}
+            className="border-ink/10 bg-paper ml-auto grid size-10 place-items-center rounded-full border md:hidden"
+          >
+            <Search className="size-4" />
+          </button>
+          <p className="text-slate ml-auto hidden text-xs sm:block">
+            研究工具，不构成投资建议
+          </p>
         </div>
-        <div className="border-ink/10 bg-paper text-slate hidden min-w-72 items-center gap-2 rounded-full border px-4 py-2 text-sm md:flex">
-          <Search className="size-4" />
-          搜索股票、行业或研究记录
-          <kbd className="font-data ml-auto text-xs">Ctrl K</kbd>
-        </div>
-        <p className="text-slate ml-auto hidden text-xs sm:block">
-          研究工具，不构成投资建议
-        </p>
-      </div>
-    </header>
+      </header>
+      <StockSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onSelect={(stock) => router.push(`/stock/${stock.canonical_symbol}`)}
+      />
+    </>
   );
 }
 

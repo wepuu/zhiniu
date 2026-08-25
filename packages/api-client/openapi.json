@@ -5731,6 +5731,222 @@
         }
       }
     },
+    "/api/v1/admin/provider-acceptance/runs": {
+      "get": {
+        "tags": [
+          "provider acceptance"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_api_v1_admin_provider_acceptance_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAcceptanceRunList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "provider acceptance"
+        ],
+        "summary": "Create Run",
+        "operationId": "create_run_api_v1_admin_provider_acceptance_runs_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAcceptanceRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/provider-acceptance/runs/latest": {
+      "get": {
+        "tags": [
+          "provider acceptance"
+        ],
+        "summary": "Latest Run",
+        "operationId": "latest_run_api_v1_admin_provider_acceptance_runs_latest_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAcceptanceRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/provider-acceptance/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "provider acceptance"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_api_v1_admin_provider_acceptance_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAcceptanceRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/automation/policies": {
       "get": {
         "tags": [
@@ -13273,6 +13489,221 @@
           "status"
         ],
         "title": "PeerUniverseResponse"
+      },
+      "ProviderAcceptanceItem": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "scenario": {
+            "type": "string",
+            "title": "Scenario"
+          },
+          "requirement": {
+            "type": "string",
+            "enum": [
+              "mandatory",
+              "conditional",
+              "optional"
+            ],
+            "title": "Requirement"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "blocked",
+              "unsupported"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "observed_count": {
+            "type": "integer",
+            "title": "Observed Count",
+            "default": 0
+          },
+          "latest_artifact_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Artifact At"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          },
+          "evidence_fingerprint": {
+            "type": "string",
+            "title": "Evidence Fingerprint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider",
+          "dataset",
+          "scenario",
+          "requirement",
+          "status",
+          "evidence_fingerprint"
+        ],
+        "title": "ProviderAcceptanceItem"
+      },
+      "ProviderAcceptanceRun": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "profile_version": {
+            "type": "string",
+            "title": "Profile Version"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version"
+          },
+          "usage_scope": {
+            "type": "string",
+            "title": "Usage Scope"
+          },
+          "knowledge_cutoff": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Knowledge Cutoff"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "mandatory_items": {
+            "type": "integer",
+            "title": "Mandatory Items"
+          },
+          "succeeded_items": {
+            "type": "integer",
+            "title": "Succeeded Items"
+          },
+          "failed_items": {
+            "type": "integer",
+            "title": "Failed Items"
+          },
+          "blocked_items": {
+            "type": "integer",
+            "title": "Blocked Items"
+          },
+          "unsupported_items": {
+            "type": "integer",
+            "title": "Unsupported Items"
+          },
+          "beta_eligible": {
+            "type": "boolean",
+            "title": "Beta Eligible"
+          },
+          "result_fingerprint": {
+            "type": "string",
+            "title": "Result Fingerprint"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderAcceptanceItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "environment",
+          "profile_version",
+          "policy_version",
+          "usage_scope",
+          "knowledge_cutoff",
+          "status",
+          "mandatory_items",
+          "succeeded_items",
+          "failed_items",
+          "blocked_items",
+          "unsupported_items",
+          "beta_eligible",
+          "result_fingerprint",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "ProviderAcceptanceRun"
+      },
+      "ProviderAcceptanceRunList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderAcceptanceRun"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProviderAcceptanceRunList"
       },
       "ProviderConfigurationListResponse": {
         "properties": {

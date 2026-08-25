@@ -283,7 +283,11 @@ export function CompanyTimelinePanel({
                   const source = sourceCopy[item.source_kind];
                   const Icon = source.icon;
                   return (
-                    <article key={item.id} className="relative pb-4 last:pb-0">
+                    <article
+                      key={item.id}
+                      data-testid="timeline-item"
+                      className="relative pb-4 last:pb-0"
+                    >
                       <span className="bg-paper border-blue absolute -left-[27px] top-5 size-3 rounded-full border-[3px]" />
                       <Card className="border-ink/10 p-4 sm:p-5">
                         <div className="flex flex-wrap items-center gap-2">

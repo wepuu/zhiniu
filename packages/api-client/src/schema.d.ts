@@ -1576,6 +1576,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/provider-acceptance/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_v1_admin_provider_acceptance_runs_get"];
+        put?: never;
+        /** Create Run */
+        post: operations["create_run_api_v1_admin_provider_acceptance_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/provider-acceptance/runs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Run */
+        get: operations["latest_run_api_v1_admin_provider_acceptance_runs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/provider-acceptance/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_admin_provider_acceptance_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/automation/policies": {
         parameters: {
             query?: never;
@@ -4396,6 +4448,99 @@ export interface components {
             sample_size: number;
             /** Stocks */
             stocks?: components["schemas"]["PeerStockResponse"][];
+        };
+        /** ProviderAcceptanceItem */
+        ProviderAcceptanceItem: {
+            /** Provider */
+            provider: string;
+            /** Dataset */
+            dataset: string;
+            /** Symbol */
+            symbol?: string | null;
+            /** Scenario */
+            scenario: string;
+            /**
+             * Requirement
+             * @enum {string}
+             */
+            requirement: "mandatory" | "conditional" | "optional";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "failed" | "blocked" | "unsupported";
+            /** Reason Code */
+            reason_code?: string | null;
+            /**
+             * Observed Count
+             * @default 0
+             */
+            observed_count: number;
+            /** Latest Artifact At */
+            latest_artifact_at?: string | null;
+            /** Detail */
+            detail?: {
+                [key: string]: unknown;
+            };
+            /** Evidence Fingerprint */
+            evidence_fingerprint: string;
+        };
+        /** ProviderAcceptanceRun */
+        ProviderAcceptanceRun: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Environment */
+            environment: string;
+            /** Profile Version */
+            profile_version: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Usage Scope */
+            usage_scope: string;
+            /**
+             * Knowledge Cutoff
+             * Format: date-time
+             */
+            knowledge_cutoff: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "failed" | "blocked";
+            /** Mandatory Items */
+            mandatory_items: number;
+            /** Succeeded Items */
+            succeeded_items: number;
+            /** Failed Items */
+            failed_items: number;
+            /** Blocked Items */
+            blocked_items: number;
+            /** Unsupported Items */
+            unsupported_items: number;
+            /** Beta Eligible */
+            beta_eligible: boolean;
+            /** Result Fingerprint */
+            result_fingerprint: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+            /** Items */
+            items?: components["schemas"]["ProviderAcceptanceItem"][];
+        };
+        /** ProviderAcceptanceRunList */
+        ProviderAcceptanceRunList: {
+            /** Items */
+            items: components["schemas"]["ProviderAcceptanceRun"][];
         };
         /** ProviderConfigurationListResponse */
         ProviderConfigurationListResponse: {
@@ -8787,6 +8932,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_admin_provider_acceptance_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAcceptanceRunList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run_api_v1_admin_provider_acceptance_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAcceptanceRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_run_api_v1_admin_provider_acceptance_runs_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAcceptanceRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_admin_provider_acceptance_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAcceptanceRun"];
                 };
             };
             /** @description Validation Error */

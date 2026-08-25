@@ -6,6 +6,8 @@ from zhaoniu_api.company_timeline.models import (
     CompanyTimelineEnvelope,
     CompanyTimelineSummary,
 )
+from zhaoniu_api.company_timeline.service import _latest_signal_ids
+from zhaoniu_api.db import ResearchSignalRecord
 from zhaoniu_api.dependencies import get_company_timeline_service
 from zhaoniu_api.main import create_app
 
@@ -31,3 +33,18 @@ def test_timeline_api_has_explicit_empty_state() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "empty"
     assert response.json()["coverage"]["corporate_event"] == "ready"
+
+
+def test_timeline_collapses_signal_versions_before_pagination() -> None:
+    statement = str(
+        _latest_signal_ids(
+            ResearchSignalRecord.symbol == "600519.SH",
+            ResearchSignalRecord.source_kind == "fundamental",
+        )
+    )
+
+    assert "row_number() OVER" in statement
+    assert "research_signals.symbol" in statement
+    assert "research_signals.source_kind" in statement
+    assert "research_signals.dedup_group_key" in statement
+    assert "dedup_rank =" in statement

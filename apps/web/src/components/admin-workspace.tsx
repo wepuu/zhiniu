@@ -28,6 +28,7 @@ import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
+import { ProviderAcceptancePanel } from "@/components/provider-acceptance-panel";
 import {
   providerDisplayName,
   translateEnum,
@@ -1218,6 +1219,12 @@ function ProvidersPanel({
   });
   return (
     <>
+      {capabilities.includes("coverage.read") && (
+        <ProviderAcceptancePanel
+          canRun={capabilities.includes("coverage.run")}
+          elevated={elevated}
+        />
+      )}
       {capabilities.includes("providers.config.read") && (
         <ProviderConfigurationPanel
           canManage={capabilities.includes("providers.config.manage")}

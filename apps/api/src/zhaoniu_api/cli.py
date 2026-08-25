@@ -36,6 +36,7 @@ from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.models import PeerBuildResult
 from zhaoniu_api.peer_research.service import IndustrySyncResult
+from zhaoniu_api.provider_acceptance.service import ProviderAcceptanceService
 from zhaoniu_api.provider_configuration.crypto import generate_key
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.research.models import ResearchBuildResult
@@ -122,6 +123,9 @@ def _parser() -> argparse.ArgumentParser:
     inspect_access.add_argument("--user-email", required=True)
     subcommands.add_parser("check-beta-readiness")
     subcommands.add_parser("beta-status")
+    subcommands.add_parser("run-provider-acceptance")
+    acceptance_status = subcommands.add_parser("provider-acceptance-status")
+    acceptance_status.add_argument("run_id", type=UUID, nargs="?")
     universe = subcommands.add_parser("build-beta-research-universe")
     universe.add_argument("--symbol", action="append", dest="symbols")
     coverage = subcommands.add_parser("build-research-coverage-snapshot")
@@ -309,6 +313,17 @@ async def _run(args: argparse.Namespace) -> None:
                 result = await build_access_control_service(session).access_envelope(user_id)
             elif args.command in {"check-beta-readiness", "beta-status"}:
                 result = await evaluate_beta_readiness(session, get_settings())
+            elif args.command == "run-provider-acceptance":
+                result = await ProviderAcceptanceService(session, get_settings()).run()
+            elif args.command == "provider-acceptance-status":
+                acceptance = ProviderAcceptanceService(session, get_settings())
+                result = (
+                    await acceptance.get(args.run_id)
+                    if args.run_id
+                    else await acceptance.latest()
+                )
+                if result is None:
+                    result = {"status": "missing"}
             elif args.command == "build-beta-research-universe":
                 result = await build_coverage_service(session).build_universe(
                     operator_pinned=tuple(args.symbols) if args.symbols else None
