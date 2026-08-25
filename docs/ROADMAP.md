@@ -156,6 +156,15 @@ correctly blocked by incomplete `600519` daily-bar history and the development-o
 scope. Missing `300376` industry lineage and structured DeepSeek workload evidence remain visible
 non-mandatory gaps. Transactional email remains deferred and outside Phase 20 execution.
 
+## Phase 21 - Invite Beta Operational Loop (implemented, launch blocked)
+
+Email-bound cohorts, fail-closed approval and dispatch gates, one-time invitation registration,
+delivery/registration/verification/first-value funnel facts, operator pause/close controls, and a
+fact-backed user onboarding checklist are implemented. The current environment must not send an
+external invitation until a passing Beta-eligible Phase 20 run and a published, healthy real
+Resend configuration exist. Draft creation and gate inspection remain available for internal
+acceptance without simulating approval.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

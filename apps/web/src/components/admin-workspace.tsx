@@ -21,6 +21,7 @@ import {
   ServerCog,
   ShieldCheck,
   Users,
+  UserRoundPlus,
   Workflow,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +30,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
 import { ProviderAcceptancePanel } from "@/components/provider-acceptance-panel";
+import { BetaCohortPanel } from "@/components/beta-cohort-panel";
 import {
   providerDisplayName,
   translateEnum,
@@ -41,6 +43,7 @@ type View =
   | "automation"
   | "users"
   | "feedback"
+  | "beta"
   | "providers"
   | "audit";
 
@@ -49,6 +52,7 @@ const views = [
   { id: "automation" as const, label: "自动任务", icon: Workflow },
   { id: "users" as const, label: "账户支持", icon: Users },
   { id: "feedback" as const, label: "反馈队列", icon: MessageSquareText },
+  { id: "beta" as const, label: "邀请内测", icon: UserRoundPlus },
   { id: "providers" as const, label: "服务商", icon: ServerCog },
   { id: "audit" as const, label: "审计记录", icon: ClipboardList },
 ];
@@ -220,6 +224,7 @@ export function AdminWorkspace() {
           {view === "feedback" && (
             <FeedbackPanel capabilities={operator.capabilities} />
           )}
+          {view === "beta" && <BetaCohortPanel elevated={operator.elevated} />}
           {view === "providers" && (
             <ProvidersPanel
               capabilities={operator.capabilities}
@@ -1133,10 +1138,17 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
     mutationFn: ({
       id,
       status,
+      severity,
     }: {
       id: string;
       status: "triaged" | "resolved";
-    }) => api.updateOperatorFeedback(id, status),
+      severity?: "P0" | "P1" | "P2" | "P3";
+    }) =>
+      api.updateOperatorFeedback(id, {
+        status,
+        ...(severity ? { severity } : {}),
+        ...(status === "resolved" ? { resolution_code: "addressed" } : {}),
+      }),
     onSuccess: () =>
       client.invalidateQueries({ queryKey: ["operator-feedback"] }),
   });
@@ -1161,6 +1173,9 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
                     </span>
                   </b>
                   <StatusPill status={item.status} />
+                  <span className="font-data bg-mist rounded-full px-2 py-1 text-[10px]">
+                    {item.severity}
+                  </span>
                   <span className="text-slate text-xs">
                     {feedbackCategoryLabel(item.category)} ·{" "}
                     <span className="font-data text-[9px]">
@@ -1173,6 +1188,26 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
               </div>
               {capabilities.includes("feedback.manage") && (
                 <div className="hidden gap-2 md:flex">
+                  <select
+                    aria-label="反馈严重级别"
+                    value={item.severity}
+                    onChange={(event) =>
+                      update.mutate({
+                        id: item.id,
+                        status: "triaged",
+                        severity: event.target.value as
+                          | "P0"
+                          | "P1"
+                          | "P2"
+                          | "P3",
+                      })
+                    }
+                    className="border-ink/10 rounded-lg border px-2 py-1.5 text-xs"
+                  >
+                    {(["P0", "P1", "P2", "P3"] as const).map((severity) => (
+                      <option key={severity}>{severity}</option>
+                    ))}
+                  </select>
                   <button
                     onClick={() =>
                       update.mutate({ id: item.id, status: "triaged" })

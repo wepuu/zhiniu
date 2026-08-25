@@ -2006,6 +2006,117 @@ class RegistrationInviteRecord(Base):
     )
 
 
+class BetaInviteCohortRecord(Base):
+    __tablename__ = "beta_invite_cohorts"
+    __table_args__ = (
+        CheckConstraint("target_size > 0 AND target_size <= 100", name="ck_beta_cohort_size"),
+        CheckConstraint(
+            "status IN ('draft', 'approved', 'dispatching', 'active', "
+            "'paused', 'closed', 'cancelled')",
+            name="ck_beta_cohort_status",
+        ),
+        Index("ix_beta_cohort_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    target_size: Mapped[int] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acceptance_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("provider_acceptance_runs.id", ondelete="RESTRICT")
+    )
+    invite_batch_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("registration_invite_batches.id", ondelete="SET NULL")
+    )
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    approved_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reason_code: Mapped[str | None] = mapped_column(String(120))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class BetaInviteRecipientRecord(Base):
+    __tablename__ = "beta_invite_recipients"
+    __table_args__ = (
+        UniqueConstraint("cohort_id", "email_hmac", name="uq_beta_cohort_recipient_email"),
+        UniqueConstraint("invite_id", name="uq_beta_recipient_invite"),
+        UniqueConstraint("delivery_id", name="uq_beta_recipient_delivery"),
+        CheckConstraint(
+            "status IN ('staged', 'queued', 'registered', 'withdrawn', 'expired', 'failed')",
+            name="ck_beta_recipient_status",
+        ),
+        Index("ix_beta_recipient_email", "email_hmac", "status"),
+        Index("ix_beta_recipient_cohort_status", "cohort_id", "status"),
+        Index("ix_beta_recipient_user", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    cohort_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("beta_invite_cohorts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    normalized_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_hmac: Mapped[str] = mapped_column(String(64), nullable=False)
+    invite_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("registration_invites.id", ondelete="SET NULL")
+    )
+    delivery_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("transactional_email_deliveries.id", ondelete="SET NULL")
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    last_error_code: Mapped[str | None] = mapped_column(String(120))
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class BetaOnboardingStateRecord(Base):
+    __tablename__ = "beta_onboarding_states"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    recipient_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("beta_invite_recipients.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    schema_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class AccessActivationBatchRecord(Base):
     __tablename__ = "access_activation_batches"
     __table_args__ = (
@@ -2628,6 +2739,16 @@ class BetaFeedbackItemRecord(Base):
     __table_args__ = (
         Index("ix_beta_feedback_status_created", "status", "created_at"),
         Index("ix_beta_feedback_user_created", "user_id", "created_at"),
+        Index(
+            "ix_beta_feedback_severity_status",
+            "severity",
+            "status",
+            "created_at",
+        ),
+        CheckConstraint(
+            "severity IN ('P0', 'P1', 'P2', 'P3')",
+            name="ck_beta_feedback_severity",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -2638,6 +2759,15 @@ class BetaFeedbackItemRecord(Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="new", nullable=False)
+    severity: Mapped[str] = mapped_column(
+        String(2), default="P2", server_default="P2", nullable=False
+    )
+    assigned_operator_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_code: Mapped[str | None] = mapped_column(String(64))
+    internal_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

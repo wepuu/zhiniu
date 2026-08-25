@@ -338,7 +338,7 @@ async def update_feedback(
 ) -> OperatorActionResponse:
     _require(context, service, "feedback.manage")
     try:
-        updated = await service.update_feedback(feedback_id, payload.status)
+        updated = await service.update_feedback(feedback_id, payload)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if not updated:
@@ -350,7 +350,11 @@ async def update_feedback(
         "beta_feedback",
         str(feedback_id),
         request_id=request.headers.get("x-request-id"),
-        metadata={"status": payload.status},
+        metadata={
+            key: str(value) if value is not None else None
+            for key, value in payload.model_dump(exclude_unset=True).items()
+            if key != "internal_note"
+        },
     )
     return OperatorActionResponse(status="completed", target_id=str(feedback_id))
 

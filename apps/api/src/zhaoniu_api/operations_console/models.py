@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 OperatorRole = Literal["viewer", "support", "operations", "security_admin"]
 
@@ -91,7 +91,20 @@ class OperatorAccessCodeResponse(BaseModel):
 
 
 class OperatorFeedbackUpdate(BaseModel):
-    status: Literal["triaged", "resolved"]
+    status: Literal["triaged", "resolved"] | None = None
+    severity: Literal["P0", "P1", "P2", "P3"] | None = None
+    assigned_operator_user_id: UUID | None = None
+    due_at: datetime | None = None
+    resolution_code: str | None = Field(default=None, max_length=64)
+    internal_note: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_change(self) -> "OperatorFeedbackUpdate":
+        if not self.model_fields_set:
+            raise ValueError("feedback_update_empty")
+        if self.status == "resolved" and not self.resolution_code:
+            raise ValueError("feedback_resolution_code_required")
+        return self
 
 
 class OperatorFeedbackItem(BaseModel):
@@ -103,6 +116,11 @@ class OperatorFeedbackItem(BaseModel):
     category: str
     message: str
     status: str
+    severity: Literal["P0", "P1", "P2", "P3"]
+    assigned_operator_user_id: UUID | None = None
+    due_at: datetime | None = None
+    resolution_code: str | None = None
+    internal_note: str | None = None
     created_at: datetime
     updated_at: datetime
 

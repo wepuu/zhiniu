@@ -34,6 +34,7 @@ from zhaoniu_api.infrastructure.sql_repositories import (
     SQLAlchemyStockRepository,
     SQLAlchemyWatchlistRepository,
 )
+from zhaoniu_api.invite_beta.service import InviteBetaService
 from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.service import PeerResearchService
@@ -186,6 +187,13 @@ def get_provider_acceptance_service(
     return ProviderAcceptanceService(session, settings)
 
 
+def get_invite_beta_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> InviteBetaService:
+    return InviteBetaService(session, settings)
+
+
 def get_automation_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AutomationService:
@@ -268,6 +276,7 @@ ProviderConfigurationServiceDependency = Annotated[
 ProviderAcceptanceServiceDependency = Annotated[
     ProviderAcceptanceService, Depends(get_provider_acceptance_service)
 ]
+InviteBetaServiceDependency = Annotated[InviteBetaService, Depends(get_invite_beta_service)]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
 ComparisonServiceDependency = Annotated[ComparisonService, Depends(get_comparison_service)]
 ComparisonDispatcherDependency = Annotated[ComparisonDispatcher, Depends(get_comparison_dispatcher)]

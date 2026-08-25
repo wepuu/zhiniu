@@ -214,3 +214,13 @@ then writes immutable run/item evidence. The administrator API is cookie-authent
 protected, capability gated, and requires step-up authentication to start a run. Provider usage
 scope is evaluated separately from legal/data-use approval so a development adapter cannot become
 Beta-eligible through an unrelated global flag.
+
+## Invite Beta operations boundary
+
+Phase 21 adds an `invite_beta` application module over existing access-control, account-lifecycle,
+provider-configuration, delivery, watchlist and feedback facts. It owns cohort orchestration and
+read models, but does not bypass those domains or create a second user/event data source. Approval
+and dispatch independently re-evaluate provider acceptance, policy, legal, transactional-email and
+capacity gates. Registration performs the final server-side cohort-state and email-binding check
+before consuming an invitation. The web client renders this state and does not calculate
+eligibility or funnel facts.

@@ -16,6 +16,8 @@ from zhaoniu_api.comparisons.routes import router as comparison_router
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.routes import router as corporate_event_router
 from zhaoniu_api.coverage.routes import router as coverage_router
+from zhaoniu_api.invite_beta.routes import admin_router as invite_beta_admin_router
+from zhaoniu_api.invite_beta.routes import me_router as invite_beta_me_router
 from zhaoniu_api.operations_console.routes import router as operations_console_router
 from zhaoniu_api.provider_acceptance.routes import router as provider_acceptance_router
 from zhaoniu_api.research_feed.routes import router as research_feed_router
@@ -50,6 +52,8 @@ def create_app() -> FastAPI:
     app.include_router(ai_explanation_router)
     app.include_router(coverage_router)
     app.include_router(operations_console_router)
+    app.include_router(invite_beta_admin_router)
+    app.include_router(invite_beta_me_router)
     app.include_router(provider_acceptance_router)
     app.include_router(automation_router)
     app.include_router(webhook_router)

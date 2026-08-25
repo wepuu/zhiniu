@@ -1576,6 +1576,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/beta/cohorts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Cohorts */
+        get: operations["list_cohorts_api_v1_admin_beta_cohorts_get"];
+        put?: never;
+        /** Create Cohort */
+        post: operations["create_cohort_api_v1_admin_beta_cohorts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cohort */
+        get: operations["get_cohort_api_v1_admin_beta_cohorts__cohort_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Recipients */
+        post: operations["add_recipients_api_v1_admin_beta_cohorts__cohort_id__recipients_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Cohort */
+        post: operations["approve_cohort_api_v1_admin_beta_cohorts__cohort_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatch Cohort */
+        post: operations["dispatch_cohort_api_v1_admin_beta_cohorts__cohort_id__dispatch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause Cohort */
+        post: operations["pause_cohort_api_v1_admin_beta_cohorts__cohort_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/beta/cohorts/{cohort_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Cohort */
+        post: operations["close_cohort_api_v1_admin_beta_cohorts__cohort_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/beta-onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Onboarding */
+        get: operations["get_onboarding_api_v1_me_beta_onboarding_get"];
+        put?: never;
+        /** Update Onboarding */
+        post: operations["update_onboarding_api_v1_me_beta_onboarding_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/provider-acceptance/runs": {
         parameters: {
             query?: never;
@@ -2415,6 +2553,71 @@ export interface components {
             /** Goodwill */
             goodwill: string | null;
         };
+        /** BetaCohortCreate */
+        BetaCohortCreate: {
+            /** Name */
+            name: string;
+            /** Target Size */
+            target_size: number;
+            /**
+             * Expires In Days
+             * @default 7
+             */
+            expires_in_days: number;
+        };
+        /** BetaCohortList */
+        BetaCohortList: {
+            /** Items */
+            items: components["schemas"]["BetaCohortView"][];
+        };
+        /** BetaCohortPause */
+        BetaCohortPause: {
+            /** Reason Code */
+            reason_code: string;
+        };
+        /** BetaCohortView */
+        BetaCohortView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "approved" | "dispatching" | "active" | "paused" | "closed" | "cancelled";
+            /** Target Size */
+            target_size: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Acceptance Run Id */
+            acceptance_run_id?: string | null;
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Approved At */
+            approved_at?: string | null;
+            /** Dispatched At */
+            dispatched_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Gate Reasons */
+            gate_reasons?: string[];
+            /** Funnel */
+            funnel?: {
+                [key: string]: number;
+            };
+            /** Recipients */
+            recipients?: components["schemas"]["BetaRecipientView"][];
+        };
         /** BetaFeedbackCreate */
         BetaFeedbackCreate: {
             /**
@@ -2457,6 +2660,93 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** BetaOnboardingUpdate */
+        BetaOnboardingUpdate: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "acknowledge" | "dismiss";
+        };
+        /** BetaOnboardingView */
+        BetaOnboardingView: {
+            /** Enrolled */
+            enrolled: boolean;
+            /**
+             * Schema Version
+             * @default invite-beta-onboarding-v1
+             */
+            schema_version: string;
+            /**
+             * Email Verified
+             * @default false
+             */
+            email_verified: boolean;
+            /**
+             * Watchlist Started
+             * @default false
+             */
+            watchlist_started: boolean;
+            /**
+             * Feedback Submitted
+             * @default false
+             */
+            feedback_submitted: boolean;
+            /**
+             * Acknowledged
+             * @default false
+             */
+            acknowledged: boolean;
+            /**
+             * Dismissed
+             * @default false
+             */
+            dismissed: boolean;
+        };
+        /** BetaRecipientView */
+        BetaRecipientView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "staged" | "queued" | "registered" | "withdrawn" | "expired" | "failed";
+            /** Delivery Status */
+            delivery_status?: string | null;
+            /**
+             * Email Verified
+             * @default false
+             */
+            email_verified: boolean;
+            /**
+             * First Watchlist Item
+             * @default false
+             */
+            first_watchlist_item: boolean;
+            /**
+             * Feedback Submitted
+             * @default false
+             */
+            feedback_submitted: boolean;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** BetaRecipientsAdd */
+        BetaRecipientsAdd: {
+            /** Emails */
+            emails: string[];
         };
         /** CalculationTrace */
         CalculationTrace: {
@@ -4154,6 +4444,19 @@ export interface components {
             /** Status */
             status: string;
             /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "P0" | "P1" | "P2" | "P3";
+            /** Assigned Operator User Id */
+            assigned_operator_user_id?: string | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Resolution Code */
+            resolution_code?: string | null;
+            /** Internal Note */
+            internal_note?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -4173,11 +4476,18 @@ export interface components {
         };
         /** OperatorFeedbackUpdate */
         OperatorFeedbackUpdate: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "triaged" | "resolved";
+            /** Status */
+            status?: ("triaged" | "resolved") | null;
+            /** Severity */
+            severity?: ("P0" | "P1" | "P2" | "P3") | null;
+            /** Assigned Operator User Id */
+            assigned_operator_user_id?: string | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Resolution Code */
+            resolution_code?: string | null;
+            /** Internal Note */
+            internal_note?: string | null;
         };
         /** OperatorInviteBatchCreate */
         OperatorInviteBatchCreate: {
@@ -8932,6 +9242,346 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_cohorts_api_v1_admin_beta_cohorts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cohort_api_v1_admin_beta_cohorts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaCohortCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cohort_api_v1_admin_beta_cohorts__cohort_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_recipients_api_v1_admin_beta_cohorts__cohort_id__recipients_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaRecipientsAdd"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_cohort_api_v1_admin_beta_cohorts__cohort_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dispatch_cohort_api_v1_admin_beta_cohorts__cohort_id__dispatch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_cohort_api_v1_admin_beta_cohorts__cohort_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaCohortPause"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_cohort_api_v1_admin_beta_cohorts__cohort_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaCohortView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_onboarding_api_v1_me_beta_onboarding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaOnboardingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_onboarding_api_v1_me_beta_onboarding_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaOnboardingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaOnboardingView"];
                 };
             };
             /** @description Validation Error */

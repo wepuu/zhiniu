@@ -3,6 +3,7 @@ import { ResearchAlertSettings } from "@/components/research-alert-settings";
 import { AdvancedAccessCard } from "@/components/advanced-access-card";
 import { AccountSecurityCard } from "@/components/account-security-card";
 import { BetaFeedbackCard } from "@/components/beta-feedback-card";
+import { BetaOnboardingCard } from "@/components/beta-onboarding-card";
 
 export default function SettingsPage() {
   return (
@@ -11,6 +12,7 @@ export default function SettingsPage() {
         <AccountSecurityCard />
         <AdvancedAccessCard />
         <ResearchAlertSettings />
+        <BetaOnboardingCard />
         <BetaFeedbackCard />
       </div>
     </AppShell>

@@ -29,6 +29,7 @@ from zhaoniu_api.database import engine, session_factory
 from zhaoniu_api.db import User
 from zhaoniu_api.domain.models import resolve_symbol
 from zhaoniu_api.fundamentals.models import FundamentalSnapshot
+from zhaoniu_api.invite_beta.service import InviteBetaService
 from zhaoniu_api.market_data.akshare_provider import AKShareProvider
 from zhaoniu_api.market_data.errors import safe_market_error_code
 from zhaoniu_api.market_data.service import SyncResult
@@ -126,6 +127,14 @@ def _parser() -> argparse.ArgumentParser:
     subcommands.add_parser("run-provider-acceptance")
     acceptance_status = subcommands.add_parser("provider-acceptance-status")
     acceptance_status.add_argument("run_id", type=UUID, nargs="?")
+    beta_cohort = subcommands.add_parser("create-beta-cohort")
+    beta_cohort.add_argument("--name", required=True)
+    beta_cohort.add_argument("--target-size", type=int, default=10)
+    beta_cohort.add_argument("--expires-in-days", type=int, default=7)
+    beta_cohort.add_argument("--operator-email", required=True)
+    beta_cohort_status = subcommands.add_parser("beta-cohort-status")
+    beta_cohort_status.add_argument("cohort_id", type=UUID, nargs="?")
+    subcommands.add_parser("invite-beta-gates")
     universe = subcommands.add_parser("build-beta-research-universe")
     universe.add_argument("--symbol", action="append", dest="symbols")
     coverage = subcommands.add_parser("build-research-coverage-snapshot")
@@ -324,6 +333,31 @@ async def _run(args: argparse.Namespace) -> None:
                 )
                 if result is None:
                     result = {"status": "missing"}
+            elif args.command == "create-beta-cohort":
+                actor_id = await session.scalar(
+                    select(User.id).where(User.email == args.operator_email.strip().lower())
+                )
+                if actor_id is None:
+                    raise ValueError("operator_not_found")
+                result = await InviteBetaService(session, get_settings()).create_cohort(
+                    name=args.name,
+                    target_size=args.target_size,
+                    expires_in_days=args.expires_in_days,
+                    actor_user_id=actor_id,
+                )
+            elif args.command == "beta-cohort-status":
+                beta = InviteBetaService(session, get_settings())
+                result = (
+                    await beta.get_cohort(args.cohort_id)
+                    if args.cohort_id
+                    else await beta.list_cohorts()
+                )
+            elif args.command == "invite-beta-gates":
+                reasons = await InviteBetaService(session, get_settings()).gate_reasons()
+                result = {
+                    "status": "ready" if not reasons else "blocked",
+                    "reasons": reasons,
+                }
             elif args.command == "build-beta-research-universe":
                 result = await build_coverage_service(session).build_universe(
                     operator_pinned=tuple(args.symbols) if args.symbols else None

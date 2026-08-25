@@ -19,6 +19,9 @@ from zhaoniu_api.auth.email import (
 )
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
+    BetaInviteCohortRecord,
+    BetaInviteRecipientRecord,
+    BetaOnboardingStateRecord,
     EmailVerificationTokenRecord,
     PasswordResetTokenRecord,
     RegistrationInviteBatchRecord,
@@ -31,6 +34,7 @@ from zhaoniu_api.db import (
     WatchlistRecord,
 )
 from zhaoniu_api.domain.models import UserAccount, UserSession
+from zhaoniu_api.invite_beta.security import recipient_email_hmac
 from zhaoniu_api.legal import legal_document, required_registration_documents
 
 DEFAULT_WATCHLIST_NAME = "核心观察"
@@ -115,6 +119,23 @@ class AuthService:
             or batch.expires_at <= now
         ):
             raise AuthenticationError("invalid_or_unavailable_invitation")
+        beta_recipient = await self._session.scalar(
+            select(BetaInviteRecipientRecord).where(
+                BetaInviteRecipientRecord.invite_id == invite.id
+            )
+        )
+        if beta_recipient is not None:
+            cohort = await self._session.get(BetaInviteCohortRecord, beta_recipient.cohort_id)
+            expected_email_hmac = recipient_email_hmac(
+                normalized_email, self._settings.registration_invite_hmac_secret
+            )
+            if (
+                cohort is None
+                or cohort.status != "active"
+                or beta_recipient.status != "queued"
+                or beta_recipient.email_hmac != expected_email_hmac
+            ):
+                raise AuthenticationError("invalid_or_unavailable_invitation")
         user = User(
             email=normalized_email,
             password_hash=self._password_hash.hash(password),
@@ -143,6 +164,17 @@ class AuthService:
             )
         invite.consumed_by_user_id = user.id
         invite.consumed_at = now
+        if beta_recipient is not None:
+            beta_recipient.user_id = user.id
+            beta_recipient.status = "registered"
+            beta_recipient.registered_at = now
+            self._session.add(
+                BetaOnboardingStateRecord(
+                    user_id=user.id,
+                    recipient_id=beta_recipient.id,
+                    schema_version="invite-beta-onboarding-v1",
+                )
+            )
         try:
             auth = await self._create_session_record(user, user_agent, ip_address, now)
             verification_token, delivery = await self._create_email_verification(user, now)

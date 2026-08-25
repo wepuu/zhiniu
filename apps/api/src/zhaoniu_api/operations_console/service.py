@@ -38,6 +38,7 @@ from zhaoniu_api.operations_console.models import (
     OperatorContext,
     OperatorDashboardResponse,
     OperatorFeedbackItem,
+    OperatorFeedbackUpdate,
     OperatorInviteBatchResponse,
     OperatorRole,
     OperatorUserDetail,
@@ -66,6 +67,8 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "users.sessions.revoke",
             "users.verification.resend",
             "invites.manage",
+            "beta.cohorts.read",
+            "beta.cohorts.manage",
             "access_codes.manage",
             "feedback.manage",
             "providers.read",
@@ -80,6 +83,7 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "ai.read",
             "ai.run",
             "feedback.manage",
+            "beta.cohorts.read",
             "providers.read",
             "providers.diagnose",
             "providers.config.read",
@@ -98,6 +102,8 @@ CAPABILITIES: dict[str, frozenset[str]] = {
             "users.sessions.revoke",
             "users.verification.resend",
             "invites.manage",
+            "beta.cohorts.read",
+            "beta.cohorts.manage",
             "access_codes.manage",
             "feedback.manage",
             "coverage.read",
@@ -571,13 +577,26 @@ class OperatorService:
         rows = (await self._session.scalars(statement.limit(limit))).all()
         return [OperatorFeedbackItem.model_validate(row) for row in rows]
 
-    async def update_feedback(self, feedback_id: UUID, status: str) -> bool:
+    async def update_feedback(
+        self, feedback_id: UUID, payload: OperatorFeedbackUpdate
+    ) -> bool:
         row = await self._session.get(BetaFeedbackItemRecord, feedback_id)
         if row is None:
             return False
-        if status == "resolved" and row.status == "new":
+        if payload.status == "resolved" and row.status == "new":
             raise ValueError("feedback_must_be_triaged_first")
-        row.status = status
+        if payload.assigned_operator_user_id is not None:
+            assignee = await self._session.scalar(
+                select(OperatorMembershipRecord.id).where(
+                    OperatorMembershipRecord.user_id
+                    == payload.assigned_operator_user_id,
+                    OperatorMembershipRecord.revoked_at.is_(None),
+                )
+            )
+            if assignee is None:
+                raise ValueError("feedback_assignee_not_operator")
+        for field in payload.model_fields_set:
+            setattr(row, field, getattr(payload, field))
         await self._session.commit()
         return True
 

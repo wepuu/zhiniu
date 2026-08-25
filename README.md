@@ -3,7 +3,7 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已经落地 Phase 0-20 的代码实现，包括受控 Beta、覆盖运营、运营控制台、单一
+当前仓库已经落地 Phase 0-21 的代码实现，包括受控 Beta、覆盖运营、运营控制台、单一
 固定调度链路、公司研究时间线、受管 Provider 配置、DeepSeek 证据解读、两家公司
 确定性对比、上线基线与 Provider/Beta 数据验收。Phase 19 内部工程基线已接受（邮件闭环
 明确延期）；Phase 20 首次真实数据基线未通过。邀请 Beta 和生产发布仍受真实邮件交付、
@@ -77,6 +77,8 @@ uv run python -m zhaoniu_api.cli build-research-coverage-snapshot
 uv run python -m zhaoniu_api.cli plan-coverage-backfill
 uv run python -m zhaoniu_api.cli run-coverage-backfill RUN_ID
 uv run python -m zhaoniu_api.cli generate-beta-learning-report --days 7
+uv run python -m zhaoniu_api.cli beta-cohort-status
+uv run python -m zhaoniu_api.cli invite-beta-gates
 uv run python scripts/postgres_ops.py backup --output .local/backups/zhaoniu.dump
 uv run python scripts/postgres_ops.py verify --artifact .local/backups/zhaoniu.dump
 ```

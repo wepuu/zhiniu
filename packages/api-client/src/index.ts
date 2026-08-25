@@ -109,6 +109,10 @@ export type CoverageDimension = components["schemas"]["CoverageDimension"];
 export type BetaFeedbackCreate = components["schemas"]["BetaFeedbackCreate"];
 export type BetaFeedbackResponse =
   components["schemas"]["BetaFeedbackResponse"];
+export type BetaCohortCreate = components["schemas"]["BetaCohortCreate"];
+export type BetaCohortView = components["schemas"]["BetaCohortView"];
+export type BetaCohortList = components["schemas"]["BetaCohortList"];
+export type BetaOnboardingView = components["schemas"]["BetaOnboardingView"];
 export type OperatorContext = components["schemas"]["OperatorContext"];
 export type OperatorDashboardResponse =
   components["schemas"]["OperatorDashboardResponse"];
@@ -685,8 +689,56 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         payload,
       );
     },
+    getBetaOnboarding() {
+      return request<BetaOnboardingView>("/api/v1/me/beta-onboarding");
+    },
+    updateBetaOnboarding(action: "acknowledge" | "dismiss") {
+      return jsonRequest<BetaOnboardingView>(
+        "/api/v1/me/beta-onboarding",
+        "POST",
+        { action },
+      );
+    },
     getOperatorContext() {
       return request<OperatorContext>("/api/v1/admin/context");
+    },
+    getBetaCohorts() {
+      return request<BetaCohortList>("/api/v1/admin/beta/cohorts");
+    },
+    createBetaCohort(payload: BetaCohortCreate) {
+      return jsonRequest<BetaCohortView>(
+        "/api/v1/admin/beta/cohorts",
+        "POST",
+        payload,
+      );
+    },
+    getBetaCohort(cohortId: string) {
+      return request<BetaCohortView>(
+        `/api/v1/admin/beta/cohorts/${encodeURIComponent(cohortId)}`,
+      );
+    },
+    addBetaRecipients(cohortId: string, emails: string[]) {
+      return jsonRequest<BetaCohortView>(
+        `/api/v1/admin/beta/cohorts/${encodeURIComponent(cohortId)}/recipients`,
+        "POST",
+        { emails },
+      );
+    },
+    actOnBetaCohort(
+      cohortId: string,
+      action: "approve" | "dispatch" | "close",
+    ) {
+      return request<BetaCohortView>(
+        `/api/v1/admin/beta/cohorts/${encodeURIComponent(cohortId)}/${action}`,
+        { method: "POST" },
+      );
+    },
+    pauseBetaCohort(cohortId: string, reasonCode: string) {
+      return jsonRequest<BetaCohortView>(
+        `/api/v1/admin/beta/cohorts/${encodeURIComponent(cohortId)}/pause`,
+        "POST",
+        { reason_code: reasonCode },
+      );
     },
     elevateOperator(password: string) {
       return jsonRequest<OperatorContext>(
@@ -744,11 +796,14 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         `/api/v1/admin/feedback?${query}`,
       );
     },
-    updateOperatorFeedback(feedbackId: string, status: "triaged" | "resolved") {
+    updateOperatorFeedback(
+      feedbackId: string,
+      payload: components["schemas"]["OperatorFeedbackUpdate"],
+    ) {
       return jsonRequest<OperatorActionResponse>(
         `/api/v1/admin/feedback/${encodeURIComponent(feedbackId)}`,
         "PATCH",
-        { status },
+        payload,
       );
     },
     getOperatorAudit() {

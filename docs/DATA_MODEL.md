@@ -304,5 +304,20 @@ displayed as unavailable or not comparable and is never normalized by the fronte
   artifact time, bounded non-secret detail manifest, and evidence fingerprint.
 - Runs and items are append-only acceptance evidence. They do not replace canonical market,
   financial, industry, disclosure, event, or LLM-call records.
-- Migration head `20260825_0024` introduces these tables without changing public research response
+- Migration `20260825_0024` introduces these tables without changing public research response
   contracts.
+
+## Phase 21 Invite Beta operations
+
+- `beta_invite_cohorts` owns the bounded batch, frozen acceptance-run reference, lifecycle,
+  creator/approver and safe reason code.
+- `beta_invite_recipients` binds one normalized email to one cohort, invitation, delivery and
+  eventual user. Unique constraints prevent duplicate cohort addresses and invite/delivery links.
+- `beta_onboarding_states` stores only explicit acknowledgement/dismissal. Email verification,
+  first watchlist item and feedback completion derive from existing user-owned records.
+- Invitation codes remain one-time digests in `registration_invites`; email bodies and plaintext
+  codes are never retained in the Phase 21 tables.
+
+Migration `20260825_0025` adds this projection without duplicating stock or research data.
+Migration head `20260825_0026` adds feedback severity, assignment, due time and bounded resolution
+metadata so operations can close the learning loop without changing the user's original message.

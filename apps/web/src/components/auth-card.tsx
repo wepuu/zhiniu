@@ -12,7 +12,8 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
   const isRegister = mode === "register";
   const router = useRouter();
   const search = useSearchParams();
-  const [email, setEmail] = useState("");
+  const invitedEmail = isRegister ? (search.get("email") ?? "") : "";
+  const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [invitationCode, setInvitationCode] = useState(
@@ -196,9 +197,15 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
               placeholder="name@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              readOnly={Boolean(invitedEmail)}
               autoComplete="email"
               required
             />
+            {invitedEmail && (
+              <span className="text-slate mt-1.5 block text-xs">
+                此邀请仅限该邮箱使用。
+              </span>
+            )}
           </label>
           <label className="block text-sm font-medium">
             密码
