@@ -45,6 +45,12 @@ done
 [[ -d ${repo_dir}/.git ]] || { echo "missing repository: ${repo_dir}" >&2; exit 1; }
 [[ -d ${docker_root} ]] || { echo "missing Docker root: ${docker_root}" >&2; exit 1; }
 
+trusted_host=$(sed -n 's/^[[:space:]]*TRUSTED_HOSTS=//p' "${env_file}" | head -n 1 | cut -d, -f1 | tr -d '[:space:]')
+[[ ${trusted_host} =~ ^([A-Za-z0-9-]+\.)*[A-Za-z0-9-]+$ ]] || {
+  echo "invalid or missing first TRUSTED_HOSTS entry" >&2
+  exit 1
+}
+
 mkdir -p "${releases_dir}" "$(dirname "${lock_file}")"
 exec 9>"${lock_file}"
 flock -n 9 || { echo "another deployment is running" >&2; exit 1; }
@@ -114,7 +120,8 @@ compose up -d --remove-orphans api worker beat web
 wait_for_health() {
   local attempt
   for attempt in $(seq 1 40); do
-    if curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8000/readyz >/dev/null \
+    if curl --fail --silent --show-error --max-time 3 \
+      --header "Host: ${trusted_host}" http://127.0.0.1:8000/readyz >/dev/null \
       && curl --fail --silent --show-error --max-time 3 http://127.0.0.1:3000/ >/dev/null; then
       return 0
     fi

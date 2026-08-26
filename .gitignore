@@ -19,6 +19,7 @@ test-results/
 
 # Python
 .venv/
+.uv-cache/
 .tools/
 .local/
 __pycache__/
