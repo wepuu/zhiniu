@@ -5,6 +5,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH=/app/.venv/bin:$PATH
 WORKDIR /app
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 zhaoniu
 COPY --from=uv /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
