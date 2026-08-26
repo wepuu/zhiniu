@@ -213,8 +213,21 @@ jobs:
         run: |
           docker run --rm --entrypoint python "$API_IMAGE" -c \
             "import sys; sys.path.insert(0, 'apps/api/src'); from zhaoniu_api.main import create_app; assert create_app().title == 'Zhaoniu API'"
-          docker run --rm --entrypoint pnpm "$WEB_IMAGE" \
-            --filter @zhaoniu/web exec next --version
+          web_container=$(docker run --detach --publish 127.0.0.1::3000 "$WEB_IMAGE")
+          trap 'docker rm --force "$web_container" >/dev/null 2>&1 || true' EXIT
+          web_port=$(docker port "$web_container" 3000/tcp | awk -F: 'NR == 1 { print $NF }')
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error "http://127.0.0.1:${web_port}/" >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs "$web_container"
+              exit 1
+            fi
+            sleep 1
+          done
+          docker rm --force "$web_container"
+          trap - EXIT
 
   deploy:
     needs: [build_scan_publish, verify_images]

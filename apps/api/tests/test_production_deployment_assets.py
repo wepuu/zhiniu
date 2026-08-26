@@ -32,6 +32,19 @@ def test_api_image_applies_available_base_security_updates() -> None:
     assert "rm -rf /var/lib/apt/lists/*" in dockerfile
 
 
+def test_web_image_uses_a_hardened_standalone_runtime() -> None:
+    dockerfile = (ROOT / "infrastructure" / "docker" / "web.Dockerfile").read_text(
+        encoding="utf-8"
+    )
+
+    assert "apk upgrade --no-cache" in dockerfile
+    assert "/app/apps/web/.next/standalone" in dockerfile
+    assert "/app/apps/web/.next/static" in dockerfile
+    assert "rm -rf /usr/local/lib/node_modules/npm" in dockerfile
+    assert 'CMD ["node", "apps/web/server.js"]' in dockerfile
+    assert "COPY --from=build --chown=zhaoniu:zhaoniu /app /app" not in dockerfile
+
+
 def test_deploy_is_fail_closed_around_backup_and_health() -> None:
     deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
 
@@ -58,6 +71,11 @@ def test_staging_images_publish_and_verify_before_optional_deploy() -> None:
     assert "Verify images are private before authentication" in workflow[verify:deploy]
     assert "Pull immutable image digests" in workflow[verify:deploy]
     assert "Smoke-test image runtimes" in workflow[verify:deploy]
+    assert "docker run --detach --publish 127.0.0.1::3000" in workflow[verify:deploy]
+    assert (
+        'curl --fail --silent --show-error "http://127.0.0.1:${web_port}/"'
+        in workflow[verify:deploy]
+    )
     assert "vars.STAGING_DEPLOY_ENABLED == 'true'" in workflow[deploy:]
 
 
