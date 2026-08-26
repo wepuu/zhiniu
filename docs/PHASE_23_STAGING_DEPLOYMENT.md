@@ -11,12 +11,17 @@ The application remains a modular monolith. Only the deployment boundary changes
 runners build and scan immutable images, GHCR stores them, and the VPS pulls exact digests. BT Nginx
 owns public HTTP/TLS. PostgreSQL, Redis and the application processes remain in Compose.
 
+The Web runtime image contains only the Next.js standalone output and the Node runtime. Build-time
+dependencies and package managers are not copied into the final image, and available Alpine security
+updates are applied before publication.
+
 ## One-time GitHub configuration
 
 1. Protect `main`: require pull requests and the `frontend`, `backend`, and `api-contract` checks from
    the **Continuous integration** workflow. Disable force pushes and branch deletion.
-2. Create the `staging` GitHub Environment. It does not require manual approval, because this host is
-   pre-production.
+2. Do not create the `staging` GitHub Environment until the VPS host fingerprint, SSH credentials,
+   GHCR login and backup destination have been verified. When deployment is ready, create it without
+   a manual approval requirement because this host is pre-production.
 3. Grant Actions read/write package permission. GHCR packages remain private unless deliberately
    changed later.
 4. Keep repository variable `STAGING_DEPLOY_ENABLED` absent or `false` until DNS, Nginx, VPS secrets,
