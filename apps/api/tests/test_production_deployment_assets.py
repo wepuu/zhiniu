@@ -36,6 +36,9 @@ def test_web_image_uses_a_hardened_standalone_runtime() -> None:
     dockerfile = (ROOT / "infrastructure" / "docker" / "web.Dockerfile").read_text(
         encoding="utf-8"
     )
+    next_config = (ROOT / "apps" / "web" / "next.config.ts").read_text(
+        encoding="utf-8"
+    )
 
     assert "apk upgrade --no-cache" in dockerfile
     assert "/app/apps/web/.next/standalone" in dockerfile
@@ -43,6 +46,8 @@ def test_web_image_uses_a_hardened_standalone_runtime() -> None:
     assert "rm -rf /usr/local/lib/node_modules/npm" in dockerfile
     assert 'CMD ["node", "apps/web/server.js"]' in dockerfile
     assert "COPY --from=build --chown=zhaoniu:zhaoniu /app /app" not in dockerfile
+    assert "outputFileTracingIncludes" in next_config
+    assert "@swc+helpers@*/node_modules/@swc/helpers/esm/**/*" in next_config
 
 
 def test_deploy_is_fail_closed_around_backup_and_health() -> None:

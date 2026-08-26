@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
   distDir,
   output: "standalone",
   outputFileTracingRoot: repositoryRoot,
+  outputFileTracingIncludes: {
+    "/*": [
+      "../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**/*",
+    ],
+  },
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
