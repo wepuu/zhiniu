@@ -22,6 +22,16 @@ def test_production_compose_uses_immutable_images_and_loopback_ports() -> None:
     assert 'max-size: "10m"' in compose
 
 
+def test_api_image_applies_available_base_security_updates() -> None:
+    dockerfile = (ROOT / "infrastructure" / "docker" / "api.Dockerfile").read_text(
+        encoding="utf-8"
+    )
+
+    assert "apt-get update" in dockerfile
+    assert "apt-get upgrade -y" in dockerfile
+    assert "rm -rf /var/lib/apt/lists/*" in dockerfile
+
+
 def test_deploy_is_fail_closed_around_backup_and_health() -> None:
     deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
 
