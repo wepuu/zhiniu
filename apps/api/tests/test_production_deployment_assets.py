@@ -6,6 +6,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCTION = ROOT / "infrastructure" / "production"
+STAGING_WORKFLOW = ROOT / ".github" / "workflows" / "deploy-staging.yml"
 
 
 def test_production_compose_uses_immutable_images_and_loopback_ports() -> None:
@@ -33,6 +34,21 @@ def test_deploy_is_fail_closed_around_backup_and_health() -> None:
     assert "requested commit is no longer main" in deploy
     assert "image revision does not match commit" in deploy
     assert "alembic downgrade" not in deploy
+
+
+def test_staging_images_publish_and_verify_before_optional_deploy() -> None:
+    workflow = STAGING_WORKFLOW.read_text(encoding="utf-8")
+
+    build = workflow.index("  build_scan_publish:")
+    verify = workflow.index("  verify_images:")
+    deploy = workflow.index("  deploy:")
+    assert build < verify < deploy
+    assert "if: github.event.workflow_run.conclusion == 'success'" in workflow[build:verify]
+    assert "STAGING_DEPLOY_ENABLED" not in workflow[build:verify]
+    assert "Verify images are private before authentication" in workflow[verify:deploy]
+    assert "Pull immutable image digests" in workflow[verify:deploy]
+    assert "Smoke-test image runtimes" in workflow[verify:deploy]
+    assert "vars.STAGING_DEPLOY_ENABLED == 'true'" in workflow[deploy:]
 
 
 def test_nginx_keeps_dependencies_private_and_marks_staging_noindex() -> None:

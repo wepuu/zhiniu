@@ -7,8 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "python ../../scripts/export_openapi.py && openapi-typescript openapi.json -o src/schema.d.ts",
-    "generate:check": "python ../../scripts/check_openapi.py"
+    "generate": "uv run --no-sync python ../../scripts/export_openapi.py && openapi-typescript openapi.json -o src/schema.d.ts",
+    "generate:check": "uv run --no-sync python ../../scripts/check_openapi.py"
   },
   "devDependencies": {
     "openapi-typescript": "7.10.1"
