@@ -8,19 +8,22 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: zhaoniu-staging-deploy
   cancel-in-progress: false
 
 jobs:
-  build-scan-deploy:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      vars.STAGING_DEPLOY_ENABLED == 'true'
+  build_scan_publish:
+    name: build-scan-publish
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
-    environment: staging
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api_digest: ${{ steps.api.outputs.digest }}
+      web_digest: ${{ steps.web.outputs.digest }}
     env:
       RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
       API_TAG: ghcr.io/wepuu/zhiniu-api:sha-${{ github.event.workflow_run.head_sha }}
@@ -163,10 +166,72 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+  verify_images:
+    name: verify-images
+    needs: build_scan_publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      API_IMAGE: ghcr.io/wepuu/zhiniu-api@${{ needs.build_scan_publish.outputs.api_digest }}
+      WEB_IMAGE: ghcr.io/wepuu/zhiniu-web@${{ needs.build_scan_publish.outputs.web_digest }}
+    steps:
+      - name: Verify images are private before authentication
+        run: |
+          if docker pull "$API_IMAGE"; then
+            echo "::error::API image is anonymously readable; GHCR package must remain private"
+            exit 1
+          fi
+          if docker pull "$WEB_IMAGE"; then
+            echo "::error::Web image is anonymously readable; GHCR package must remain private"
+            exit 1
+          fi
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull immutable image digests
+        run: |
+          docker pull "$API_IMAGE"
+          docker pull "$WEB_IMAGE"
+
+      - name: Verify image provenance and architecture
+        run: |
+          for image in "$API_IMAGE" "$WEB_IMAGE"; do
+            architecture=$(docker image inspect --format '{{.Architecture}}' "$image")
+            revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")
+            test "$architecture" = "amd64"
+            test "$revision" = "$RELEASE_SHA"
+          done
+
+      - name: Smoke-test image runtimes
+        run: |
+          docker run --rm --entrypoint python "$API_IMAGE" -c \
+            "import sys; sys.path.insert(0, 'apps/api/src'); from zhaoniu_api.main import create_app; assert create_app().title == 'Zhaoniu API'"
+          docker run --rm --entrypoint pnpm "$WEB_IMAGE" \
+            --filter @zhaoniu/web exec next --version
+
+  deploy:
+    needs: [build_scan_publish, verify_images]
+    if: >-
+      needs.verify_images.result == 'success' &&
+      vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      API_DIGEST: ${{ needs.build_scan_publish.outputs.api_digest }}
+      WEB_DIGEST: ${{ needs.build_scan_publish.outputs.web_digest }}
+    steps:
       - name: Deploy exact digests over SSH
         env:
-          API_DIGEST: ${{ steps.api.outputs.digest }}
-          WEB_DIGEST: ${{ steps.web.outputs.digest }}
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
           STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
           STAGING_USER: ${{ secrets.STAGING_SSH_USER }}

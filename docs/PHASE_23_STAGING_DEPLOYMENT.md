@@ -20,7 +20,9 @@ owns public HTTP/TLS. PostgreSQL, Redis and the application processes remain in 
 3. Grant Actions read/write package permission. GHCR packages remain private unless deliberately
    changed later.
 4. Keep repository variable `STAGING_DEPLOY_ENABLED` absent or `false` until DNS, Nginx, VPS secrets,
-   GHCR login and backup destination are ready. Set it to `true` only for the first controlled deploy.
+   GHCR login and backup destination are ready. Image build, scan, publication and authenticated
+   digest verification still run while deployment is disabled. Set the variable to `true` only for
+   the first controlled deploy.
 5. Add environment secrets:
    - `STAGING_HOST`
    - `STAGING_SSH_PORT`
@@ -30,11 +32,13 @@ owns public HTTP/TLS. PostgreSQL, Redis and the application processes remain in 
 6. Add a separate read-only repository Deploy Key for root's repository checkout on the VPS. The
    workflow SSH key and the repository Deploy Key must not be the same key.
 
-A PR runs all engineering gates. A successful `main` workflow triggers image build, registry push,
-Trivy scanning, CycloneDX SBOM export, and a serialized SSH deployment. A failed CI or scan never
-contacts the VPS. A successful deployment triggers independent 1440×900 and 390×844 Chromium flows
-against the public HTTPS origin; real email-link consumption remains a controlled manual run because
-tokens must not be passed through workflow inputs or logs.
+A PR runs all engineering gates. A successful `main` workflow always triggers image build, registry
+push, Trivy scanning, CycloneDX SBOM export, and an independent private-registry pull verification.
+The serialized SSH deployment is a separate job and remains skipped until
+`STAGING_DEPLOY_ENABLED=true`. A failed CI, scan or image verification never contacts the VPS. A
+successful deployment triggers independent 1440×900 and 390×844 Chromium flows against the public
+HTTPS origin; real email-link consumption remains a controlled manual run because tokens must not be
+passed through workflow inputs or logs.
 
 ## One-time VPS preparation
 
