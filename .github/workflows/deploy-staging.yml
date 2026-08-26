@@ -212,7 +212,11 @@ jobs:
       - name: Smoke-test image runtimes
         run: |
           docker run --rm --entrypoint python "$API_IMAGE" -c \
-            "import sys; sys.path.insert(0, 'apps/api/src'); from zhaoniu_api.main import create_app; assert create_app().title == 'Zhaoniu API'"
+            "from zhaoniu_api.main import create_app; from zhaoniu_worker.celery_app import celery_app; assert create_app().title == 'Zhaoniu API'; assert celery_app.main == 'zhaoniu'"
+          docker run --rm --entrypoint celery "$API_IMAGE" \
+            -A zhaoniu_worker.celery_app:celery_app worker --help >/dev/null
+          docker run --rm --entrypoint celery "$API_IMAGE" \
+            -A zhaoniu_worker.celery_app:celery_app beat --help >/dev/null
           web_container=$(docker run --detach --publish 127.0.0.1::3000 "$WEB_IMAGE")
           trap 'docker rm --force "$web_container" >/dev/null 2>&1 || true' EXIT
           web_port=$(docker port "$web_container" 3000/tcp | awk -F: 'NR == 1 { print $NF }')

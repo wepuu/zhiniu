@@ -98,7 +98,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)",
+          "import os, urllib.request; host=os.environ['TRUSTED_HOSTS'].split(',')[0].strip(); request=urllib.request.Request('http://127.0.0.1:8000/readyz', headers={'Host': host}); urllib.request.urlopen(request, timeout=3)",
         ]
       interval: 15s
       timeout: 5s
@@ -115,8 +115,6 @@ services:
         "-A",
         "zhaoniu_worker.celery_app:celery_app",
         "worker",
-        "--workdir",
-        "apps/worker/src",
         "--loglevel",
         "INFO",
         "--concurrency",
@@ -143,8 +141,6 @@ services:
         "-A",
         "zhaoniu_worker.celery_app:celery_app",
         "beat",
-        "--workdir",
-        "apps/worker/src",
         "--loglevel",
         "INFO",
         "--pidfile",

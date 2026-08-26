@@ -26,10 +26,26 @@ def test_api_image_applies_available_base_security_updates() -> None:
     dockerfile = (ROOT / "infrastructure" / "docker" / "api.Dockerfile").read_text(
         encoding="utf-8"
     )
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "apt-get update" in dockerfile
     assert "apt-get upgrade -y" in dockerfile
     assert "rm -rf /var/lib/apt/lists/*" in dockerfile
+    assert 'where = ["apps/api/src", "apps/worker/src"]' in pyproject
+
+    compose = (PRODUCTION / "docker-compose.yml").read_text(encoding="utf-8")
+    assert '"zhaoniu_worker.celery_app:celery_app"' in compose
+    assert '"--workdir"' not in compose
+
+
+def test_production_health_checks_use_the_configured_trusted_host() -> None:
+    compose = (PRODUCTION / "docker-compose.yml").read_text(encoding="utf-8")
+    deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
+
+    assert "os.environ['TRUSTED_HOSTS'].split(',')[0].strip()" in compose
+    assert "headers={'Host': host}" in compose
+    assert 'trusted_host=$(sed -n' in deploy
+    assert '--header "Host: ${trusted_host}"' in deploy
 
 
 def test_web_image_uses_a_hardened_standalone_runtime() -> None:
@@ -76,6 +92,9 @@ def test_staging_images_publish_and_verify_before_optional_deploy() -> None:
     assert "Verify images are private before authentication" in workflow[verify:deploy]
     assert "Pull immutable image digests" in workflow[verify:deploy]
     assert "Smoke-test image runtimes" in workflow[verify:deploy]
+    assert "from zhaoniu_worker.celery_app import celery_app" in workflow[verify:deploy]
+    assert "zhaoniu_worker.celery_app:celery_app worker --help" in workflow[verify:deploy]
+    assert "zhaoniu_worker.celery_app:celery_app beat --help" in workflow[verify:deploy]
     assert "docker run --detach --publish 127.0.0.1::3000" in workflow[verify:deploy]
     assert (
         'curl --fail --silent --show-error "http://127.0.0.1:${web_port}/"'
