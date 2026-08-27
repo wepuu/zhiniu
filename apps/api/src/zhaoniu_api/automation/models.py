@@ -84,7 +84,7 @@ class AutomationStepView(BaseModel):
 class AutomationRunSummary(BaseModel):
     id: UUID
     policy_key: str
-    trigger_kind: Literal["scheduled", "manual", "resume"]
+    trigger_kind: Literal["scheduled", "manual", "resume", "watchlist"]
     scheduled_for: datetime
     status: AutomationRunStatus
     universe_size: int

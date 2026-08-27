@@ -64,6 +64,7 @@ import { EventRadarPanel } from "./event-radar-panel";
 import { CompanyTimelinePanel } from "./company-timeline-panel";
 import { ResearchChanges } from "./research-changes";
 import { ResearchCoverageCard } from "./research-coverage-card";
+import { StockReadinessCard } from "./stock-readiness-card";
 import { Card } from "./ui/card";
 import { ValuationChart } from "./valuation-chart";
 
@@ -1159,6 +1160,7 @@ export function StockDetail({ symbol }: { symbol: string }) {
   };
   return (
     <>
+      <StockReadinessCard symbol={symbol} />
       <DesktopStock {...shared} />
       <MobileStock {...shared} />
     </>

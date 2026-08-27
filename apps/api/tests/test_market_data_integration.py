@@ -99,6 +99,10 @@ async def test_postgres_upserts_are_idempotent() -> None:
             )
             assert (stock_count, bar_count) == (1, 1)
             assert (await stocks.get("601999")).latest_price == Decimal("11.000000")  # type: ignore[union-attr]
+            assert [item.canonical_symbol for item in await stocks.search("jichengceshi")] == [
+                symbol
+            ]
+            assert [item.canonical_symbol for item in await stocks.search("jccsgf")] == [symbol]
             listed = await bars.list_for_symbol(symbol, start=None, end=None, limit=120)
             assert [item.trade_date for item in listed] == [date(2026, 8, 14)]
     finally:

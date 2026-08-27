@@ -124,9 +124,7 @@ class CompanyTimelineQueryService:
         ]
         if source_kind:
             base_conditions.append(ResearchSignalRecord.source_kind == source_kind)
-        conditions: list[Any] = [
-            ResearchSignalRecord.id.in_(_latest_signal_ids(*base_conditions))
-        ]
+        conditions: list[Any] = [ResearchSignalRecord.id.in_(_latest_signal_ids(*base_conditions))]
         if minimum_attention:
             rank = ATTENTION_RANK[minimum_attention]
             conditions.append(

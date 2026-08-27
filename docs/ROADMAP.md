@@ -200,6 +200,14 @@ the encrypted Provider vault, the four fixed A-share samples complete Provider/d
 GitHub SSH deployment is enabled and rehearsed, and the 24–48 hour stability window is recorded.
 Staging is not a Phase 22 production event and its accounts and data remain disposable.
 
+## Phase 24 - Watchlist Research Readiness & Intelligent Stock Search (implementation)
+
+Phase 24 closes the Chinese/full-pinyin/initial search, watchlist-triggered preparation, shared
+readiness, deterministic-before-AI generation and active-watchlist daily increment loop. Migration
+`20260828_0028` stores private search keys and the readiness lookup index. Public rollout remains
+fail-closed behind `WATCHLIST_PREPARATION_ENABLED`, `AUTOMATION_AI_ENABLED`, the environment hard
+stop and the database policy until four-symbol canary and the 24–48 hour observation pass.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

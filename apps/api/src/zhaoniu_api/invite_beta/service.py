@@ -91,9 +91,7 @@ class InviteBetaService:
         if current + len(normalized) > cohort.target_size:
             raise InviteBetaError("beta_cohort_target_exceeded")
         for email in normalized:
-            digest = recipient_email_hmac(
-                email, self._settings.registration_invite_hmac_secret
-            )
+            digest = recipient_email_hmac(email, self._settings.registration_invite_hmac_secret)
             duplicate = await self._session.scalar(
                 select(BetaInviteRecipientRecord.id).where(
                     BetaInviteRecipientRecord.email_hmac == digest,
@@ -183,9 +181,7 @@ class InviteBetaService:
             invite = RegistrationInviteRecord(
                 id=uuid4(),
                 batch_id=batch.id,
-                code_hmac=code_hmac(
-                    code, "INV", self._settings.registration_invite_hmac_secret
-                ),
+                code_hmac=code_hmac(code, "INV", self._settings.registration_invite_hmac_secret),
                 code_prefix=code_prefix(code),
                 expires_at=cohort.expires_at,
             )
@@ -333,9 +329,7 @@ class InviteBetaService:
         if diagnostic is None or diagnostic.status != "healthy":
             reasons.append("resend_active_diagnostic_unhealthy")
         active_users = int(
-            await self._session.scalar(
-                select(func.count(User.id)).where(User.status == "active")
-            )
+            await self._session.scalar(select(func.count(User.id)).where(User.status == "active"))
             or 0
         )
         if active_users >= self._settings.beta_max_active_users:

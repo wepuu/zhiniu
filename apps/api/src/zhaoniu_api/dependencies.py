@@ -47,6 +47,7 @@ from zhaoniu_api.research_feed.service import ResearchFeedService
 from zhaoniu_api.screening.dispatch import ScreeningDispatcher
 from zhaoniu_api.screening.natural_language import NaturalLanguageScreeningService
 from zhaoniu_api.screening.service import ScreeningService
+from zhaoniu_api.stock_readiness import StockReadinessService
 
 
 def get_auth_service(
@@ -208,6 +209,13 @@ def get_automation_service(
     return build_automation_service(session)
 
 
+def get_stock_readiness_service(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StockReadinessService:
+    return StockReadinessService(session, settings)
+
+
 def get_comparison_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ComparisonService:
@@ -289,6 +297,9 @@ ProductionReleaseServiceDependency = Annotated[
     ProductionReleaseService, Depends(get_production_release_service)
 ]
 AutomationServiceDependency = Annotated[AutomationService, Depends(get_automation_service)]
+StockReadinessServiceDependency = Annotated[
+    StockReadinessService, Depends(get_stock_readiness_service)
+]
 ComparisonServiceDependency = Annotated[ComparisonService, Depends(get_comparison_service)]
 ComparisonDispatcherDependency = Annotated[ComparisonDispatcher, Depends(get_comparison_dispatcher)]
 OperatorContextDependency = Annotated[OperatorContext, Depends(get_operator_context)]

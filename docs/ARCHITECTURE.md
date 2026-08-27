@@ -240,3 +240,11 @@ Provider acceptance, managed Resend diagnostics, email lifecycle, feedback and o
 does not build images, run infrastructure, store deployment credentials or bypass CI/CD. Gate runs
 are append-only evidence projections; deployment events are state-machine assertions with a final
 live gate recheck. The frontend renders server decisions and never calculates release eligibility.
+
+## Phase 24 on-demand research preparation
+
+Adding a watchlist membership creates or reuses a global symbol-scoped automation run; it never
+copies shared stock data per user. Direct Celery dispatch is an optimization, while the existing
+single Beat tick also discovers pending watchlist runs after broker failures. Readiness is a query
+projection over canonical market data, deterministic snapshots, extended research, shared AI
+outputs and automation steps. The frontend only renders that server-owned state.

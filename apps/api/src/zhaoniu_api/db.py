@@ -381,6 +381,15 @@ class StockRecord(TimestampMixin, Base):
     symbol: Mapped[str] = mapped_column(String(16), primary_key=True)
     ticker: Mapped[str] = mapped_column(String(6), nullable=False)
     name: Mapped[str] = mapped_column(String(120))
+    search_name: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="", server_default=""
+    )
+    name_pinyin: Mapped[str] = mapped_column(
+        String(240), nullable=False, default="", server_default=""
+    )
+    name_pinyin_initials: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="", server_default=""
+    )
     exchange: Mapped[str] = mapped_column(String(16), index=True)
     industry_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     asset_type: Mapped[str] = mapped_column(String(24), default="stock")
@@ -391,7 +400,24 @@ class StockRecord(TimestampMixin, Base):
     source: Mapped[str] = mapped_column(String(40))
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (UniqueConstraint("ticker", "exchange", name="uq_stocks_ticker_exchange"),)
+    __table_args__ = (
+        UniqueConstraint("ticker", "exchange", name="uq_stocks_ticker_exchange"),
+        Index(
+            "ix_stocks_search_name_prefix",
+            "search_name",
+            postgresql_ops={"search_name": "varchar_pattern_ops"},
+        ),
+        Index(
+            "ix_stocks_name_pinyin_prefix",
+            "name_pinyin",
+            postgresql_ops={"name_pinyin": "varchar_pattern_ops"},
+        ),
+        Index(
+            "ix_stocks_name_pinyin_initials_prefix",
+            "name_pinyin_initials",
+            postgresql_ops={"name_pinyin_initials": "varchar_pattern_ops"},
+        ),
+    )
 
 
 class StockDailyBarRecord(TimestampMixin, Base):
@@ -2466,6 +2492,7 @@ class AutomationRunStepRecord(Base):
             "run_id", "scope_type", "scope_key", "step_key", name="uq_automation_run_step"
         ),
         Index("ix_automation_step_claim", "run_id", "status", "dependency_order"),
+        Index("ix_automation_step_symbol_status", "symbol", "status", "created_at"),
         CheckConstraint(
             "status IN ('pending', 'running', 'succeeded', 'failed', 'skipped', 'blocked')",
             name="ck_automation_step_status",
@@ -2499,6 +2526,9 @@ class AutomationRunStepRecord(Base):
     error_code: Mapped[str | None] = mapped_column(String(120))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class AutomationStepAttemptRecord(Base):
