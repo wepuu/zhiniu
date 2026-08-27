@@ -122,12 +122,22 @@ wait_for_health() {
   for attempt in $(seq 1 40); do
     if curl --fail --silent --show-error --max-time 3 \
       --header "Host: ${trusted_host}" http://127.0.0.1:8000/readyz >/dev/null \
-      && curl --fail --silent --show-error --max-time 3 http://127.0.0.1:3000/ >/dev/null; then
+      && curl --fail --silent --show-error --max-time 3 http://127.0.0.1:3000/ >/dev/null \
+      && service_is_stable worker \
+      && service_is_stable beat; then
       return 0
     fi
     sleep 3
   done
   return 1
+}
+
+service_is_stable() {
+  local container_id
+  container_id=$(compose ps -q "$1" 2>/dev/null)
+  [[ -n ${container_id} ]] \
+    && [[ $(docker inspect --format '{{.State.Running}}' "${container_id}") == true ]] \
+    && [[ $(docker inspect --format '{{.RestartCount}}' "${container_id}") -eq 0 ]]
 }
 
 if ! wait_for_health; then
