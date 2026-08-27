@@ -190,6 +190,11 @@ to the isolated receiver, 14-daily/8-weekly receiver retention, and a successful
 drill. The active Web Gateway uses the internal Compose `api` alias while public API and application
 ports remain behind BT Nginx.
 
+The market-data adapter now has a bounded Shanghai/Shenzhen Sina daily-bar fallback for transient
+Eastmoney transport failures. The fallback records distinct source lineage and share-unit semantics
+and remains restricted to `development_evaluation`; it improves staging continuity without changing
+the production data-authorization gate.
+
 Phase 23 remains unsigned until Resend credentials are moved from the bootstrap environment into
 the encrypted Provider vault, the four fixed A-share samples complete Provider/data acceptance,
 GitHub SSH deployment is enabled and rehearsed, and the 24–48 hour stability window is recorded.

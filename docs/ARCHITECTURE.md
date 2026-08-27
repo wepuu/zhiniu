@@ -41,9 +41,15 @@ rules. Repositories own persistence. Vendor SDK calls stay inside provider adapt
 Provider DTO -> provider normalizer -> canonical model -> quality validator -> repository
 ```
 
-The financial adapter wraps AKShare's synchronous SDK in bounded worker threads. Financial facts
-are immutable versions. Deterministic metrics reference input report IDs and a formula version.
-The LLM boundary is not involved in any financial calculation.
+Market and financial adapters wrap AKShare's synchronous SDK in bounded worker threads. The
+unadjusted daily-bar adapter uses Eastmoney as its primary upstream and may use Sina only after a
+bounded transient proxy, timeout, connection, or rate-limit failure. Invalid responses do not
+trigger fallback, and Beijing Exchange symbols remain unsupported by the Sina path. Normalization
+records `akshare_sina` on fallback rows and converts each upstream's documented volume unit into
+canonical shares before quality validation and persistence.
+
+Financial facts are immutable versions. Deterministic metrics reference input report IDs and a
+formula version. The LLM boundary is not involved in any financial calculation.
 
 ## Data layers
 

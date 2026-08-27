@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 
 from zhaoniu_api.domain.models import AdjustType, DailyBar, Stock, resolve_symbol
+from zhaoniu_api.market_data.akshare_provider import SINA_DAILY_SOURCE
 from zhaoniu_api.market_data.errors import DataNormalizationError
 from zhaoniu_api.ports.providers import RawDailyBar, RawStock
 
@@ -70,20 +71,35 @@ class AKShareNormalizer:
     ) -> list[DailyBar]:
         timestamp = collected_at or datetime.now(UTC)
         bars: list[DailyBar] = []
-        for row in rows:
+        previous_close: dict[str, Decimal] = {}
+        ordered_rows = sorted(
+            rows,
+            key=lambda row: (
+                resolve_symbol(row.requested_symbol).canonical,
+                _date(_first(row.payload, "日期", "date", "trade_date")),
+            ),
+        )
+        for row in ordered_rows:
             resolved = resolve_symbol(row.requested_symbol)
             close = _decimal(_first(row.payload, "收盘", "close"), "close")
             pre_close_value = _first(row.payload, "昨收", "pre_close")
+            pre_close: Decimal | None
             if pre_close_value is None:
                 change_value = _first(row.payload, "涨跌额", "change")
-                pre_close = (
-                    close - _decimal(change_value, "change") if change_value is not None else None
-                )
+                if change_value is not None:
+                    pre_close = close - _decimal(change_value, "change")
+                elif row.provider == SINA_DAILY_SOURCE:
+                    pre_close = previous_close.get(resolved.canonical)
+                else:
+                    pre_close = None
             else:
                 pre_close = _decimal(pre_close_value, "pre_close")
-            volume_lots = _decimal(_first(row.payload, "成交量", "volume"), "volume")
-            if volume_lots != volume_lots.to_integral_value():
-                raise DataNormalizationError("AKShare volume must be an integer number of lots")
+            volume_value = _decimal(_first(row.payload, "成交量", "volume"), "volume")
+            if volume_value != volume_value.to_integral_value():
+                raise DataNormalizationError("AKShare daily volume must be an integer")
+            volume = (
+                int(volume_value) if row.provider == SINA_DAILY_SOURCE else int(volume_value) * 100
+            )
             bars.append(
                 DailyBar(
                     canonical_symbol=resolved.canonical,
@@ -94,10 +110,11 @@ class AKShareNormalizer:
                     low=_decimal(_first(row.payload, "最低", "low"), "low"),
                     close=close,
                     pre_close=pre_close,
-                    volume=int(volume_lots) * 100,
+                    volume=volume,
                     amount=_decimal(_first(row.payload, "成交额", "amount"), "amount"),
                     source=row.provider,
                     collected_at=timestamp,
                 )
             )
+            previous_close[resolved.canonical] = close
         return bars

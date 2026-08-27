@@ -3,6 +3,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
+from zhaoniu_api.domain.models import Exchange, resolve_symbol
 from zhaoniu_api.market_data.errors import (
     ProviderConnectionError,
     ProviderInvalidResponseError,
@@ -12,6 +13,14 @@ from zhaoniu_api.market_data.errors import (
     ProviderUnavailableError,
 )
 from zhaoniu_api.ports.providers import RawDailyBar, RawStock
+
+SINA_DAILY_SOURCE = "akshare_sina"
+_TRANSIENT_PROVIDER_ERRORS = (
+    ProviderProxyUnavailableError,
+    ProviderTimeoutError,
+    ProviderConnectionError,
+    ProviderRateLimitedError,
+)
 
 
 class AKShareProvider:
@@ -51,12 +60,7 @@ class AKShareProvider:
                     if (
                         not isinstance(
                             classified,
-                            (
-                                ProviderProxyUnavailableError,
-                                ProviderTimeoutError,
-                                ProviderConnectionError,
-                                ProviderRateLimitedError,
-                            ),
+                            _TRANSIENT_PROVIDER_ERRORS,
                         )
                         or attempt == self._max_attempts
                     ):
@@ -106,16 +110,40 @@ class AKShareProvider:
 
     async def get_daily_bars(self, symbol: str, start: date, end: date) -> list[RawDailyBar]:
         sdk = self._load_sdk()
-        frame = await self._call(
-            lambda: sdk.stock_zh_a_hist(
-                symbol=symbol,
-                period="daily",
-                start_date=start.strftime("%Y%m%d"),
-                end_date=end.strftime("%Y%m%d"),
-                adjust="",
+        try:
+            frame = await self._call(
+                lambda: sdk.stock_zh_a_hist(
+                    symbol=symbol,
+                    period="daily",
+                    start_date=start.strftime("%Y%m%d"),
+                    end_date=end.strftime("%Y%m%d"),
+                    adjust="",
+                )
             )
-        )
+            source = self.name
+        except _TRANSIENT_PROVIDER_ERRORS as primary_error:
+            sina_symbol = self._sina_symbol(symbol)
+            if sina_symbol is None:
+                raise primary_error from None
+            frame = await self._call(
+                lambda: sdk.stock_zh_a_daily(
+                    symbol=sina_symbol,
+                    start_date=start.strftime("%Y%m%d"),
+                    end_date=end.strftime("%Y%m%d"),
+                    adjust="",
+                )
+            )
+            source = SINA_DAILY_SOURCE
         return [
-            RawDailyBar(provider=self.name, requested_symbol=symbol, payload=row)
+            RawDailyBar(provider=source, requested_symbol=symbol, payload=row)
             for row in self._records(frame)
         ]
+
+    @staticmethod
+    def _sina_symbol(symbol: str) -> str | None:
+        resolved = resolve_symbol(symbol)
+        prefix = {
+            Exchange.SSE: "sh",
+            Exchange.SZSE: "sz",
+        }.get(resolved.exchange)
+        return f"{prefix}{resolved.ticker}" if prefix is not None else None

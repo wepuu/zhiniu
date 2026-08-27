@@ -74,6 +74,14 @@ uv run python -m zhaoniu_api.cli diagnose-market-provider 600519
 ```
 
 The command performs the same bounded two-attempt provider request as the sync adapter and emits
-only a stable, redacted reason code. Proxy, timeout, connection and rate-limit failures are
-retryable; invalid responses and canonical data-quality failures are not. A failed diagnostic does
-not advance the latest trade date or relabel retained bars as fresh.
+only stable operational metadata or a redacted reason code. Proxy, timeout, connection and
+rate-limit failures are retryable; after the primary Eastmoney attempts are exhausted, Shanghai and
+Shenzhen daily bars may use the bounded Sina fallback. Invalid responses, canonical data-quality
+failures, and Beijing Exchange symbols do not trigger that fallback. A healthy result includes a
+`sources` list (`akshare` or `akshare_sina`) so operators can identify the path used without logging
+payloads.
+
+Sina returns volume in shares, while the existing Eastmoney adapter contract supplies lots; the
+normalizer preserves this distinction before storing canonical share counts. Both upstreams remain
+development/evaluation data. A failed diagnostic does not advance the latest trade date or relabel
+retained bars as fresh, and no personal proxy should be introduced on the staging host.

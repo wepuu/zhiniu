@@ -252,6 +252,7 @@ async def _run(args: argparse.Namespace) -> None:
                         "provider": provider.name,
                         "symbol": resolved.canonical,
                         "received_count": len(diagnosis_rows),
+                        "sources": sorted({row.provider for row in diagnosis_rows}),
                     }
                 except Exception as exc:
                     result = {
