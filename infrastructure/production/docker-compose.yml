@@ -145,6 +145,8 @@ services:
         "INFO",
         "--pidfile",
         "/tmp/zhaoniu-beat.pid",
+        "--schedule",
+        "/tmp/zhaoniu-celerybeat-schedule",
       ]
     depends_on:
       postgres:

@@ -46,6 +46,16 @@ def test_production_health_checks_use_the_configured_trusted_host() -> None:
     assert "headers={'Host': host}" in compose
     assert 'trusted_host=$(sed -n' in deploy
     assert '--header "Host: ${trusted_host}"' in deploy
+    assert "service_is_stable worker" in deploy
+    assert "service_is_stable beat" in deploy
+    assert "{{.RestartCount}}" in deploy
+
+
+def test_celery_beat_uses_a_writable_schedule_path() -> None:
+    compose = (PRODUCTION / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert '"--pidfile",\n        "/tmp/zhaoniu-beat.pid"' in compose
+    assert '"--schedule",\n        "/tmp/zhaoniu-celerybeat-schedule"' in compose
 
 
 def test_web_image_uses_a_hardened_standalone_runtime() -> None:
