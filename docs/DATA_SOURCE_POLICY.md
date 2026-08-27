@@ -23,6 +23,20 @@ Sync-run records retain provider identity, request window, counts, timing, statu
 exception class. Mock data may be used in isolated tests, but never as evidence of a successful
 external-data acceptance run.
 
+## Daily-bar upstream fallback
+
+The Phase 23 staging adapter keeps AKShare `stock_zh_a_hist` (Eastmoney) as the primary source for
+unadjusted Shanghai and Shenzhen daily bars. If its bounded retries end in a proxy, timeout,
+connection, or rate-limit error, the same adapter may call AKShare `stock_zh_a_daily` (Sina) for the
+same ticker and date range. It does not fall back on malformed payloads, canonical validation
+failures, or Beijing Exchange symbols.
+
+Sina rows retain `akshare_sina` as their canonical source. Sina volume is normalized as shares;
+the Eastmoney path retains its existing lot-to-share conversion. Both paths pass the same Decimal,
+OHLC, duplicate-date, nonnegative amount/volume, symbol, and deterministic ordering checks before
+repository writes. A successful fallback is technical availability evidence only and does not
+change AKShare's `development_evaluation` usage policy or grant commercial display rights.
+
 ## Phase 6 industry classification
 
 Phase 6 introduces a development taxonomy named `akshare_dev_industry / phase6-dev-v1` by importing

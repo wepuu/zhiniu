@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 from zhaoniu_api.domain.models import AdjustType, Board, DailyBar, Exchange, resolve_symbol
-from zhaoniu_api.market_data.akshare_provider import AKShareProvider
+from zhaoniu_api.market_data.akshare_provider import SINA_DAILY_SOURCE, AKShareProvider
 from zhaoniu_api.market_data.errors import (
     DataQualityError,
     ProviderConnectionError,
@@ -71,6 +71,159 @@ def test_akshare_fixture_normalization_uses_decimal_and_source_units() -> None:
     assert bar.volume == 123456700
     assert bar.amount == Decimal("1760000000.12")
     assert bar.pct_change == Decimal("0.6199")
+
+
+def test_sina_daily_normalization_preserves_share_units_and_derives_pre_close() -> None:
+    rows = [
+        RawDailyBar(
+            provider=SINA_DAILY_SOURCE,
+            requested_symbol="600519",
+            payload={
+                "date": "2026-08-14",
+                "open": "1410.10",
+                "high": "1445.00",
+                "low": "1408.20",
+                "close": "1438.20",
+                "volume": "1234567",
+                "amount": "1760000000.12",
+            },
+        ),
+        RawDailyBar(
+            provider=SINA_DAILY_SOURCE,
+            requested_symbol="600519",
+            payload={
+                "date": "2026-08-13",
+                "open": "1400.00",
+                "high": "1432.00",
+                "low": "1395.00",
+                "close": "1429.34",
+                "volume": "1200000",
+                "amount": "1700000000.00",
+            },
+        ),
+    ]
+
+    bars = AKShareNormalizer().daily_bars(rows)
+
+    assert [bar.trade_date for bar in bars] == [date(2026, 8, 13), date(2026, 8, 14)]
+    assert bars[0].pre_close is None
+    assert bars[1].pre_close == Decimal("1429.34")
+    assert bars[1].volume == 1234567
+    assert bars[1].source == SINA_DAILY_SOURCE
+    assert validate_daily_bar_batch(bars, "600519.SH") == bars
+
+
+class _Frame:
+    def __init__(self, records: list[dict[str, object]]) -> None:
+        self._records = records
+
+    def to_dict(self, *, orient: str) -> list[dict[str, object]]:
+        assert orient == "records"
+        return self._records
+
+
+class _DailyFallbackSDK:
+    def __init__(self, primary_result: object) -> None:
+        self.primary_result = primary_result
+        self.primary_calls: list[dict[str, object]] = []
+        self.sina_calls: list[dict[str, object]] = []
+
+    def stock_zh_a_hist(self, **kwargs: object) -> object:
+        self.primary_calls.append(kwargs)
+        if isinstance(self.primary_result, Exception):
+            raise self.primary_result
+        return self.primary_result
+
+    def stock_zh_a_daily(self, **kwargs: object) -> _Frame:
+        self.sina_calls.append(kwargs)
+        return _Frame(
+            [
+                {
+                    "date": "2026-08-14",
+                    "open": "1410.10",
+                    "high": "1445.00",
+                    "low": "1408.20",
+                    "close": "1438.20",
+                    "volume": "1234567",
+                    "amount": "1760000000.12",
+                }
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    ("symbol", "sina_symbol"),
+    [("600519", "sh600519"), ("300750", "sz300750")],
+)
+async def test_akshare_daily_uses_sina_after_primary_connection_failure(
+    symbol: str,
+    sina_symbol: str,
+) -> None:
+    sdk = _DailyFallbackSDK(ConnectionError("remote disconnected"))
+    provider = AKShareProvider(sdk=sdk, max_attempts=1, retry_backoff_seconds=0)
+
+    rows = await provider.get_daily_bars(
+        symbol,
+        date(2026, 8, 13),
+        date(2026, 8, 27),
+    )
+
+    assert len(sdk.primary_calls) == 1
+    assert sdk.sina_calls == [
+        {
+            "symbol": sina_symbol,
+            "start_date": "20260813",
+            "end_date": "20260827",
+            "adjust": "",
+        }
+    ]
+    assert len(rows) == 1
+    assert rows[0].provider == SINA_DAILY_SOURCE
+
+
+async def test_akshare_daily_keeps_primary_source_when_primary_succeeds() -> None:
+    sdk = _DailyFallbackSDK(_Frame([]))
+    provider = AKShareProvider(sdk=sdk, max_attempts=1, retry_backoff_seconds=0)
+
+    rows = await provider.get_daily_bars(
+        "000001",
+        date(2026, 8, 13),
+        date(2026, 8, 27),
+    )
+
+    assert rows == []
+    assert len(sdk.primary_calls) == 1
+    assert sdk.sina_calls == []
+
+
+async def test_akshare_daily_does_not_fallback_after_invalid_primary_response() -> None:
+    sdk = _DailyFallbackSDK(ValueError("invalid payload"))
+    provider = AKShareProvider(sdk=sdk, max_attempts=1, retry_backoff_seconds=0)
+
+    with pytest.raises(ProviderInvalidResponseError):
+        await provider.get_daily_bars(
+            "600519",
+            date(2026, 8, 13),
+            date(2026, 8, 27),
+        )
+
+    assert len(sdk.primary_calls) == 1
+    assert sdk.sina_calls == []
+
+
+async def test_akshare_daily_does_not_use_sina_for_beijing_exchange() -> None:
+    sdk = _DailyFallbackSDK(ConnectionError("remote disconnected"))
+    provider = AKShareProvider(sdk=sdk, max_attempts=1, retry_backoff_seconds=0)
+
+    with pytest.raises(ProviderConnectionError):
+        await provider.get_daily_bars(
+            "830799",
+            date(2026, 8, 13),
+            date(2026, 8, 27),
+        )
+
+    assert len(sdk.primary_calls) == 1
+    assert sdk.sina_calls == []
 
 
 def _bar(**changes: object) -> DailyBar:
