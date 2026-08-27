@@ -176,14 +176,24 @@ does not hold deployment credentials or deploy infrastructure. A real production
 been released by this implementation; missing production Provider and Resend evidence remains
 fail-closed.
 
-## Phase 23 - Hong Kong Staging & GitHub Delivery (implemented, external rollout pending)
+## Phase 23 - Hong Kong Staging & GitHub Delivery (staging online, acceptance pending)
 
 The deployment layer now supports protected-PR CI, immutable linux/amd64 images in GHCR, SBOM and
 vulnerability gates, serialized main-branch delivery to a dedicated Ubuntu host, BT Nginx over
 loopback-only application ports, bounded container resources, encrypted off-host PostgreSQL backup,
 one-shot migrations, health-based image rollback and exact release metadata. No public API or
-database contract changed. DNS, GitHub repository settings, VPS secrets, Resend verification and the
-first real deployment remain external operator actions; staging is not a Phase 22 production event.
+database contract changed.
+
+The Hong Kong staging host is now online at `app.zhiniu.cc` with closed registration, a verified
+`security_admin`, real Resend verification delivery, encrypted daily PostgreSQL backups transferred
+to the isolated receiver, 14-daily/8-weekly receiver retention, and a successful isolated restore
+drill. The active Web Gateway uses the internal Compose `api` alias while public API and application
+ports remain behind BT Nginx.
+
+Phase 23 remains unsigned until Resend credentials are moved from the bootstrap environment into
+the encrypted Provider vault, the four fixed A-share samples complete Provider/data acceptance,
+GitHub SSH deployment is enabled and rehearsed, and the 24–48 hour stability window is recorded.
+Staging is not a Phase 22 production event and its accounts and data remain disposable.
 
 ## Future - Factor / Backtest
 

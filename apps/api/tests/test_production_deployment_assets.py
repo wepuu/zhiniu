@@ -41,11 +41,15 @@ def test_api_image_applies_available_base_security_updates() -> None:
 def test_production_health_checks_use_the_configured_trusted_host() -> None:
     compose = (PRODUCTION / "docker-compose.yml").read_text(encoding="utf-8")
     deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
+    environment_example = (ROOT / ".env.production.example").read_text(
+        encoding="utf-8"
+    )
 
     assert "os.environ['TRUSTED_HOSTS'].split(',')[0].strip()" in compose
     assert "headers={'Host': host}" in compose
     assert 'trusted_host=$(sed -n' in deploy
     assert '--header "Host: ${trusted_host}"' in deploy
+    assert "TRUSTED_HOSTS=app.zhiniu.cc,api" in environment_example
     assert "service_is_stable worker" in deploy
     assert "service_is_stable beat" in deploy
     assert "{{.RestartCount}}" in deploy
@@ -124,8 +128,9 @@ def test_nginx_keeps_dependencies_private_and_marks_staging_noindex() -> None:
     assert "proxy_pass http://127.0.0.1:8000" in nginx
     assert "proxy_pass http://127.0.0.1:3000" in nginx
     assert 'X-Robots-Tag "noindex, nofollow"' in nginx
-    assert "allow REPLACE_WITH_ADMIN_IP" in nginx
-    assert "deny all" in nginx
+    assert "location = /readyz" in nginx
+    assert "allow REPLACE_WITH_ADMIN_IP" not in nginx
+    assert "deny all" not in nginx
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash is not installed")
