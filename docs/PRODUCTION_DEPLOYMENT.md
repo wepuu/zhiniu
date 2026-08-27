@@ -8,6 +8,10 @@ Worker, Beat and Web; Caddy is no longer part of this topology.
 Copy `.env.production.example` to `/etc/zhiniu/staging.env`, replace every placeholder, and validate
 without starting services:
 
+Keep `TRUSTED_HOSTS=app.zhiniu.cc,api` in that order. The deployment scripts use the first public
+hostname for readiness probes, and the standalone Web container uses the internal `api` Compose
+alias for `/gateway/api/` requests. Do not publish the `api` alias through DNS or a host port.
+
 ```text
 PRODUCTION_ENV_FILE=/absolute/path/to/staging.env docker compose --env-file /absolute/path/to/staging.env -f infrastructure/production/docker-compose.yml config
 ```

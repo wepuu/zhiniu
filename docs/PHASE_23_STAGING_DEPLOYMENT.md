@@ -2,8 +2,11 @@
 
 ## Status and boundary
 
-Phase 23 prepares an automatically updated staging environment at `https://app.zhiniu.cc`. It uses
-production security settings but is not a Phase 22 production release. Staging accounts and data are
+Phase 23 operates a staging environment at `https://app.zhiniu.cc`. It uses production security
+settings but is not a Phase 22 production release. The first deployment, administrator bootstrap,
+real Resend verification, encrypted off-host backup and isolated restore drill have completed.
+Automated GitHub SSH delivery, managed Resend credential migration, four-symbol Provider acceptance
+and the stability observation window remain acceptance items. Staging accounts and data are
 disposable. A later production launch must use new `zhaoniu-production` volumes and a new Phase 22
 candidate; do not promote staging accounts into production.
 
@@ -67,8 +70,11 @@ validated deployment entry through its allow-listed sudo rule.
 Restrict SSH and the BT panel to administrator IPs where operationally possible.
 
 Copy `.env.production.example` to `/etc/zhiniu/staging.env`, replace every placeholder, and keep mode
-`0600`. Generate all HMAC values independently. Generate the provider key ring with the existing
-CLI; never copy the local development `.env`.
+`0600`. Keep `TRUSTED_HOSTS=app.zhiniu.cc,api` in that order: deployment readiness uses the first,
+public hostname, while the standalone Web container uses the internal Compose alias `api` for its
+same-origin `/gateway/api/` proxy. The `api` alias is never published as a host port or DNS record.
+Generate all HMAC values independently. Generate the provider key ring with the existing CLI; never
+copy the local development `.env`.
 
 Create `/etc/zhiniu/backup.env` from `infrastructure/production/backup.env.example`. The age private
 identity stays root-readable on the VPS and in offline recovery custody. `BACKUP_REMOTE` points to a
@@ -76,10 +82,11 @@ dedicated SSH account and `/srv/backups/zhiniu` on another server. That server o
 8-weekly retention policy. Pin its host key in `BACKUP_KNOWN_HOSTS` and use a dedicated key named by
 `BACKUP_SSH_KEY`; the backup command refuses interactive or unverified SSH.
 
-Install `infrastructure/production/nginx-app.zhiniu.cc.conf` through BT after replacing
-`REPLACE_WITH_ADMIN_IP`. Let BT issue and renew the certificate. Do not install standalone Certbot.
-Validate with `nginx -t` before reload. Only ports 22, 80, 443 and the restricted BT port are public;
-3000 and 8000 bind to loopback, while PostgreSQL and Redis have no host ports.
+Install `infrastructure/production/nginx-app.zhiniu.cc.conf` through BT. Let BT issue and renew the
+certificate. Do not install standalone Certbot. Validate with `nginx -t` before reload. `/readyz` is
+public in this staging environment because administrator source IPs are not stable; its response is
+limited to dependency health and migration metadata. Only ports 22, 80, 443 and the restricted BT
+port are public; 3000 and 8000 bind to loopback, while PostgreSQL and Redis have no host ports.
 
 ## First deployment and bootstrap
 
@@ -129,7 +136,7 @@ The timer runs daily at 18:00 UTC (02:00 Asia/Shanghai). Keep three local days; 
 keeps 14 daily and 8 weekly generations. Run an isolated restore drill monthly and before any
 production candidate.
 
-BT or another external monitor should check public `/livez`; administrators check `/readyz`. Alert
-at 75% disk, sustained 85% memory/CPU, readiness failures, OOM, Celery backlog, or backup failure.
+BT or another external monitor should check public `/livez` and `/readyz`. Alert at 75% disk,
+sustained 85% memory/CPU, readiness failures, OOM, Celery backlog, or backup failure.
 Keep the staging `X-Robots-Tag` and one-day HSTS until the environment is replaced by an approved
 production release.
