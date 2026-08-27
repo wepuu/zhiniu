@@ -217,11 +217,28 @@ jobs:
             -A zhaoniu_worker.celery_app:celery_app worker --help >/dev/null
           docker run --rm --entrypoint celery "$API_IMAGE" \
             -A zhaoniu_worker.celery_app:celery_app beat --help >/dev/null
-          web_container=$(docker run --detach --publish 127.0.0.1::3000 "$WEB_IMAGE")
-          trap 'docker rm --force "$web_container" >/dev/null 2>&1 || true' EXIT
+
+          docker run --rm --entrypoint sh "$WEB_IMAGE" -c \
+            "grep -Fq 'http://api:8000' /app/apps/web/server.js && ! grep -Fq 'http://127.0.0.1:8000' /app/apps/web/server.js"
+
+          smoke_network=zhaoniu-web-image-smoke
+          mkdir -p mock-api/api/v1/legal
+          printf '%s\n' '{"items":[]}' > mock-api/api/v1/legal/current
+          docker network create "$smoke_network" >/dev/null
+          mock_api=$(docker run --detach \
+            --network "$smoke_network" \
+            --network-alias api \
+            --volume "$PWD/mock-api:/www:ro" \
+            busybox:1.36 httpd -f -p 8000 -h /www)
+          web_container=$(docker run --detach \
+            --network "$smoke_network" \
+            --publish 127.0.0.1::3000 \
+            "$WEB_IMAGE")
+          trap 'docker rm --force "$web_container" "$mock_api" >/dev/null 2>&1 || true; docker network rm "$smoke_network" >/dev/null 2>&1 || true' EXIT
           web_port=$(docker port "$web_container" 3000/tcp | awk -F: 'NR == 1 { print $NF }')
           for attempt in {1..30}; do
-            if curl --fail --silent --show-error "http://127.0.0.1:${web_port}/" >/dev/null; then
+            if curl --fail --silent --show-error "http://127.0.0.1:${web_port}/" >/dev/null && \
+              test "$(curl --fail --silent --show-error "http://127.0.0.1:${web_port}/gateway/api/v1/legal/current")" = '{"items":[]}'; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
@@ -230,7 +247,8 @@ jobs:
             fi
             sleep 1
           done
-          docker rm --force "$web_container"
+          docker rm --force "$web_container" "$mock_api"
+          docker network rm "$smoke_network"
           trap - EXIT
 
   deploy:
