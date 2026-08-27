@@ -1,4 +1,6 @@
 FROM node:22-alpine AS build
+ARG API_BASE_URL=http://api:8000
+ENV API_BASE_URL=${API_BASE_URL}
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./

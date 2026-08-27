@@ -67,6 +67,8 @@ def test_web_image_uses_a_hardened_standalone_runtime() -> None:
     )
 
     assert "apk upgrade --no-cache" in dockerfile
+    assert "ARG API_BASE_URL=http://api:8000" in dockerfile
+    assert "ENV API_BASE_URL=${API_BASE_URL}" in dockerfile
     assert "/app/apps/web/.next/standalone" in dockerfile
     assert "/app/apps/web/.next/static" in dockerfile
     assert "rm -rf /usr/local/lib/node_modules/npm" in dockerfile
@@ -102,10 +104,13 @@ def test_staging_images_publish_and_verify_before_optional_deploy() -> None:
     assert "Verify images are private before authentication" in workflow[verify:deploy]
     assert "Pull immutable image digests" in workflow[verify:deploy]
     assert "Smoke-test image runtimes" in workflow[verify:deploy]
+    assert "grep -Fq 'http://api:8000' /app/apps/web/server.js" in workflow[verify:deploy]
+    assert "/gateway/api/v1/legal/current" in workflow[verify:deploy]
+    assert "--network-alias api" in workflow[verify:deploy]
     assert "from zhaoniu_worker.celery_app import celery_app" in workflow[verify:deploy]
     assert "zhaoniu_worker.celery_app:celery_app worker --help" in workflow[verify:deploy]
     assert "zhaoniu_worker.celery_app:celery_app beat --help" in workflow[verify:deploy]
-    assert "docker run --detach --publish 127.0.0.1::3000" in workflow[verify:deploy]
+    assert "--publish 127.0.0.1::3000" in workflow[verify:deploy]
     assert (
         'curl --fail --silent --show-error "http://127.0.0.1:${web_port}/"'
         in workflow[verify:deploy]
