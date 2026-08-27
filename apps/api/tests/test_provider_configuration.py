@@ -1,9 +1,20 @@
 import base64
 import os
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from zhaoniu_api.config import Settings, _configure_outbound_http_proxy
+from zhaoniu_api.db import (
+    PlanVersionRecord,
+    ProviderConfigurationRecord,
+    ProviderConfigurationRevisionRecord,
+    ProviderDiagnosticRunRecord,
+    User,
+)
 from zhaoniu_api.ports.providers import LLMGatewayError
 from zhaoniu_api.provider_configuration.crypto import (
     CredentialVault,
@@ -17,7 +28,12 @@ from zhaoniu_api.provider_configuration.models import (
     ResendConfiguration,
     deepseek_route_available,
 )
-from zhaoniu_api.provider_configuration.service import _diagnostic_reason_code
+from zhaoniu_api.provider_configuration.service import (
+    ProviderConfigurationService,
+    _diagnostic_reason_code,
+)
+
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 
 def test_credential_vault_round_trip_and_aad_binding() -> None:
@@ -104,3 +120,113 @@ def test_diagnostic_reason_uses_safe_gateway_classification() -> None:
     )
 
     assert _diagnostic_reason_code(error) == "provider_connection"
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL is not configured")
+async def test_published_revision_retains_exact_diagnostic_status() -> None:
+    assert TEST_DATABASE_URL is not None
+    engine = create_async_engine(TEST_DATABASE_URL)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    checked_at = datetime(2026, 8, 27, 12, 39, 44, tzinfo=UTC)
+
+    async with sessions() as session:
+        plan_version_id = await session.scalar(select(PlanVersionRecord.id).limit(1))
+        assert plan_version_id is not None
+        actor = User(
+            id=uuid4(),
+            email=f"provider-diagnostic-{uuid4()}@example.test",
+            password_hash="not-used",
+            base_plan_version_id=plan_version_id,
+            status="active",
+            email_verified_at=checked_at,
+        )
+        configuration = ProviderConfigurationRecord(
+            id=uuid4(),
+            provider="deepseek",
+            environment="test",
+            active_revision=5,
+            draft_revision=None,
+            row_version=7,
+        )
+        active = ProviderConfigurationRevisionRecord(
+            id=uuid4(),
+            configuration_id=configuration.id,
+            revision=5,
+            status="active",
+            configuration_json={"enabled": True},
+            configuration_hash="a" * 64,
+            credential_generation=4,
+            created_by_user_id=actor.id,
+            published_by_user_id=actor.id,
+            published_at=checked_at + timedelta(seconds=4),
+        )
+        healthy_draft_diagnostic = ProviderDiagnosticRunRecord(
+            id=uuid4(),
+            provider="deepseek",
+            capability="structured_generation",
+            status="healthy",
+            latency_ms=120,
+            reason_code=None,
+            checked_at=checked_at,
+            requested_by_user_id=actor.id,
+            configuration_revision_id=active.id,
+            credential_generation=4,
+            target="draft",
+        )
+        unrelated_diagnostic = ProviderDiagnosticRunRecord(
+            id=uuid4(),
+            provider="deepseek",
+            capability="structured_generation",
+            status="unavailable",
+            latency_ms=80,
+            reason_code="provider_auth",
+            checked_at=checked_at + timedelta(minutes=1),
+            requested_by_user_id=actor.id,
+            configuration_revision_id=active.id,
+            credential_generation=3,
+            target="active",
+        )
+        session.add(actor)
+        await session.flush()
+        session.add(configuration)
+        await session.flush()
+        session.add_all([active, healthy_draft_diagnostic, unrelated_diagnostic])
+        await session.flush()
+
+        service = ProviderConfigurationService(
+            session,
+            Settings(database_url=TEST_DATABASE_URL, app_env="test"),
+        )
+        published = await service.get_configuration("deepseek")
+
+        assert published.active is not None
+        assert published.active.revision == 5
+        assert published.draft is None
+        assert published.diagnostic_status == "healthy"
+        assert published.diagnostic_checked_at == checked_at
+
+        draft = ProviderConfigurationRevisionRecord(
+            id=uuid4(),
+            configuration_id=configuration.id,
+            revision=6,
+            status="draft",
+            configuration_json={"enabled": True},
+            configuration_hash="b" * 64,
+            credential_generation=4,
+            created_by_user_id=actor.id,
+        )
+        session.add(draft)
+        configuration.draft_revision = 6
+        await session.flush()
+
+        unpublished = await service.get_configuration("deepseek")
+
+        assert unpublished.draft is not None
+        assert unpublished.draft.revision == 6
+        assert unpublished.diagnostic_status == "not_run"
+        assert unpublished.diagnostic_checked_at is None
+
+        await session.rollback()
+
+    await engine.dispose()

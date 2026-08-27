@@ -92,16 +92,23 @@ class ProviderConfigurationService:
         active_credential = await self._credential(row, "active") if row else None
         candidate = await self._credential(row, "candidate") if row else None
         diagnostic = None
-        if draft is not None:
+        diagnostic_revision = draft or active
+        if diagnostic_revision is not None:
+            diagnostic_conditions = [
+                ProviderDiagnosticRunRecord.provider == provider,
+                ProviderDiagnosticRunRecord.configuration_revision_id == diagnostic_revision.id,
+                ProviderDiagnosticRunRecord.credential_generation
+                == diagnostic_revision.credential_generation,
+            ]
+            # An unpublished draft must only report its own draft diagnosis. Once
+            # that exact revision is published, the diagnosis that authorized the
+            # transition remains valid because neither the configuration nor the
+            # credential generation changed.
+            if draft is not None:
+                diagnostic_conditions.append(ProviderDiagnosticRunRecord.target == "draft")
             diagnostic = await self._session.scalar(
                 select(ProviderDiagnosticRunRecord)
-                .where(
-                    ProviderDiagnosticRunRecord.provider == provider,
-                    ProviderDiagnosticRunRecord.target == "draft",
-                    ProviderDiagnosticRunRecord.configuration_revision_id == draft.id,
-                    ProviderDiagnosticRunRecord.credential_generation
-                    == draft.credential_generation,
-                )
+                .where(*diagnostic_conditions)
                 .order_by(ProviderDiagnosticRunRecord.checked_at.desc())
             )
         environment_credentials = self._environment_credentials(provider)
