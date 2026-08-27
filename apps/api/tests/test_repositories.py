@@ -24,7 +24,7 @@ async def test_watchlist_ownership_is_enforced() -> None:
     assert await repository.get_owned(created.id, intruder) is None
 
 
-class _EmptyScalars:
+class _EmptyResult:
     def all(self) -> list[object]:
         return []
 
@@ -32,9 +32,9 @@ class _EmptyScalars:
 class _CapturingSession:
     statement: object | None = None
 
-    async def scalars(self, statement: object) -> _EmptyScalars:
+    async def execute(self, statement: object) -> _EmptyResult:
         self.statement = statement
-        return _EmptyScalars()
+        return _EmptyResult()
 
 
 @pytest.mark.asyncio
@@ -46,5 +46,15 @@ async def test_stock_search_uses_deterministic_relevance_and_literal_wildcards()
     statement = str(session.statement)
     assert "CASE WHEN" in statement
     assert "lower(stocks.ticker)" in statement
-    assert "lower(stocks.name)" in statement
+    assert "stocks.search_name" in statement
+    assert "stocks.name_pinyin" in statement
+    assert "stocks.name_pinyin_initials" in statement
     assert "ESCAPE" in statement
+
+
+def test_stock_name_search_terms_cover_chinese_pinyin_and_initials() -> None:
+    from zhaoniu_api.stock_search import normalize_stock_search_text, stock_name_search_terms
+
+    assert stock_name_search_terms("贵州茅台") == ("贵州茅台", "guizhoumaotai", "gzmt")
+    assert normalize_stock_search_text("Mao Tai") == "maotai"
+    assert normalize_stock_search_text("GUI-ZHOU_MAO.TAI") == "guizhoumaotai"

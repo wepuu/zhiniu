@@ -334,3 +334,11 @@ metadata so operations can close the learning loop without changing the user's o
   failed and rolled-back transitions. It stores no cloud credential or deployment payload.
 
 Migration `20260826_0027` adds these records without changing public research contracts.
+
+## Phase 24 search and readiness metadata
+
+Migration `20260828_0028` adds private deterministic search keys to `stocks`: normalized Chinese
+name, full pinyin and pinyin initials. Stock-master ingestion owns their refresh. The same migration
+adds automation-step creation time and a `(symbol, status, created_at)` index for readiness and
+pending-work discovery. Readiness remains derived state; no per-user market, research or AI rows
+are introduced.

@@ -103,3 +103,13 @@ uv run python -m zhaoniu_api.cli automation-refresh-stock 600519
 
 Emergency stop order: set `AUTOMATION_HARD_DISABLED=true`, restart Beat, then disable the database
 policy. Do not delete runs or steps; they are the operational audit trail.
+
+## Watchlist preparation
+
+`WATCHLIST_PREPARATION_ENABLED=false` is the fail-closed default. Once accepted, adding a watchlist
+membership creates a deduplicated `watchlist` run immediately. Explicit retries require ownership
+and CSRF, are limited to one per symbol per user per 30 minutes and ten per day, and reuse an active
+global run. Dispatch failure never rolls back membership because the fixed Beat tick recovers
+pending runs. Scheduled runs check stock master at most once per 24 hours before incremental symbol
+work. `AUTOMATION_HARD_DISABLED` remains the emergency stop; AI additionally requires the database
+policy route, `AUTOMATION_AI_ENABLED`, a healthy managed Provider route and the per-run call cap.

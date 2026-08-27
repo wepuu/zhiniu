@@ -170,9 +170,7 @@ async def approve_cohort(
     operators: OperatorServiceDependency,
     service: InviteBetaServiceDependency,
 ) -> BetaCohortView:
-    return await _cohort_action(
-        "approve", cohort_id, request, user, context, operators, service
-    )
+    return await _cohort_action("approve", cohort_id, request, user, context, operators, service)
 
 
 @admin_router.post("/cohorts/{cohort_id}/dispatch", response_model=BetaCohortView)
@@ -185,9 +183,7 @@ async def dispatch_cohort(
     operators: OperatorServiceDependency,
     service: InviteBetaServiceDependency,
 ) -> BetaCohortView:
-    return await _cohort_action(
-        "dispatch", cohort_id, request, user, context, operators, service
-    )
+    return await _cohort_action("dispatch", cohort_id, request, user, context, operators, service)
 
 
 @admin_router.post("/cohorts/{cohort_id}/pause", response_model=BetaCohortView)

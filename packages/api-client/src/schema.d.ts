@@ -242,6 +242,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stocks/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stock Readiness */
+        get: operations["get_stock_readiness_api_v1_stocks_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stocks/{symbol}/preparation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Stock Preparation */
+        post: operations["request_stock_preparation_api_v1_stocks__symbol__preparation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stocks/{symbol}": {
         parameters: {
             query?: never;
@@ -2367,7 +2401,7 @@ export interface components {
              * Trigger Kind
              * @enum {string}
              */
-            trigger_kind: "scheduled" | "manual" | "resume";
+            trigger_kind: "scheduled" | "manual" | "resume" | "watchlist";
             /**
              * Scheduled For
              * Format: date-time
@@ -2444,7 +2478,7 @@ export interface components {
              * Trigger Kind
              * @enum {string}
              */
-            trigger_kind: "scheduled" | "manual" | "resume";
+            trigger_kind: "scheduled" | "manual" | "resume" | "watchlist";
             /**
              * Scheduled For
              * Format: date-time
@@ -6105,6 +6139,70 @@ export interface components {
             /** Attention Items */
             attention_items?: components["schemas"]["AIAttentionItem"][];
         };
+        /** StockPreparationResponse */
+        StockPreparationResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "reused" | "paused";
+            /** Run Id */
+            run_id?: string | null;
+            /** Reason Code */
+            reason_code?: string | null;
+        };
+        /** StockReadinessListResponse */
+        StockReadinessListResponse: {
+            /** Items */
+            items: components["schemas"]["StockReadinessResponse"][];
+        };
+        /** StockReadinessResponse */
+        StockReadinessResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Canonical Symbol */
+            canonical_symbol: string;
+            /** Name */
+            name: string;
+            /**
+             * Overall Status
+             * @enum {string}
+             */
+            overall_status: "queued" | "preparing" | "ready" | "partial" | "failed" | "paused" | "unsupported";
+            /** Progress */
+            progress: number;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Latest Price */
+            latest_price?: string | null;
+            /** Latest Trade Date */
+            latest_trade_date?: string | null;
+            /** Stages */
+            stages: components["schemas"]["StockReadinessStage"][];
+        };
+        /** StockReadinessStage */
+        StockReadinessStage: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "market" | "deterministic_research" | "extended_research" | "ai_research";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "preparing" | "ready" | "partial" | "failed" | "paused" | "unsupported";
+            /** Progress */
+            progress: number;
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
         /** StockResponse */
         StockResponse: {
             /** Symbol */
@@ -6745,6 +6843,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_readiness_api_v1_stocks_readiness_get: {
+        parameters: {
+            query: {
+                symbols: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockReadinessListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_stock_preparation_api_v1_stocks__symbol__preparation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockPreparationResponse"];
                 };
             };
             /** @description Validation Error */

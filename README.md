@@ -162,6 +162,8 @@ POST /api/v1/watchlists
 POST /api/v1/watchlists/{watchlist_id}/items
 DELETE /api/v1/watchlists/{watchlist_id}/items/{symbol}
 GET /api/v1/watchlists/membership/{symbol}
+GET /api/v1/stocks/readiness?symbols=600519,300750
+POST /api/v1/stocks/{symbol}/preparation
 GET /api/v1/screens/catalog
 GET /api/v1/screens/coverage
 POST /api/v1/screens/validate

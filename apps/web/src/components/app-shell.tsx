@@ -108,7 +108,7 @@ export function Header() {
             className="border-ink/10 bg-paper text-slate hidden min-w-72 items-center gap-2 rounded-full border px-4 py-2 text-sm hover:border-black/20 md:flex"
           >
             <Search className="size-4" />
-            搜索股票代码或中文名称
+            搜索股票代码、中文名称或拼音
             <kbd className="font-data ml-auto text-xs">Ctrl K</kbd>
           </button>
           <button

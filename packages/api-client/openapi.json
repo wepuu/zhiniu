@@ -609,6 +609,124 @@
         }
       }
     },
+    "/api/v1/stocks/readiness": {
+      "get": {
+        "tags": [
+          "stocks"
+        ],
+        "summary": "Get Stock Readiness",
+        "operationId": "get_stock_readiness_api_v1_stocks_readiness_get",
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600,
+              "title": "Symbols"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockReadinessListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stocks/{symbol}/preparation": {
+      "post": {
+        "tags": [
+          "stocks"
+        ],
+        "summary": "Request Stock Preparation",
+        "operationId": "request_stock_preparation_api_v1_stocks__symbol__preparation_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockPreparationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stocks/{symbol}": {
       "get": {
         "tags": [
@@ -8204,7 +8322,8 @@
             "enum": [
               "scheduled",
               "manual",
-              "resume"
+              "resume",
+              "watchlist"
             ],
             "title": "Trigger Kind"
           },
@@ -8417,7 +8536,8 @@
             "enum": [
               "scheduled",
               "manual",
-              "resume"
+              "resume",
+              "watchlist"
             ],
             "title": "Trigger Kind"
           },
@@ -18214,6 +18334,224 @@
           "dimensions"
         ],
         "title": "StockHealthResearchV1"
+      },
+      "StockPreparationResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "reused",
+              "paused"
+            ],
+            "title": "Status"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "status"
+        ],
+        "title": "StockPreparationResponse"
+      },
+      "StockReadinessListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StockReadinessResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "StockReadinessListResponse"
+      },
+      "StockReadinessResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "canonical_symbol": {
+            "type": "string",
+            "title": "Canonical Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "overall_status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "ready",
+              "partial",
+              "failed",
+              "paused",
+              "unsupported"
+            ],
+            "title": "Overall Status"
+          },
+          "progress": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "latest_price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Price"
+          },
+          "latest_trade_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Trade Date"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StockReadinessStage"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "canonical_symbol",
+          "name",
+          "overall_status",
+          "progress",
+          "stages"
+        ],
+        "title": "StockReadinessResponse"
+      },
+      "StockReadinessStage": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "market",
+              "deterministic_research",
+              "extended_research",
+              "ai_research"
+            ],
+            "title": "Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "ready",
+              "partial",
+              "failed",
+              "paused",
+              "unsupported"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "status",
+          "progress"
+        ],
+        "title": "StockReadinessStage"
       },
       "StockResponse": {
         "properties": {

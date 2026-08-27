@@ -7,12 +7,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const api = createZhaoniuClient();
 
+export function isStockSearchQueryReady(value: string) {
+  const normalized = value.trim();
+  return (
+    /[\u3400-\u9fff]/u.test(normalized) ||
+    normalized.replace(/\W/gu, "").length >= 2
+  );
+}
+
 export function StockSearchDialog({
   open,
   onOpenChange,
   onSelect,
   title = "搜索 A 股公司",
-  description = "支持 6 位股票代码或中文公司名称",
+  description = "支持股票代码、中文名称、全拼或拼音首字母",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,7 +49,7 @@ export function StockSearchDialog({
   const search = useQuery({
     queryKey: ["stock-search", debouncedQuery],
     queryFn: () => api.searchStocks(debouncedQuery, 10),
-    enabled: open && debouncedQuery.length >= 2,
+    enabled: open && isStockSearchQueryReady(debouncedQuery),
     retry: false,
     staleTime: 60_000,
   });
@@ -107,7 +115,7 @@ export function StockSearchDialog({
         <div className="p-4 sm:p-5">
           <label className="border-ink/15 focus-within:border-blue flex min-h-12 items-center gap-3 rounded-2xl border bg-white px-4">
             <Search className="text-slate size-4 shrink-0" />
-            <span className="sr-only">股票代码或中文名称</span>
+            <span className="sr-only">股票代码、中文名称或拼音</span>
             <input
               ref={inputRef}
               role="combobox"
@@ -154,12 +162,12 @@ export function StockSearchDialog({
             role="listbox"
             className="mt-3 min-h-28"
           >
-            {debouncedQuery.length < 2 && (
+            {!isStockSearchQueryReady(debouncedQuery) && (
               <p className="text-slate px-3 py-8 text-center text-sm">
                 输入至少 2 个字符开始搜索。
               </p>
             )}
-            {debouncedQuery.length >= 2 && search.isError && (
+            {isStockSearchQueryReady(debouncedQuery) && search.isError && (
               <div
                 className="text-risk flex items-center justify-center gap-2 px-3 py-8 text-sm"
                 role="alert"
@@ -168,7 +176,7 @@ export function StockSearchDialog({
                 股票搜索暂时不可用，请稍后重试。
               </div>
             )}
-            {debouncedQuery.length >= 2 &&
+            {isStockSearchQueryReady(debouncedQuery) &&
               search.isSuccess &&
               items.length === 0 && (
                 <p className="text-slate px-3 py-8 text-center text-sm">

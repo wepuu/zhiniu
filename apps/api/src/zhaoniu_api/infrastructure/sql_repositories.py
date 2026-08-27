@@ -3,10 +3,10 @@ from decimal import Decimal
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import case, delete, func, or_, select, update
+from sqlalchemy import case, delete, func, or_, select, true, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from zhaoniu_api.db import (
     BalanceSheetRecord,
@@ -44,6 +44,7 @@ from zhaoniu_api.fundamentals.models import (
     StatementScope,
     ValuationObservation,
 )
+from zhaoniu_api.stock_search import normalize_stock_search_text, stock_name_search_terms
 
 
 class SQLAlchemyStockRepository:
@@ -85,33 +86,51 @@ class SQLAlchemyStockRepository:
         )
 
     async def search(self, query: str, limit: int = 10) -> list[Stock]:
-        normalized = query.strip()
-        escaped = (
-            normalized.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        )
+        normalized = normalize_stock_search_text(query)
+        if not normalized:
+            return []
+        escaped = normalized.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         needle = f"%{escaped}%"
         prefix = f"{escaped}%"
         relevance = case(
-            (func.lower(StockRecord.ticker) == normalized.lower(), 0),
-            (func.lower(StockRecord.name) == normalized.lower(), 1),
-            (StockRecord.ticker.ilike(prefix, escape="\\"), 2),
-            (StockRecord.name.ilike(prefix, escape="\\"), 3),
-            else_=4,
+            (func.lower(StockRecord.ticker) == normalized, 0),
+            (StockRecord.search_name == normalized, 1),
+            (StockRecord.name_pinyin == normalized, 2),
+            (StockRecord.name_pinyin_initials == normalized, 3),
+            (StockRecord.ticker.ilike(prefix, escape="\\"), 4),
+            (StockRecord.search_name.like(prefix, escape="\\"), 5),
+            (StockRecord.name_pinyin.like(prefix, escape="\\"), 6),
+            (StockRecord.name_pinyin_initials.like(prefix, escape="\\"), 6),
+            else_=7,
         )
-        records = (
-            await self._session.scalars(
-                select(StockRecord)
+        latest_bar_lateral = (
+            select(StockDailyBarRecord)
+            .where(
+                StockDailyBarRecord.symbol == StockRecord.symbol,
+                StockDailyBarRecord.adjust_type == AdjustType.NONE,
+            )
+            .order_by(StockDailyBarRecord.trade_date.desc())
+            .limit(1)
+            .lateral("latest_bar")
+        )
+        latest_bar = aliased(StockDailyBarRecord, latest_bar_lateral)
+        rows = (
+            await self._session.execute(
+                select(StockRecord, latest_bar)
+                .outerjoin(latest_bar_lateral, true())
                 .where(
                     or_(
                         StockRecord.ticker.ilike(needle, escape="\\"),
-                        StockRecord.name.ilike(needle, escape="\\"),
+                        StockRecord.search_name.like(needle, escape="\\"),
+                        StockRecord.name_pinyin.like(needle, escape="\\"),
+                        StockRecord.name_pinyin_initials.like(needle, escape="\\"),
                     )
                 )
                 .order_by(relevance, StockRecord.ticker)
                 .limit(limit)
             )
         ).all()
-        return [self._domain(record, await self._latest_bar(record.symbol)) for record in records]
+        return [self._domain(record, bar) for record, bar in rows]
 
     async def get(self, symbol: str) -> Stock | None:
         try:
@@ -126,23 +145,28 @@ class SQLAlchemyStockRepository:
     async def upsert_many(self, stocks: list[Stock]) -> int:
         if not stocks:
             return 0
-        values = [
-            {
-                "symbol": stock.canonical_symbol,
-                "ticker": stock.symbol,
-                "name": stock.name,
-                "exchange": stock.exchange,
-                "industry_code": stock.industry,
-                "asset_type": stock.asset_type,
-                "board": stock.board,
-                "list_date": stock.list_date,
-                "status": stock.status,
-                "issuer_type": stock.issuer_type,
-                "source": stock.source or "unknown",
-                "collected_at": stock.collected_at or datetime.now(UTC),
-            }
-            for stock in stocks
-        ]
+        values = []
+        for stock in stocks:
+            search_name, pinyin, initials = stock_name_search_terms(stock.name)
+            values.append(
+                {
+                    "symbol": stock.canonical_symbol,
+                    "ticker": stock.symbol,
+                    "name": stock.name,
+                    "search_name": search_name,
+                    "name_pinyin": pinyin,
+                    "name_pinyin_initials": initials,
+                    "exchange": stock.exchange,
+                    "industry_code": stock.industry,
+                    "asset_type": stock.asset_type,
+                    "board": stock.board,
+                    "list_date": stock.list_date,
+                    "status": stock.status,
+                    "issuer_type": stock.issuer_type,
+                    "source": stock.source or "unknown",
+                    "collected_at": stock.collected_at or datetime.now(UTC),
+                }
+            )
         try:
             for offset in range(0, len(values), 1000):
                 statement = insert(StockRecord).values(values[offset : offset + 1000])
@@ -152,6 +176,9 @@ class SQLAlchemyStockRepository:
                         set_={
                             "ticker": statement.excluded.ticker,
                             "name": statement.excluded.name,
+                            "search_name": statement.excluded.search_name,
+                            "name_pinyin": statement.excluded.name_pinyin,
+                            "name_pinyin_initials": statement.excluded.name_pinyin_initials,
                             "exchange": statement.excluded.exchange,
                             "industry_code": statement.excluded.industry_code,
                             "asset_type": statement.excluded.asset_type,

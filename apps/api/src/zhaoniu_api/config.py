@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     automation_ai_enabled: bool = False
     automation_ai_max_calls_per_run: int = Field(default=10, ge=0, le=100)
     automation_ai_concurrency: int = Field(default=1, ge=1, le=4)
+    watchlist_preparation_enabled: bool = False
+    watchlist_preparation_daily_limit: int = Field(default=10, ge=1, le=50)
 
     @property
     def llm_models(self) -> tuple[str, ...]:

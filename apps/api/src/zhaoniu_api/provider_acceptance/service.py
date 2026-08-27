@@ -35,8 +35,9 @@ APPROVED_BETA_SCOPES = {"internal_beta", "external_beta", "production"}
 
 def _fingerprint(value: object) -> str:
     return sha256(
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
-        .encode("utf-8")
+        json.dumps(
+            value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+        ).encode("utf-8")
     ).hexdigest()
 
 
@@ -207,12 +208,16 @@ class ProviderAcceptanceService:
             industry_status: Literal["passed", "failed", "unsupported"] = (
                 "unsupported"
                 if is_bank and not industry_ok
-                else "passed" if industry_ok else "failed"
+                else "passed"
+                if industry_ok
+                else "failed"
             )
             industry_reason = (
                 "bank_template_isolated"
                 if is_bank and not industry_ok
-                else None if industry_ok else "industry_membership_missing"
+                else None
+                if industry_ok
+                else "industry_membership_missing"
             )
             items.append(
                 self._item(
@@ -324,11 +329,19 @@ class ProviderAcceptanceService:
         for item in items:
             self._session.add(
                 ProviderAcceptanceItemRecord(
-                    id=uuid4(), run_id=record.id, provider=item.provider, dataset=item.dataset,
-                    symbol=item.symbol, scenario=item.scenario, requirement=item.requirement,
-                    status=item.status, reason_code=item.reason_code,
-                    observed_count=item.observed_count, latest_artifact_at=item.latest_artifact_at,
-                    detail_manifest=item.detail, evidence_fingerprint=item.evidence_fingerprint,
+                    id=uuid4(),
+                    run_id=record.id,
+                    provider=item.provider,
+                    dataset=item.dataset,
+                    symbol=item.symbol,
+                    scenario=item.scenario,
+                    requirement=item.requirement,
+                    status=item.status,
+                    reason_code=item.reason_code,
+                    observed_count=item.observed_count,
+                    latest_artifact_at=item.latest_artifact_at,
+                    detail_manifest=item.detail,
+                    evidence_fingerprint=item.evidence_fingerprint,
                 )
             )
         await self._session.commit()
@@ -361,19 +374,41 @@ class ProviderAcceptanceService:
         return [await self._response(record) for record in records]
 
     def _item(
-        self, *, provider: str, dataset: str, scenario: str,
+        self,
+        *,
+        provider: str,
+        dataset: str,
+        scenario: str,
         requirement: Literal["mandatory", "conditional", "optional"],
         status: Literal["passed", "failed", "blocked", "unsupported"],
-        reason: str | None, count: int, detail: dict[str, object],
-        symbol: str | None = None, latest: datetime | None = None,
+        reason: str | None,
+        count: int,
+        detail: dict[str, object],
+        symbol: str | None = None,
+        latest: datetime | None = None,
     ) -> ProviderAcceptanceItem:
-        payload = {"provider": provider, "dataset": dataset, "symbol": symbol,
-                   "scenario": scenario, "status": status, "reason": reason,
-                   "count": count, "latest": latest, "detail": detail}
+        payload = {
+            "provider": provider,
+            "dataset": dataset,
+            "symbol": symbol,
+            "scenario": scenario,
+            "status": status,
+            "reason": reason,
+            "count": count,
+            "latest": latest,
+            "detail": detail,
+        }
         return ProviderAcceptanceItem(
-            provider=provider, dataset=dataset, symbol=symbol, scenario=scenario,
-            requirement=requirement, status=status, reason_code=reason,
-            observed_count=count, latest_artifact_at=latest, detail=detail,
+            provider=provider,
+            dataset=dataset,
+            symbol=symbol,
+            scenario=scenario,
+            requirement=requirement,
+            status=status,
+            reason_code=reason,
+            observed_count=count,
+            latest_artifact_at=latest,
+            detail=detail,
             evidence_fingerprint=_fingerprint(payload),
         )
 
@@ -386,26 +421,38 @@ class ProviderAcceptanceService:
             )
         )
         return ProviderAcceptanceRun(
-            id=record.id, environment=record.environment, profile_version=record.profile_version,
-            policy_version=record.policy_version, usage_scope=record.usage_scope,
+            id=record.id,
+            environment=record.environment,
+            profile_version=record.profile_version,
+            policy_version=record.policy_version,
+            usage_scope=record.usage_scope,
             knowledge_cutoff=record.knowledge_cutoff,
             status=cast(Literal["passed", "failed", "blocked"], record.status),
-            mandatory_items=record.mandatory_items, succeeded_items=record.succeeded_items,
-            failed_items=record.failed_items, blocked_items=record.blocked_items,
-            unsupported_items=record.unsupported_items, beta_eligible=record.beta_eligible,
-            result_fingerprint=record.result_fingerprint, started_at=record.started_at,
+            mandatory_items=record.mandatory_items,
+            succeeded_items=record.succeeded_items,
+            failed_items=record.failed_items,
+            blocked_items=record.blocked_items,
+            unsupported_items=record.unsupported_items,
+            beta_eligible=record.beta_eligible,
+            result_fingerprint=record.result_fingerprint,
+            started_at=record.started_at,
             finished_at=record.finished_at,
-            items=[ProviderAcceptanceItem(
-                provider=row.provider, dataset=row.dataset, symbol=row.symbol,
-                scenario=row.scenario,
-                requirement=cast(
-                    Literal["mandatory", "conditional", "optional"], row.requirement
-                ),
-                status=cast(
-                    Literal["passed", "failed", "blocked", "unsupported"], row.status
-                ),
-                reason_code=row.reason_code, observed_count=row.observed_count,
-                latest_artifact_at=row.latest_artifact_at, detail=row.detail_manifest,
-                evidence_fingerprint=row.evidence_fingerprint,
-            ) for row in rows],
+            items=[
+                ProviderAcceptanceItem(
+                    provider=row.provider,
+                    dataset=row.dataset,
+                    symbol=row.symbol,
+                    scenario=row.scenario,
+                    requirement=cast(
+                        Literal["mandatory", "conditional", "optional"], row.requirement
+                    ),
+                    status=cast(Literal["passed", "failed", "blocked", "unsupported"], row.status),
+                    reason_code=row.reason_code,
+                    observed_count=row.observed_count,
+                    latest_artifact_at=row.latest_artifact_at,
+                    detail=row.detail_manifest,
+                    evidence_fingerprint=row.evidence_fingerprint,
+                )
+                for row in rows
+            ],
         )

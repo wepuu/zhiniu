@@ -1,17 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-test("searches by Chinese name and code, then opens a deduplicated company timeline", async ({
+test("searches by Chinese name, pinyin and code, then opens a deduplicated company timeline", async ({
   page,
 }, testInfo) => {
   await page.goto("/");
   const searchButton =
     testInfo.project.name === "mobile-chromium"
       ? page.getByRole("button", { name: "搜索股票", exact: true })
-      : page.getByRole("button", { name: /搜索股票代码或中文名称/ });
+      : page.getByRole("button", { name: /搜索股票代码、中文名称或拼音/ });
   await searchButton.click();
 
-  const search = page.getByRole("combobox", { name: "股票代码或中文名称" });
+  const search = page.getByRole("combobox", {
+    name: "股票代码、中文名称或拼音",
+  });
   await search.fill("贵州茅台");
+  await expect(page.getByRole("option", { name: /贵州茅台/ })).toBeVisible();
+  await search.fill("guizhoumaotai");
+  await expect(page.getByRole("option", { name: /贵州茅台/ })).toBeVisible();
+  await search.fill("gzmt");
   await expect(page.getByRole("option", { name: /贵州茅台/ })).toBeVisible();
   await search.fill("600519");
   await expect(page.getByRole("option", { name: /贵州茅台/ })).toBeVisible();

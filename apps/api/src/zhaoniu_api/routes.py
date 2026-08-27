@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+from celery import Celery  # type: ignore[import-untyped]
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request, Response, status
 
 from zhaoniu_api.access_control.rate_limit import (
@@ -15,6 +16,7 @@ from zhaoniu_api.dependencies import (
     AccessControlServiceDependency,
     AIResearchServiceDependency,
     AuthServiceDependency,
+    AutomationServiceDependency,
     CSRFSafe,
     CurrentUser,
     CurrentUserId,
@@ -22,6 +24,7 @@ from zhaoniu_api.dependencies import (
     FundamentalService,
     PeerResearchServiceDependency,
     ResearchService,
+    StockReadinessServiceDependency,
     StockRepo,
     WatchlistRepo,
 )
@@ -63,6 +66,8 @@ from zhaoniu_api.schemas import (
     RegistrationRequest,
     SessionListResponse,
     SessionResponse,
+    StockPreparationResponse,
+    StockReadinessListResponse,
     StockResponse,
     StockSearchResponse,
     UserResponse,
@@ -82,6 +87,15 @@ _DIMENSIONS = {
 }
 _VALUATION_CODES = {"pe_ttm", "pb", "pcf", "market_cap"}
 router = APIRouter(prefix="/api/v1")
+
+
+def _dispatch_automation_run(run_id: UUID) -> None:
+    settings = get_settings()
+    Celery(
+        "zhaoniu-watchlist-preparation",
+        broker=settings.celery_broker_url,
+        backend=settings.celery_result_backend,
+    ).send_task("automation.execute_run", args=[str(run_id)])
 
 
 @router.get("/health", response_model=HealthResponse, tags=["system"])
@@ -365,6 +379,82 @@ async def search_stocks(
     stocks = await repository.search(q, limit)
     items = [StockResponse.from_domain(stock) for stock in stocks]
     return StockSearchResponse(items=items, total=len(items))
+
+
+@router.get(
+    "/stocks/readiness",
+    response_model=StockReadinessListResponse,
+    tags=["stocks"],
+)
+async def get_stock_readiness(
+    symbols: Annotated[str, Query(min_length=1, max_length=600)],
+    _user_id: CurrentUserId,
+    service: StockReadinessServiceDependency,
+) -> StockReadinessListResponse:
+    requested = [item.strip() for item in symbols.split(",") if item.strip()]
+    if not requested or len(requested) > 30:
+        raise HTTPException(status_code=422, detail="stock_readiness_symbol_limit")
+    try:
+        return StockReadinessListResponse(items=await service.get_many(requested))
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post(
+    "/stocks/{symbol}/preparation",
+    response_model=StockPreparationResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["stocks"],
+)
+async def request_stock_preparation(
+    symbol: str,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    watchlists: WatchlistRepo,
+    automation: AutomationServiceDependency,
+) -> StockPreparationResponse:
+    canonical = resolve_symbol(symbol).canonical
+    owned_lists = await watchlists.list_for_user(user_id)
+    if not any(item.symbol == canonical for group in owned_lists for item in group.items):
+        raise HTTPException(status_code=403, detail="stock_not_in_watchlist")
+    settings = get_settings()
+    if settings.automation_hard_disabled or not settings.watchlist_preparation_enabled:
+        return StockPreparationResponse(
+            symbol=canonical.split(".", 1)[0],
+            canonical_symbol=canonical,
+            status="paused",
+            reason_code="preparation_disabled",
+        )
+    try:
+        await enforce_access_rate_limit(
+            settings,
+            scope="watchlist-preparation-retry",
+            identity=f"{user_id}:{canonical}",
+            limit=1,
+            window_seconds=1800,
+        )
+        await enforce_access_rate_limit(
+            settings,
+            scope="watchlist-preparation-daily",
+            identity=str(user_id),
+            limit=settings.watchlist_preparation_daily_limit,
+            window_seconds=86400,
+        )
+    except AccessRateLimitExceeded as error:
+        raise HTTPException(status_code=429, detail="stock_preparation_rate_limited") from error
+    preparation_status, result = await automation.request_watchlist_preparation(canonical)
+    if result is not None and result.status == "accepted":
+        try:
+            _dispatch_automation_run(result.run_id)
+        except Exception:
+            pass
+    return StockPreparationResponse(
+        symbol=canonical.split(".", 1)[0],
+        canonical_symbol=canonical,
+        status=preparation_status,
+        run_id=result.run_id if result is not None else None,
+        reason_code="preparation_disabled" if preparation_status == "paused" else None,
+    )
 
 
 @router.get("/stocks/{symbol}", response_model=StockResponse, tags=["stocks"])
@@ -688,6 +778,7 @@ async def add_watchlist_item(
     stocks: StockRepo,
     repository: WatchlistRepo,
     access: AccessControlServiceDependency,
+    automation: AutomationServiceDependency,
 ) -> WatchlistResponse:
     stock = await stocks.get(payload.symbol)
     if stock is None:
@@ -702,7 +793,17 @@ async def add_watchlist_item(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found")
     item.add(resolve_symbol(payload.symbol).canonical)
-    return WatchlistResponse.from_domain(await repository.save(item))
+    saved = await repository.save(item)
+    try:
+        preparation_status, preparation = await automation.request_watchlist_preparation(
+            resolve_symbol(payload.symbol).canonical
+        )
+        if preparation_status == "queued" and preparation is not None:
+            _dispatch_automation_run(preparation.run_id)
+    except Exception:
+        # Membership persistence is authoritative; the database tick recovers pending work.
+        pass
+    return WatchlistResponse.from_domain(saved)
 
 
 @router.delete(

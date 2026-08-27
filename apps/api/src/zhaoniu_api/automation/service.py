@@ -43,6 +43,7 @@ from zhaoniu_api.db import (
     ResearchSignalRecord,
     ResearchSnapshotRecord,
     StockDailyBarRecord,
+    StockRecord,
     ValuationObservationRecord,
 )
 from zhaoniu_api.market_data.errors import MarketDataError, safe_market_error_code
@@ -170,7 +171,15 @@ class ProductionAutomationExecutor:
         )
 
         result: Any
+        if step_key == "stock_master_sync":
+            result = await build_market_data_service(self._session).sync_stock_master()
+            return _service_result(result, provider_calls=1)
         if step_key == "coverage_finalize":
+            if universe_snapshot_id is None:
+                universe = await build_coverage_service(self._session).build_universe(
+                    as_of=datetime.now(UTC)
+                )
+                universe_snapshot_id = universe.id
             result = await build_coverage_service(self._session).build_coverage_snapshot(
                 universe_snapshot_id
             )
@@ -370,6 +379,19 @@ class AutomationService:
         policy = await self.ensure_default_policy()
         if self._settings.automation_hard_disabled:
             return AutomationTickResult(status="disabled")
+        pending_watchlist_ids = list(
+            (
+                await self._session.scalars(
+                    select(AutomationRunRecord.id)
+                    .where(
+                        AutomationRunRecord.trigger_kind == "watchlist",
+                        AutomationRunRecord.status == "pending",
+                    )
+                    .order_by(AutomationRunRecord.created_at)
+                    .limit(self._settings.automation_max_concurrency)
+                )
+            ).all()
+        )
         policy, revision = await self._load_policy(policy.policy_key, lock=True)
         policy.last_evaluated_at = moment
         configuration = AutomationPolicyConfiguration.model_validate(revision.configuration)
@@ -377,24 +399,75 @@ class AutomationService:
         policy.next_due_at = next_due
         if not policy.enabled or slot is None:
             await self._session.commit()
-            return AutomationTickResult(status="idle")
+            return AutomationTickResult(
+                status="scheduled" if pending_watchlist_ids else "idle",
+                run_ids=pending_watchlist_ids,
+            )
         await self._session.commit()
         if moment - slot > timedelta(minutes=self._settings.automation_catchup_window_minutes):
             await self._create_missed_run(policy, revision, slot)
-            return AutomationTickResult(status="idle")
+            return AutomationTickResult(
+                status="scheduled" if pending_watchlist_ids else "idle",
+                run_ids=pending_watchlist_ids,
+            )
         result = await self.trigger_run(
             policy.policy_key,
             trigger_kind="scheduled",
             scheduled_for=slot,
             request_key=slot.isoformat(),
         )
-        return AutomationTickResult(status="scheduled", run_ids=[result.run_id])
+        return AutomationTickResult(
+            status="scheduled",
+            run_ids=[*pending_watchlist_ids, result.run_id],
+        )
+
+    async def request_watchlist_preparation(
+        self, symbol: str
+    ) -> tuple[Literal["queued", "reused", "paused"], AutomationTriggerResponse | None]:
+        if self._settings.automation_hard_disabled:
+            return "paused", None
+        if not self._settings.watchlist_preparation_enabled:
+            return "paused", None
+        from zhaoniu_api.domain.models import resolve_symbol
+
+        canonical = resolve_symbol(symbol).canonical
+        existing = await self._session.scalar(
+            select(AutomationRunRecord)
+            .join(
+                AutomationRunStepRecord,
+                AutomationRunStepRecord.run_id == AutomationRunRecord.id,
+            )
+            .where(
+                AutomationRunRecord.trigger_kind == "watchlist",
+                AutomationRunRecord.status.in_(("pending", "running")),
+                AutomationRunStepRecord.symbol == canonical,
+            )
+            .order_by(AutomationRunRecord.created_at.desc())
+            .limit(1)
+        )
+        if existing is not None:
+            return (
+                "reused",
+                AutomationTriggerResponse(
+                    status="skipped",
+                    run_id=existing.id,
+                    run_status=cast(Any, existing.status),
+                ),
+            )
+        bucket = int(datetime.now(UTC).timestamp()) // (30 * 60)
+        result = await self.trigger_run(
+            POLICY_KEY,
+            trigger_kind="watchlist",
+            request_key=f"{canonical}:{bucket}",
+            symbols=(canonical,),
+        )
+        return ("queued" if result.status == "accepted" else "reused"), result
 
     async def trigger_run(
         self,
         policy_key: str = POLICY_KEY,
         *,
-        trigger_kind: Literal["scheduled", "manual"] = "manual",
+        trigger_kind: Literal["scheduled", "manual", "watchlist"] = "manual",
         scheduled_for: datetime | None = None,
         request_key: str | None = None,
         symbols: tuple[str, ...] | None = None,
@@ -479,6 +552,8 @@ class AutomationService:
         configuration: AutomationPolicyConfiguration,
         symbols: list[str],
     ) -> None:
+        if run.trigger_kind == "scheduled":
+            self._add_step(run, "run", str(run.id), "stock_master_sync", 5, None)
         symbol_steps = [
             (10, "market_sync"),
             (20, "financial_sync"),
@@ -699,6 +774,15 @@ class AutomationService:
             await self._session.commit()
 
     async def _skip_reason(self, run_id: UUID, step: AutomationRunStepRecord) -> str | None:
+        if step.step_key == "stock_master_sync":
+            latest = await self._session.scalar(
+                select(func.max(DataSyncRunRecord.finished_at)).where(
+                    DataSyncRunRecord.dataset == "stock_master",
+                    DataSyncRunRecord.status == "succeeded",
+                )
+            )
+            if latest is not None and latest > datetime.now(UTC) - timedelta(hours=24):
+                return "stock_master_check_not_due"
         if step.step_key == "financial_sync" and step.symbol:
             latest = await self._session.scalar(
                 select(func.max(DataSyncRunRecord.finished_at)).where(
@@ -826,6 +910,13 @@ class AutomationService:
         )
 
     async def _artifact_fingerprint(self, step_key: str, symbol: str | None, scope_key: str) -> str:
+        if step_key == "stock_master_sync":
+            count, latest = (
+                await self._session.execute(
+                    select(func.count(StockRecord.symbol), func.max(StockRecord.collected_at))
+                )
+            ).one()
+            return stable_hash([("stocks", int(count or 0), latest)])
         if symbol is None:
             return stable_hash([])
         model_and_time: dict[str, tuple[type[Any], Any]] = {

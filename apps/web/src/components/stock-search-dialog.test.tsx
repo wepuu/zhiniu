@@ -8,7 +8,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { StockSearchDialog } from "./stock-search-dialog";
+import {
+  isStockSearchQueryReady,
+  StockSearchDialog,
+} from "./stock-search-dialog";
 
 const { searchStocks } = vi.hoisted(() => ({ searchStocks: vi.fn() }));
 
@@ -23,13 +26,6 @@ const stocks = [
     name: "贵州茅台",
     exchange: "SSE",
     industry: "白酒",
-  },
-  {
-    symbol: "600518",
-    canonical_symbol: "600518.SH",
-    name: "康美药业",
-    exchange: "SSE",
-    industry: "医药",
   },
 ];
 
@@ -72,25 +68,17 @@ describe("StockSearchDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("supports Chinese names and shows an honest empty state", async () => {
-    searchStocks.mockResolvedValueOnce({ items: [], total: 0 });
+  it("queries a single Chinese character", async () => {
+    searchStocks.mockResolvedValue({ items: stocks, total: stocks.length });
     renderDialog();
 
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "茅台" },
-    });
-    expect(
-      await screen.findByText("没有找到匹配的 A 股公司。"),
-    ).toBeInTheDocument();
-    expect(searchStocks).toHaveBeenCalledWith("茅台", 10);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "茅" } });
+    await waitFor(() => expect(searchStocks).toHaveBeenCalledWith("茅", 10));
   });
 
-  it("does not query for a single character", async () => {
-    renderDialog();
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "茅" } });
-
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
-    expect(searchStocks).not.toHaveBeenCalled();
-    expect(screen.getByText("输入至少 2 个字符开始搜索。")).toBeInTheDocument();
+  it("accepts full pinyin and initials but rejects one Latin character", () => {
+    expect(isStockSearchQueryReady("guizhoumaotai")).toBe(true);
+    expect(isStockSearchQueryReady("gzmt")).toBe(true);
+    expect(isStockSearchQueryReady("g")).toBe(false);
   });
 });

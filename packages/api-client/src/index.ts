@@ -2,6 +2,13 @@ import type { components } from "./schema";
 
 export type StockResponse = components["schemas"]["StockResponse"];
 export type StockSearchResponse = components["schemas"]["StockSearchResponse"];
+export type StockReadinessResponse =
+  components["schemas"]["StockReadinessResponse"];
+export type StockReadinessStage = components["schemas"]["StockReadinessStage"];
+export type StockReadinessListResponse =
+  components["schemas"]["StockReadinessListResponse"];
+export type StockPreparationResponse =
+  components["schemas"]["StockPreparationResponse"];
 export type DailyBarResponse = components["schemas"]["DailyBarResponse"];
 export type DailyBarListResponse =
   components["schemas"]["DailyBarListResponse"];
@@ -341,6 +348,19 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         limit: String(limit),
       });
       return request<StockSearchResponse>(`/api/v1/stocks/search?${query}`);
+    },
+    getStockReadiness(symbols: string[]) {
+      const query = new URLSearchParams({ symbols: symbols.join(",") });
+      return request<StockReadinessListResponse>(
+        `/api/v1/stocks/readiness?${query}`,
+      );
+    },
+    requestStockPreparation(symbol: string) {
+      return jsonRequest<StockPreparationResponse>(
+        `/api/v1/stocks/${encodeURIComponent(symbol)}/preparation`,
+        "POST",
+        {},
+      );
     },
     getStock(symbol: string) {
       return request<StockResponse>(

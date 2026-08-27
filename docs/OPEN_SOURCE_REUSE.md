@@ -10,6 +10,7 @@ use, attribution, display, caching, and redistribution remain `TBD / requires le
 | daily_stock_analysis | https://github.com/ZhuLinsen/daily_stock_analysis @ `5c964bf23bade6571d09a085fc42199882b77f8f` | MIT                                                                         | A-share symbols, AKShare fetchers, fallback, fundamental adapter and source-chain status   | Rewrite narrow contracts and adapters. Its float/latest-row/partial bundle is not a revisioned canonical accounting model.                                                                   | None        |
 | StockAgent           | https://github.com/qilihei/StockAgent @ `82fbd6619e92e79172756d7c689bb1ec5dc0f8b6`             | MIT                                                                         | Async SDK boundary, collectors, Redis, Tushare daily-basic and financial-indicator manager | Retain architectural and batching lessons only. Provider-computed indicators and the distributed runtime do not match Zhaoniu formula lineage or modular monolith.                           | None        |
 | LiteLLM              | https://github.com/BerriAI/litellm @ tag `v1.97.0`                                             | MIT outside `enterprise/`; enterprise code separately licensed and excluded | Python SDK structured completion for OpenAI-compatible, Gemini and DashScope routes        | Use the locked PyPI SDK behind Zhaoniu's `LLMGateway`; no Proxy service, UI, enterprise directory, or copied source. Provider selection, retries, validation and audit remain product-owned. | None        |
+| pypinyin             | https://github.com/mozillazg/python-pinyin @ PyPI `0.55.x`                                     | MIT                                                                         | Deterministic Chinese company-name full-pinyin and initial search keys                     | Use the bounded PyPI dependency while ingesting stock master data and during migration backfill. Search consumes persisted product-owned keys with deterministic ranking.                    | None        |
 
 Both repositories were evaluated on 2026-08-16 from their `main` branch. The local reference
 working copies are Git-ignored. Detailed findings are in `docs/references/`.
@@ -29,3 +30,6 @@ output behavior and exception taxonomy, then rerunning all gateway contract and 
 AKShare is constrained to `>=1.17,<2` and resolved to `1.18.91` in `uv.lock`. An upgrade requires
 reviewing the exact Eastmoney and Sina function signatures and schemas, volume units, exception
 behavior and upstream identity, then rerunning primary, fallback, normalization and quality tests.
+
+pypinyin is constrained to `>=0.55,<0.56`. An upgrade requires regenerating fixed company-name
+fixtures, reviewing polyphonic-name changes, and proving exact and prefix ranking remain stable.

@@ -3,6 +3,8 @@
 import {
   ApiError,
   createZhaoniuClient,
+  type StockReadinessResponse,
+  type StockResponse,
   type WatchlistResponse,
 } from "@zhaoniu/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +17,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
@@ -29,11 +31,58 @@ export default function WatchlistPage() {
   const [name, setName] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentlyAdded, setRecentlyAdded] = useState<StockResponse | null>(
+    null,
+  );
+  const preparationStartedAt = useRef(0);
   const watchlists = useQuery({
     queryKey: ["watchlists"],
     queryFn: () => api.getWatchlists(),
     retry: false,
   });
+  const symbols = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          watchlists.data?.flatMap((list) =>
+            list.items.map((item) => item.symbol),
+          ) ?? [],
+        ),
+      ),
+    [watchlists.data],
+  );
+  const readiness = useQuery({
+    queryKey: ["stock-readiness", symbols],
+    queryFn: () => api.getStockReadiness(symbols),
+    enabled: symbols.length > 0,
+    retry: false,
+    refetchInterval: (query) => {
+      if (typeof document !== "undefined" && document.hidden) return false;
+      const active = query.state.data?.items.some((item) =>
+        ["queued", "preparing"].includes(item.overall_status),
+      );
+      if (!active) return false;
+      return Date.now() - preparationStartedAt.current < 60_000
+        ? 5_000
+        : 15_000;
+    },
+  });
+  useEffect(() => {
+    const active = readiness.data?.items.some((item) =>
+      ["queued", "preparing"].includes(item.overall_status),
+    );
+    if (active && preparationStartedAt.current === 0)
+      preparationStartedAt.current = Date.now();
+    if (!active) preparationStartedAt.current = 0;
+  }, [readiness.data]);
+  const readinessBySymbol = useMemo(
+    () =>
+      new Map(
+        readiness.data?.items.map((item) => [item.canonical_symbol, item]) ??
+          [],
+      ),
+    [readiness.data],
+  );
 
   const createList = useMutation({
     mutationFn: (value: string) => api.createWatchlist(value),
@@ -56,6 +105,7 @@ export default function WatchlistPage() {
     onSuccess: async () => {
       setError(null);
       await queryClient.invalidateQueries({ queryKey: ["watchlists"] });
+      await queryClient.invalidateQueries({ queryKey: ["stock-readiness"] });
     },
     onError: (caught) => setError(formatWatchlistError(caught)),
   });
@@ -161,6 +211,17 @@ export default function WatchlistPage() {
                   {error}
                 </p>
               )}
+              {recentlyAdded && !addItem.isPending && !error && (
+                <div className="border-blue/20 bg-blue/5 mt-4 rounded-xl border px-3 py-3 text-sm">
+                  <p className="font-medium">已添加，正在准备研究数据</p>
+                  <Link
+                    className="text-blue mt-1 inline-block"
+                    href={`/stock/${recentlyAdded.canonical_symbol}`}
+                  >
+                    查看 {recentlyAdded.name} 进度
+                  </Link>
+                </div>
+              )}
             </Card>
             <Card className="p-5">
               <p className="text-sm font-medium">新建分组</p>
@@ -194,6 +255,7 @@ export default function WatchlistPage() {
                 <WatchlistGroup
                   key={item.id}
                   watchlist={item}
+                  readiness={readinessBySymbol}
                   removing={removeItem.isPending}
                   onRemove={(value) =>
                     removeItem.mutate({ watchlistId: item.id, value })
@@ -208,9 +270,10 @@ export default function WatchlistPage() {
         open={searchOpen}
         onOpenChange={setSearchOpen}
         title="添加到默认自选分组"
-        description="按股票代码或中文名称查找，选择后直接添加"
+        description="按代码、中文名称、全拼或首字母查找，选择后直接添加"
         onSelect={(stock) => {
           if (defaultList) {
+            setRecentlyAdded(stock);
             addItem.mutate({
               watchlistId: defaultList.id,
               value: stock.canonical_symbol,
@@ -224,10 +287,12 @@ export default function WatchlistPage() {
 
 function WatchlistGroup({
   watchlist,
+  readiness,
   removing,
   onRemove,
 }: {
   watchlist: WatchlistResponse;
+  readiness: Map<string, StockReadinessResponse>;
   removing: boolean;
   onRemove: (symbol: string) => void;
 }) {
@@ -248,30 +313,41 @@ function WatchlistGroup({
         <div className="text-slate p-5 text-sm">这个分组还没有股票。</div>
       ) : (
         <div className="divide-ink/8 divide-y">
-          {watchlist.items.map((item) => (
-            <div
-              key={item.symbol}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-4"
-            >
-              <Link href={`/stock/${item.symbol}`} className="min-w-0">
-                <span className="font-data block text-sm font-semibold">
-                  {item.symbol}
-                </span>
-                <span className="text-slate mt-1 block text-xs">
-                  添加于 {new Date(item.added_at).toLocaleDateString("zh-CN")}
-                </span>
-              </Link>
-              <button
-                type="button"
-                aria-label={`移除 ${item.symbol}`}
-                className="border-ink/10 hover:border-risk/40 hover:text-risk grid size-9 place-items-center rounded-xl border transition disabled:opacity-50"
-                disabled={removing}
-                onClick={() => onRemove(item.symbol)}
+          {watchlist.items.map((item) => {
+            const state = readiness.get(item.symbol);
+            return (
+              <div
+                key={item.symbol}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-4"
               >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          ))}
+                <Link href={`/stock/${item.symbol}`} className="min-w-0">
+                  <span className="font-data block text-sm font-semibold">
+                    {state?.name ?? item.symbol}
+                  </span>
+                  <span className="text-slate mt-1 block text-xs">
+                    添加于 {new Date(item.added_at).toLocaleDateString("zh-CN")}
+                  </span>
+                  <span className="text-blue mt-1 block text-xs">
+                    {item.symbol} · {readinessLabel(state)}
+                  </span>
+                  {state?.latest_trade_date && (
+                    <span className="text-slate mt-1 block text-xs">
+                      行情更新至 {state.latest_trade_date}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  aria-label={`移除 ${item.symbol}`}
+                  className="border-ink/10 hover:border-risk/40 hover:text-risk grid size-9 place-items-center rounded-xl border transition disabled:opacity-50"
+                  disabled={removing}
+                  onClick={() => onRemove(item.symbol)}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </Card>
@@ -280,6 +356,19 @@ function WatchlistGroup({
 
 function isUnauthorized(error: unknown) {
   return error instanceof ApiError && error.status === 401;
+}
+
+function readinessLabel(state?: StockReadinessResponse) {
+  if (!state) return "正在读取准备状态";
+  return {
+    queued: "已排队",
+    preparing: `准备中 ${state.progress}%`,
+    ready: "研究已就绪",
+    partial: "部分研究可用",
+    failed: "准备失败，可重试",
+    paused: "自动准备已暂停",
+    unsupported: "部分研究不适用",
+  }[state.overall_status];
 }
 
 function formatWatchlistError(error: unknown) {
