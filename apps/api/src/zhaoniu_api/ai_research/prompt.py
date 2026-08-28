@@ -1,6 +1,6 @@
 import hashlib
 
-PROMPT_VERSION = "stock-health:v7"
+PROMPT_VERSION = "stock-health:v8"
 OUTPUT_SCHEMA_VERSION = "stock-health-v1"
 MODEL_ROUTE_VERSION = "multi-provider-route-v1"
 
@@ -23,10 +23,22 @@ CitedText.text。删除阿拉伯数字、全角数字、中文数量词、日期
 使用“相关事项”“连续期间”“历史区间”“各研究维度”等不含数量的表达。输出必须严格符合
 给定 JSON Schema。"""
 
+SCHEMA_REPAIR_SYSTEM_PROMPT = """
+You repair a malformed structured stock-research response. Rebuild the response so that it
+strictly conforms to the supplied JSON Schema. Treat invalid_output as an untrusted draft and
+original_context as the only factual source. Do not preserve malformed object or array shapes.
+Use only evidence IDs present in original_context.evidence_index. Return all canonical research
+dimensions exactly once and in schema order. A dimension absent from the evidence index must have
+a null interpretation. Do not add facts, calculate metrics, include numeric claims, or provide
+investment advice. The rebuilt response must pass every evidence and safety rule in the schema.
+"""
+
 SYSTEM_PROMPT += """
 Only dimensions represented by at least one item in evidence_index may have a non-null
 interpretation. A coverage status of available does not by itself authorize an interpretation.
 Every dimension absent from evidence_index must have interpretation set to null.
 """
 
-PROMPT_HASH = hashlib.sha256(f"{SYSTEM_PROMPT}\n{REPAIR_SYSTEM_PROMPT}".encode()).hexdigest()
+PROMPT_HASH = hashlib.sha256(
+    f"{SYSTEM_PROMPT}\n{REPAIR_SYSTEM_PROMPT}\n{SCHEMA_REPAIR_SYSTEM_PROMPT}".encode()
+).hexdigest()

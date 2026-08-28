@@ -23,6 +23,7 @@ from zhaoniu_api.ai_research.prompt import (
     PROMPT_HASH,
     PROMPT_VERSION,
     REPAIR_SYSTEM_PROMPT,
+    SCHEMA_REPAIR_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
 )
 from zhaoniu_api.ai_research.validation import (
@@ -157,7 +158,11 @@ class AIResearchService:
         deadline = time.monotonic() + self._options.run_deadline_seconds
         last_error_code = "provider_chain_exhausted"
         last_error_summary = "all configured models failed"
-        repairable_validation_codes = {"numeric_claim", "forbidden_language"}
+        repairable_validation_codes = {
+            "numeric_claim",
+            "forbidden_language",
+            "schema_invalid",
+        }
         repair_used = False
         call_index = 0
         try:
@@ -260,15 +265,24 @@ class AIResearchService:
                             and time.monotonic() < deadline
                         ):
                             repair_used = True
-                            repair_source = response.data
-                            request_prompt = REPAIR_SYSTEM_PROMPT
-                            request_input = {
-                                "validation_error": error.code,
-                                "allowed_evidence_ids": [
-                                    item.evidence_id for item in context.evidence_index
-                                ],
-                                "invalid_output": response.data,
-                            }
+                            if error.code == "schema_invalid":
+                                repair_source = None
+                                request_prompt = SCHEMA_REPAIR_SYSTEM_PROMPT
+                                request_input = {
+                                    "validation_error": error.code,
+                                    "original_context": context.model_dump(mode="json"),
+                                    "invalid_output": response.data,
+                                }
+                            else:
+                                repair_source = response.data
+                                request_prompt = REPAIR_SYSTEM_PROMPT
+                                request_input = {
+                                    "validation_error": error.code,
+                                    "allowed_evidence_ids": [
+                                        item.evidence_id for item in context.evidence_index
+                                    ],
+                                    "invalid_output": response.data,
+                                }
                             continue
                         break
                     else:

@@ -8,7 +8,11 @@ from fastapi.testclient import TestClient
 from zhaoniu_api.ai_research.context import build_context
 from zhaoniu_api.ai_research.litellm_gateway import provider_name
 from zhaoniu_api.ai_research.models import StockHealthResearchV1
-from zhaoniu_api.ai_research.prompt import REPAIR_SYSTEM_PROMPT, SYSTEM_PROMPT
+from zhaoniu_api.ai_research.prompt import (
+    REPAIR_SYSTEM_PROMPT,
+    SCHEMA_REPAIR_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+)
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
@@ -139,6 +143,7 @@ class FakeGateway:
         self.outcomes = outcomes
         self.models: list[str] = []
         self.system_prompts: list[str] = []
+        self.inputs: list[dict[str, object]] = []
 
     def supports_structured_output(self, model: str) -> bool:
         return True
@@ -158,6 +163,7 @@ class FakeGateway:
         del max_output_tokens, thinking_enabled
         self.models.append(model)
         self.system_prompts.append(system_prompt)
+        self.inputs.append(input_data)
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
@@ -297,7 +303,7 @@ async def test_multi_provider_fallback_is_idempotent_and_bank_is_unsupported() -
     assert envelope.output and envelope.output.ai_generated
 
 
-async def test_schema_failure_and_hard_timeout_advance_the_route() -> None:
+async def test_schema_failure_gets_one_bounded_context_grounded_repair() -> None:
     stocks = InMemoryStockRepository()
     research = InMemoryResearchRepository()
     snapshot = _snapshot()
@@ -319,8 +325,72 @@ async def test_schema_failure_and_hard_timeout_advance_the_route() -> None:
     )
     result = await service.generate_stock_health("600519")
     assert result.status == "succeeded"
+    assert gateway.models == ["openai/invalid", "openai/invalid"]
+    assert gateway.system_prompts == [SYSTEM_PROMPT, SCHEMA_REPAIR_SYSTEM_PROMPT]
+    assert gateway.inputs[1]["validation_error"] == "schema_invalid"
+    assert gateway.inputs[1]["invalid_output"] == invalid_schema
+    assert gateway.inputs[1]["original_context"] == context.model_dump(mode="json")
     assert [item.status for item in repository.calls] == ["rejected", "succeeded"]
     assert repository.calls[0].error_code == "schema_invalid"
+
+
+async def test_schema_repair_is_bounded_before_route_fallback() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    invalid_schema = {"headline": "not a cited text"}
+    gateway = FakeGateway(
+        [
+            invalid_schema,
+            invalid_schema,
+            _valid_payload(evidence),
+        ]
+    )
+    repository = InMemoryAIResearchRepository()
+    service = AIResearchService(
+        stocks=stocks,
+        research=research,
+        ai_research=repository,
+        gateway=gateway,
+        options=AIResearchOptions(
+            enabled=True,
+            model_chain=("deepseek/malformed", "gemini/valid"),
+        ),
+    )
+
+    result = await service.generate_stock_health("600519")
+
+    assert result.status == "succeeded"
+    assert gateway.models == [
+        "deepseek/malformed",
+        "deepseek/malformed",
+        "gemini/valid",
+    ]
+    assert gateway.system_prompts == [
+        SYSTEM_PROMPT,
+        SCHEMA_REPAIR_SYSTEM_PROMPT,
+        SYSTEM_PROMPT,
+    ]
+    assert [item.status for item in repository.calls] == [
+        "rejected",
+        "rejected",
+        "succeeded",
+    ]
+    assert [item.error_code for item in repository.calls[:2]] == [
+        "schema_invalid",
+        "schema_invalid",
+    ]
+    assert len(repository.outputs) == 1
+
+
+async def test_hard_timeout_advances_the_route() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
 
     timeout_repository = InMemoryAIResearchRepository()
     timeout_service = AIResearchService(
