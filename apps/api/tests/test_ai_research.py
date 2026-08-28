@@ -16,6 +16,8 @@ from zhaoniu_api.ai_research.prompt import (
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
+    forbidden_language_fragments,
+    sanitize_forbidden_language,
     validate_stock_health_output,
 )
 from zhaoniu_api.dependencies import get_ai_research_service, get_stock_repository
@@ -442,7 +444,40 @@ async def test_numeric_claim_gets_one_bounded_structure_preserving_repair() -> N
     assert len(repository.outputs) == 1
 
 
-async def test_repeated_forbidden_language_gets_one_final_bounded_repair() -> None:
+def test_forbidden_language_sanitizer_preserves_safe_sentences_and_references() -> None:
+    context = build_context(_snapshot())
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    raw = _valid_payload(evidence)
+    reference = next(iter(evidence.values()))
+    raw["headline"] = {
+        "text": "经营情况呈现阶段性变化。相关判断构成利好。",
+        "evidence_refs": [reference],
+    }
+    raw["executive_summary"][0]["text"] = "研究结论仍然看多"  # type: ignore[index]
+    raw["dimensions"][0]["interpretation"]["text"] = "相关变化构成利好"  # type: ignore[index]
+    raw["attention_items"] = [
+        {
+            "title": {"text": "强烈推荐", "evidence_refs": [reference]},
+            "interpretation": {"text": "建议持有", "evidence_refs": [reference]},
+        }
+    ]
+
+    sanitized = sanitize_forbidden_language(raw)
+
+    assert sanitized.headline.text == "经营情况呈现阶段性变化。"
+    assert sanitized.headline.evidence_refs == [reference]
+    assert sanitized.executive_summary[0].text == "相关证据内容需结合原始资料继续核对。"
+    assert sanitized.dimensions[0].interpretation is not None
+    assert sanitized.dimensions[0].interpretation.text == "相关证据内容需结合原始资料继续核对。"
+    assert sanitized.attention_items[0].title.text == "相关证据内容需结合原始资料继续核对。"
+    assert (
+        sanitized.attention_items[0].interpretation.text == "相关证据内容需结合原始资料继续核对。"
+    )
+    assert forbidden_language_fragments(sanitized.model_dump(mode="json")) == []
+    validate_stock_health_output(sanitized.model_dump(mode="json"), context)
+
+
+async def test_repeated_forbidden_language_uses_two_calls_then_deterministic_safety() -> None:
     stocks = InMemoryStockRepository()
     research = InMemoryResearchRepository()
     snapshot = _snapshot()
@@ -459,8 +494,7 @@ async def test_repeated_forbidden_language_gets_one_final_bounded_repair() -> No
         "text": "相关变化构成利好",
         "evidence_refs": [next(iter(evidence.values()))],
     }
-    valid = _valid_payload(evidence)
-    gateway = FakeGateway([invalid, still_invalid, valid])
+    gateway = FakeGateway([invalid, still_invalid])
     repository = InMemoryAIResearchRepository()
     service = AIResearchService(
         stocks=stocks,
@@ -473,23 +507,22 @@ async def test_repeated_forbidden_language_gets_one_final_bounded_repair() -> No
     result = await service.generate_stock_health("600519")
 
     assert result.status == "succeeded"
-    assert gateway.models == ["deepseek/fixture"] * 3
+    assert gateway.models == ["deepseek/fixture"] * 2
     assert gateway.system_prompts == [
         SYSTEM_PROMPT,
         REPAIR_SYSTEM_PROMPT,
-        REPAIR_SYSTEM_PROMPT,
     ]
     assert gateway.inputs[1]["forbidden_fragments"] == ["变好"]
-    assert gateway.inputs[2]["forbidden_fragments"] == ["利好"]
-    assert [item.status for item in repository.calls] == [
-        "rejected",
-        "rejected",
-        "succeeded",
-    ]
+    assert [item.status for item in repository.calls] == ["rejected", "rejected"]
     assert len(repository.outputs) == 1
+    output = next(iter(repository.outputs.values()))
+    assert output.content.headline.text == "相关证据内容需结合原始资料继续核对。"
+    assert forbidden_language_fragments(output.content.model_dump(mode="json")) == []
 
 
-async def test_repeated_forbidden_language_stops_after_three_calls() -> None:
+async def test_deterministic_safety_failure_stops_after_two_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     stocks = InMemoryStockRepository()
     research = InMemoryResearchRepository()
     snapshot = _snapshot()
@@ -497,13 +530,23 @@ async def test_repeated_forbidden_language_stops_after_three_calls() -> None:
     context = build_context(snapshot)
     evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
     invalid_responses = []
-    for text in ("经营表现变好", "相关变化构成利好", "研究结论仍然看多"):
+    for text in ("经营表现变好", "相关变化构成利好"):
         invalid = _valid_payload(evidence)
         invalid["headline"] = {
             "text": text,
             "evidence_refs": [next(iter(evidence.values()))],
         }
         invalid_responses.append(invalid)
+
+    def reject_deterministic_safety(raw: dict[str, object]) -> StockHealthResearchV1:
+        raise AIOutputValidationError(
+            "forbidden_language", "deterministic safety could not produce valid prose"
+        )
+
+    monkeypatch.setattr(
+        "zhaoniu_api.ai_research.service.sanitize_forbidden_language",
+        reject_deterministic_safety,
+    )
     gateway = FakeGateway(invalid_responses)
     repository = InMemoryAIResearchRepository()
     service = AIResearchService(
@@ -511,16 +554,22 @@ async def test_repeated_forbidden_language_stops_after_three_calls() -> None:
         research=research,
         ai_research=repository,
         gateway=gateway,
-        options=AIResearchOptions(enabled=True, model_chain=("deepseek/fixture",)),
+        options=AIResearchOptions(
+            enabled=True,
+            model_chain=("deepseek/fixture", "openai/unused"),
+        ),
     )
 
     result = await service.generate_stock_health("600519")
 
     assert result.status == "failed"
-    assert gateway.models == ["deepseek/fixture"] * 3
-    assert [item.status for item in repository.calls] == ["rejected"] * 3
+    assert gateway.models == ["deepseek/fixture"] * 2
+    assert [item.status for item in repository.calls] == ["rejected"] * 2
     assert repository.calls[-1].error_code == "forbidden_language"
     assert repository.outputs == {}
+    envelope = await service.get_stock_health("600519")
+    assert envelope.status == "failed"
+    assert envelope.reason == "generation_failed"
 
 
 async def test_repair_cannot_change_structure_or_evidence_references() -> None:

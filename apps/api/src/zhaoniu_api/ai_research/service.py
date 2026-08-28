@@ -10,6 +10,7 @@ from zhaoniu_api.ai_research.context import build_context, digest
 from zhaoniu_api.ai_research.litellm_gateway import provider_name
 from zhaoniu_api.ai_research.models import (
     AIResearchBuildResult,
+    AIResearchContext,
     AIResearchEnvelope,
     AIResearchOutputDocument,
     AIResearchReason,
@@ -29,16 +30,18 @@ from zhaoniu_api.ai_research.prompt import (
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
     forbidden_language_fragments,
+    sanitize_forbidden_language,
     validate_repair_preserves_structure,
     validate_stock_health_output,
 )
 from zhaoniu_api.domain.models import IssuerType, resolve_symbol
-from zhaoniu_api.ports.providers import LLMGateway, LLMGatewayError
+from zhaoniu_api.ports.providers import LLMGateway, LLMGatewayError, LLMStructuredResponse
 from zhaoniu_api.ports.repositories import (
     AIResearchRepository,
     ResearchRepository,
     StockRepository,
 )
+from zhaoniu_api.research.models import ResearchSnapshotDocument
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,7 +263,38 @@ class AIResearchService:
                                 error_code=error.code,
                             )
                         )
-                        repair_limit = 2 if error.code == "forbidden_language" else 1
+                        if error.code == "forbidden_language" and repair_attempts >= 1:
+                            try:
+                                sanitized = sanitize_forbidden_language(response.data)
+                                content = validate_stock_health_output(
+                                    sanitized.model_dump(mode="json"), context
+                                )
+                                if repair_source is not None:
+                                    validate_repair_preserves_structure(repair_source, content)
+                            except AIOutputValidationError as sanitization_error:
+                                last_error_code = sanitization_error.code
+                                last_error_summary = str(sanitization_error)[:300]
+                            else:
+                                return await self._complete_generated_output(
+                                    run_id=lease.run_id,
+                                    canonical=canonical,
+                                    snapshot=snapshot,
+                                    context=context,
+                                    response=response,
+                                    content=content,
+                                    idempotency_key=idempotency_key,
+                                    route_hash=route_hash,
+                                )
+                            await self._ai_research.fail_run(
+                                lease.run_id,
+                                error_code=last_error_code,
+                                error_summary=last_error_summary,
+                                finished_at=datetime.now(UTC),
+                            )
+                            return AIResearchBuildResult(
+                                "failed", lease.run_id, None, idempotency_key
+                            )
+                        repair_limit = 1
                         if (
                             repair_attempts < repair_limit
                             and error.code in repairable_validation_codes
@@ -312,37 +346,15 @@ class AIResearchService:
                                 finish_reason=response.finish_reason,
                             )
                         )
-                        generated_at = datetime.now(UTC)
-                        output = AIResearchOutputDocument(
-                            output_id=uuid5(NAMESPACE_URL, f"zhaoniu:ai-output:{idempotency_key}"),
+                        return await self._complete_generated_output(
                             run_id=lease.run_id,
-                            symbol=canonical,
-                            snapshot_id=snapshot.id,
-                            knowledge_cutoff=snapshot.knowledge_cutoff,
-                            provider_display_name=response.usage.provider,
-                            model_display_name=response.usage.model,
-                            context_version=context.context_version,
-                            context_hash=context.context_hash,
-                            prompt_version=PROMPT_VERSION,
-                            prompt_hash=PROMPT_HASH,
-                            output_schema_version=OUTPUT_SCHEMA_VERSION,
-                            model_route_version=MODEL_ROUTE_VERSION,
-                            route_hash=route_hash,
+                            canonical=canonical,
+                            snapshot=snapshot,
+                            context=context,
+                            response=response,
                             content=content,
-                            evidence_index=context.evidence_index,
-                            coverage=context.coverage,
-                            generated_at=generated_at,
-                        )
-                        await self._ai_research.complete_run(
-                            output, idempotency_key=idempotency_key
-                        )
-                        return AIResearchBuildResult(
-                            "succeeded",
-                            lease.run_id,
-                            output.output_id,
-                            idempotency_key,
-                            output.provider_display_name,
-                            output.model_display_name,
+                            idempotency_key=idempotency_key,
+                            route_hash=route_hash,
                         )
 
             await self._ai_research.fail_run(
@@ -360,6 +372,49 @@ class AIResearchService:
                 finished_at=datetime.now(UTC),
             )
             raise
+
+    async def _complete_generated_output(
+        self,
+        *,
+        run_id: UUID,
+        canonical: str,
+        snapshot: ResearchSnapshotDocument,
+        context: AIResearchContext,
+        response: LLMStructuredResponse,
+        content: StockHealthResearchV1,
+        idempotency_key: str,
+        route_hash: str,
+    ) -> AIResearchBuildResult:
+        generated_at = datetime.now(UTC)
+        output = AIResearchOutputDocument(
+            output_id=uuid5(NAMESPACE_URL, f"zhaoniu:ai-output:{idempotency_key}"),
+            run_id=run_id,
+            symbol=canonical,
+            snapshot_id=snapshot.id,
+            knowledge_cutoff=snapshot.knowledge_cutoff,
+            provider_display_name=response.usage.provider,
+            model_display_name=response.usage.model,
+            context_version=context.context_version,
+            context_hash=context.context_hash,
+            prompt_version=PROMPT_VERSION,
+            prompt_hash=PROMPT_HASH,
+            output_schema_version=OUTPUT_SCHEMA_VERSION,
+            model_route_version=MODEL_ROUTE_VERSION,
+            route_hash=route_hash,
+            content=content,
+            evidence_index=context.evidence_index,
+            coverage=context.coverage,
+            generated_at=generated_at,
+        )
+        await self._ai_research.complete_run(output, idempotency_key=idempotency_key)
+        return AIResearchBuildResult(
+            "succeeded",
+            run_id,
+            output.output_id,
+            idempotency_key,
+            output.provider_display_name,
+            output.model_display_name,
+        )
 
     async def get_stock_health(self, symbol: str) -> AIResearchEnvelope:
         await self._refresh_options()
