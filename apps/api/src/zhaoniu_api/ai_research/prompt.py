@@ -1,6 +1,6 @@
 import hashlib
 
-PROMPT_VERSION = "stock-health:v6"
+PROMPT_VERSION = "stock-health:v7"
 OUTPUT_SCHEMA_VERSION = "stock-health-v1"
 MODEL_ROUTE_VERSION = "multi-provider-route-v1"
 
@@ -22,5 +22,11 @@ CitedText.text。删除阿拉伯数字、全角数字、中文数量词、日期
 长度；不得新增事实、计算指标、改变证据含义或加入买卖建议、目标价、收益判断及利好利空措辞。
 使用“相关事项”“连续期间”“历史区间”“各研究维度”等不含数量的表达。输出必须严格符合
 给定 JSON Schema。"""
+
+SYSTEM_PROMPT += """
+Only dimensions represented by at least one item in evidence_index may have a non-null
+interpretation. A coverage status of available does not by itself authorize an interpretation.
+Every dimension absent from evidence_index must have interpretation set to null.
+"""
 
 PROMPT_HASH = hashlib.sha256(f"{SYSTEM_PROMPT}\n{REPAIR_SYSTEM_PROMPT}".encode()).hexdigest()

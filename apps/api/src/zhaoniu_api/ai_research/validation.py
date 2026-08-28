@@ -84,6 +84,24 @@ def validate_stock_health_output(
             "dimension_invalid", "dimensions must appear exactly once in canonical order"
         )
 
+    evidence_dimensions = {item.dimension for item in context.evidence_index}
+    coverage_by_dimension = {item.dimension: item.status for item in context.coverage}
+    supported_dimensions = {
+        dimension
+        for dimension in evidence_dimensions
+        if coverage_by_dimension.get(dimension) == "available"
+    }
+    payload = payload.model_copy(
+        update={
+            "dimensions": [
+                item.model_copy(update={"interpretation": None})
+                if item.dimension not in supported_dimensions
+                else item
+                for item in payload.dimensions
+            ]
+        }
+    )
+
     for cited in _cited_texts(payload):
         if len(cited.evidence_refs) != len(set(cited.evidence_refs)):
             raise AIOutputValidationError("citation_invalid", "duplicate evidence reference")
@@ -98,13 +116,8 @@ def validate_stock_health_output(
                 "forbidden_language", "AI prose contains investment-advice language"
             )
 
-    evidence_dimensions = {item.dimension for item in context.evidence_index}
-    coverage_by_dimension = {item.dimension: item.status for item in context.coverage}
     for item in payload.dimensions:
-        available = (
-            item.dimension in evidence_dimensions
-            and coverage_by_dimension.get(item.dimension) == "available"
-        )
+        available = item.dimension in supported_dimensions
         if available and item.interpretation is None:
             raise AIOutputValidationError(
                 "coverage_invalid", f"missing interpretation for {item.dimension.value}"

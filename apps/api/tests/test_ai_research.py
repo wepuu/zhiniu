@@ -211,6 +211,51 @@ def test_context_is_stable_and_output_validation_is_fail_closed() -> None:
         validate_stock_health_output(invalid_citation, context)
 
 
+def test_context_downgrades_available_coverage_without_observation_evidence() -> None:
+    snapshot = _snapshot().model_copy(
+        update={
+            "coverage": [
+                ResearchCoverage(
+                    dimension=dimension,
+                    status=CoverageStatus.AVAILABLE,
+                )
+                for dimension in ObservationDimension
+            ]
+        }
+    )
+
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    coverage = {item.dimension: item for item in context.coverage}
+
+    assert context.context_version == "ai-context-v2"
+    assert "Every dimension absent from evidence_index" in SYSTEM_PROMPT
+    assert set(evidence) == {"growth", "quality"}
+    assert coverage[ObservationDimension.GROWTH].status == CoverageStatus.AVAILABLE
+    assert coverage[ObservationDimension.QUALITY].status == CoverageStatus.AVAILABLE
+    for dimension in {
+        ObservationDimension.PROFITABILITY,
+        ObservationDimension.BALANCE,
+        ObservationDimension.VALUATION,
+    }:
+        assert coverage[dimension].status == CoverageStatus.MISSING
+        assert coverage[dimension].reason == "ai_observation_evidence_missing"
+
+    raw = _valid_payload(evidence)
+    raw["dimensions"][1]["interpretation"] = {  # type: ignore[index]
+        "text": "No-evidence dimension must be removed",
+        "evidence_refs": [evidence["growth"]],
+    }
+    valid = validate_stock_health_output(raw, context)
+    assert isinstance(valid, StockHealthResearchV1)
+    assert valid.dimensions[1].interpretation is None
+
+    missing_supported = _valid_payload(evidence)
+    missing_supported["dimensions"][0]["interpretation"] = None  # type: ignore[index]
+    with pytest.raises(AIOutputValidationError, match="missing interpretation for growth"):
+        validate_stock_health_output(missing_supported, context)
+
+
 async def test_multi_provider_fallback_is_idempotent_and_bank_is_unsupported() -> None:
     stocks = InMemoryStockRepository()
     research = InMemoryResearchRepository()
