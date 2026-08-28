@@ -91,7 +91,7 @@ class EvidenceIndexEntry(BaseModel):
 class AIResearchContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    context_version: Literal["ai-context-v1"] = "ai-context-v1"
+    context_version: Literal["ai-context-v2"] = "ai-context-v2"
     snapshot_id: UUID
     symbol: str
     knowledge_cutoff: datetime

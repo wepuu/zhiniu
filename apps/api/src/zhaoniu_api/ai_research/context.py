@@ -2,11 +2,18 @@ import hashlib
 import json
 
 from zhaoniu_api.ai_research.models import AIResearchContext, EvidenceIndexEntry
-from zhaoniu_api.research.models import ResearchObservation, ResearchSnapshotDocument
+from zhaoniu_api.research.models import (
+    CoverageStatus,
+    ObservationDimension,
+    ResearchCoverage,
+    ResearchObservation,
+    ResearchSnapshotDocument,
+)
 
-CONTEXT_VERSION = "ai-context-v1"
+CONTEXT_VERSION = "ai-context-v2"
 MAX_OBSERVATIONS = 5
 _ATTENTION_RANK = {"important": 3, "notice": 2, "info": 1}
+_NO_EVIDENCE_REASON = "ai_observation_evidence_missing"
 
 
 def _canonical_json(payload: object) -> str:
@@ -51,6 +58,23 @@ def _evidence_id(snapshot_id: object, observation: ResearchObservation) -> str:
     return f"EV-{digest(material)[:12].upper()}"
 
 
+def _effective_coverage(
+    coverage: list[ResearchCoverage],
+    evidence_dimensions: set[ObservationDimension],
+) -> list[ResearchCoverage]:
+    return [
+        item.model_copy(
+            update={
+                "status": CoverageStatus.MISSING,
+                "reason": _NO_EVIDENCE_REASON,
+            }
+        )
+        if item.status == CoverageStatus.AVAILABLE and item.dimension not in evidence_dimensions
+        else item
+        for item in coverage
+    ]
+
+
 def build_context(snapshot: ResearchSnapshotDocument) -> AIResearchContext:
     entries: list[EvidenceIndexEntry] = []
     seen_ids: set[str] = set()
@@ -72,6 +96,10 @@ def build_context(snapshot: ResearchSnapshotDocument) -> AIResearchContext:
                 calculation=observation.calculation,
             )
         )
+    effective_coverage = _effective_coverage(
+        snapshot.coverage,
+        {item.dimension for item in entries},
+    )
     context = AIResearchContext(
         snapshot_id=snapshot.id,
         symbol=snapshot.symbol,
@@ -80,7 +108,7 @@ def build_context(snapshot: ResearchSnapshotDocument) -> AIResearchContext:
         metric_version=snapshot.metric_version,
         rule_set_version=snapshot.rule_set_version,
         research_template_version=snapshot.research_template_version,
-        coverage=snapshot.coverage,
+        coverage=effective_coverage,
         evidence_index=entries,
     )
     return context.model_copy(
