@@ -38,6 +38,32 @@ def _cited_texts(payload: StockHealthResearchV1) -> list[CitedText]:
     return items
 
 
+def _without_prose(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: "" if key == "text" else _without_prose(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_without_prose(item) for item in value]
+    return value
+
+
+def validate_repair_preserves_structure(
+    original: dict[str, object], repaired: StockHealthResearchV1
+) -> None:
+    try:
+        original_payload = StockHealthResearchV1.model_validate(original)
+    except ValidationError as error:
+        raise AIOutputValidationError(
+            "repair_structure_invalid", "repair source does not match StockHealthResearchV1"
+        ) from error
+    if _without_prose(original_payload.model_dump(mode="json")) != _without_prose(
+        repaired.model_dump(mode="json")
+    ):
+        raise AIOutputValidationError(
+            "repair_structure_invalid",
+            "AI repair must preserve structure and evidence references",
+        )
+
+
 def validate_stock_health_output(
     raw: dict[str, object], context: AIResearchContext
 ) -> StockHealthResearchV1:
