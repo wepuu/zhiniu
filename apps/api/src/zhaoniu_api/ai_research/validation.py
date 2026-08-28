@@ -38,6 +38,21 @@ def _cited_texts(payload: StockHealthResearchV1) -> list[CitedText]:
     return items
 
 
+def forbidden_language_fragments(raw: dict[str, object]) -> list[str]:
+    """Return matched safety fragments for a private repair request, never for logs."""
+    try:
+        payload = StockHealthResearchV1.model_validate(raw)
+    except ValidationError:
+        return []
+    return sorted(
+        {
+            match.group(0)
+            for cited in _cited_texts(payload)
+            for match in _FORBIDDEN_PATTERN.finditer(cited.text)
+        }
+    )
+
+
 def _without_prose(value: object) -> object:
     if isinstance(value, dict):
         return {key: "" if key == "text" else _without_prose(item) for key, item in value.items()}
