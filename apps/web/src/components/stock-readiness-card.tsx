@@ -9,6 +9,7 @@ import { CheckCircle2, Clock3, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/ui/card";
+import { canRetryStockPreparation } from "@/lib/stock-readiness";
 
 const api = createZhaoniuClient();
 
@@ -81,8 +82,7 @@ export function StockReadinessCard({ symbol }: { symbol: string }) {
             已完成 {state.progress}% · 可用数据会立即展示
           </p>
         </div>
-        {(state.overall_status === "failed" ||
-          state.overall_status === "paused") && (
+        {canRetryStockPreparation(state) && (
           <button
             type="button"
             disabled={retry.isPending}

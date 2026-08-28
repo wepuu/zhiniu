@@ -28,6 +28,7 @@ from zhaoniu_api.ai_research.prompt import (
 )
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
+    forbidden_language_fragments,
     validate_repair_preserves_structure,
     validate_stock_health_output,
 )
@@ -163,7 +164,7 @@ class AIResearchService:
             "forbidden_language",
             "schema_invalid",
         }
-        repair_used = False
+        repair_attempts = 0
         call_index = 0
         try:
             for model in self._options.active_models:
@@ -259,12 +260,13 @@ class AIResearchService:
                                 error_code=error.code,
                             )
                         )
+                        repair_limit = 2 if error.code == "forbidden_language" else 1
                         if (
-                            not repair_used
+                            repair_attempts < repair_limit
                             and error.code in repairable_validation_codes
                             and time.monotonic() < deadline
                         ):
-                            repair_used = True
+                            repair_attempts += 1
                             if error.code == "schema_invalid":
                                 repair_source = None
                                 request_prompt = SCHEMA_REPAIR_SYSTEM_PROMPT
@@ -274,7 +276,8 @@ class AIResearchService:
                                     "invalid_output": response.data,
                                 }
                             else:
-                                repair_source = response.data
+                                if repair_source is None:
+                                    repair_source = response.data
                                 request_prompt = REPAIR_SYSTEM_PROMPT
                                 request_input = {
                                     "validation_error": error.code,
@@ -283,6 +286,10 @@ class AIResearchService:
                                     ],
                                     "invalid_output": response.data,
                                 }
+                                if error.code == "forbidden_language":
+                                    request_input["forbidden_fragments"] = (
+                                        forbidden_language_fragments(response.data)
+                                    )
                             continue
                         break
                     else:

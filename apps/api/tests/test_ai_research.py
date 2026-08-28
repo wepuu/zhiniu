@@ -442,6 +442,87 @@ async def test_numeric_claim_gets_one_bounded_structure_preserving_repair() -> N
     assert len(repository.outputs) == 1
 
 
+async def test_repeated_forbidden_language_gets_one_final_bounded_repair() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    invalid = _valid_payload(evidence)
+    invalid["headline"] = {
+        "text": "经营表现变好",
+        "evidence_refs": [next(iter(evidence.values()))],
+    }
+    still_invalid = _valid_payload(evidence)
+    still_invalid["headline"] = {
+        "text": "相关变化构成利好",
+        "evidence_refs": [next(iter(evidence.values()))],
+    }
+    valid = _valid_payload(evidence)
+    gateway = FakeGateway([invalid, still_invalid, valid])
+    repository = InMemoryAIResearchRepository()
+    service = AIResearchService(
+        stocks=stocks,
+        research=research,
+        ai_research=repository,
+        gateway=gateway,
+        options=AIResearchOptions(enabled=True, model_chain=("deepseek/fixture",)),
+    )
+
+    result = await service.generate_stock_health("600519")
+
+    assert result.status == "succeeded"
+    assert gateway.models == ["deepseek/fixture"] * 3
+    assert gateway.system_prompts == [
+        SYSTEM_PROMPT,
+        REPAIR_SYSTEM_PROMPT,
+        REPAIR_SYSTEM_PROMPT,
+    ]
+    assert gateway.inputs[1]["forbidden_fragments"] == ["变好"]
+    assert gateway.inputs[2]["forbidden_fragments"] == ["利好"]
+    assert [item.status for item in repository.calls] == [
+        "rejected",
+        "rejected",
+        "succeeded",
+    ]
+    assert len(repository.outputs) == 1
+
+
+async def test_repeated_forbidden_language_stops_after_three_calls() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    invalid_responses = []
+    for text in ("经营表现变好", "相关变化构成利好", "研究结论仍然看多"):
+        invalid = _valid_payload(evidence)
+        invalid["headline"] = {
+            "text": text,
+            "evidence_refs": [next(iter(evidence.values()))],
+        }
+        invalid_responses.append(invalid)
+    gateway = FakeGateway(invalid_responses)
+    repository = InMemoryAIResearchRepository()
+    service = AIResearchService(
+        stocks=stocks,
+        research=research,
+        ai_research=repository,
+        gateway=gateway,
+        options=AIResearchOptions(enabled=True, model_chain=("deepseek/fixture",)),
+    )
+
+    result = await service.generate_stock_health("600519")
+
+    assert result.status == "failed"
+    assert gateway.models == ["deepseek/fixture"] * 3
+    assert [item.status for item in repository.calls] == ["rejected"] * 3
+    assert repository.calls[-1].error_code == "forbidden_language"
+    assert repository.outputs == {}
+
+
 async def test_repair_cannot_change_structure_or_evidence_references() -> None:
     stocks = InMemoryStockRepository()
     research = InMemoryResearchRepository()
