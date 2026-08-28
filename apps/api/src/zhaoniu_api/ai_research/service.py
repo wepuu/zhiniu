@@ -22,10 +22,12 @@ from zhaoniu_api.ai_research.prompt import (
     OUTPUT_SCHEMA_VERSION,
     PROMPT_HASH,
     PROMPT_VERSION,
+    REPAIR_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
 )
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
+    validate_repair_preserves_structure,
     validate_stock_health_output,
 )
 from zhaoniu_api.domain.models import IssuerType, resolve_symbol
@@ -155,19 +157,23 @@ class AIResearchService:
         deadline = time.monotonic() + self._options.run_deadline_seconds
         last_error_code = "provider_chain_exhausted"
         last_error_summary = "all configured models failed"
+        repairable_validation_codes = {"numeric_claim", "forbidden_language"}
+        repair_used = False
+        call_index = 0
         try:
-            for attempt, model in enumerate(self._options.active_models, start=1):
+            for model in self._options.active_models:
                 if time.monotonic() >= deadline:
                     last_error_code = "run_deadline_exceeded"
                     last_error_summary = "AI research run exceeded its deadline"
                     break
                 provider = provider_name(model)
                 if not self._gateway.supports_structured_output(model):
+                    call_index += 1
                     last_error_code = "structured_output_unsupported"
                     last_error_summary = f"{provider} model does not support response schema"
                     await self._record_failure(
                         lease.run_id,
-                        attempt,
+                        call_index,
                         provider,
                         model,
                         last_error_code,
@@ -175,122 +181,148 @@ class AIResearchService:
                     )
                     continue
 
-                started = time.perf_counter()
-                response = None
-                try:
-                    timeout_seconds = min(
-                        self._options.per_model_timeout_seconds,
-                        max(1, deadline - time.monotonic()),
-                    )
-                    async with asyncio.timeout(timeout_seconds):
-                        response = await self._gateway.generate_structured(
-                            model=model,
-                            task_type="stock_health",
-                            system_prompt=SYSTEM_PROMPT,
-                            input_data=context.model_dump(mode="json"),
-                            response_schema=StockHealthResearchV1.model_json_schema(),
-                            timeout_seconds=timeout_seconds,
-                            max_output_tokens=self._options.max_output_tokens,
-                            thinking_enabled=False,
+                request_prompt = SYSTEM_PROMPT
+                request_input = context.model_dump(mode="json")
+                repair_source: dict[str, object] | None = None
+                while True:
+                    call_index += 1
+                    started = time.perf_counter()
+                    response = None
+                    try:
+                        timeout_seconds = min(
+                            self._options.per_model_timeout_seconds,
+                            max(1, deadline - time.monotonic()),
                         )
-                    content = validate_stock_health_output(response.data, context)
-                except TimeoutError:
-                    last_error_code = "provider_timeout"
-                    last_error_summary = "provider attempt exceeded its timeout"
-                    await self._record_failure(
-                        lease.run_id,
-                        attempt,
-                        provider,
-                        model,
-                        last_error_code,
-                        int((time.perf_counter() - started) * 1000),
-                    )
-                    continue
-                except LLMGatewayError as error:
-                    last_error_code = error.code
-                    last_error_summary = str(error)[:300]
-                    await self._record_failure(
-                        lease.run_id,
-                        attempt,
-                        provider,
-                        model,
-                        error.code,
-                        int((time.perf_counter() - started) * 1000),
-                    )
-                    continue
-                except AIOutputValidationError as error:
-                    last_error_code = error.code
-                    last_error_summary = str(error)[:300]
-                    assert response is not None
-                    await self._ai_research.record_call(
-                        LLMCallAudit(
+                        async with asyncio.timeout(timeout_seconds):
+                            response = await self._gateway.generate_structured(
+                                model=model,
+                                task_type="stock_health",
+                                system_prompt=request_prompt,
+                                input_data=request_input,
+                                response_schema=StockHealthResearchV1.model_json_schema(),
+                                timeout_seconds=timeout_seconds,
+                                max_output_tokens=self._options.max_output_tokens,
+                                thinking_enabled=False,
+                            )
+                        content = validate_stock_health_output(response.data, context)
+                        if repair_source is not None:
+                            validate_repair_preserves_structure(repair_source, content)
+                    except TimeoutError:
+                        last_error_code = "provider_timeout"
+                        last_error_summary = "provider attempt exceeded its timeout"
+                        await self._record_failure(
+                            lease.run_id,
+                            call_index,
+                            provider,
+                            model,
+                            last_error_code,
+                            int((time.perf_counter() - started) * 1000),
+                        )
+                        break
+                    except LLMGatewayError as error:
+                        last_error_code = error.code
+                        last_error_summary = str(error)[:300]
+                        await self._record_failure(
+                            lease.run_id,
+                            call_index,
+                            provider,
+                            model,
+                            error.code,
+                            int((time.perf_counter() - started) * 1000),
+                        )
+                        break
+                    except AIOutputValidationError as error:
+                        last_error_code = error.code
+                        last_error_summary = str(error)[:300]
+                        assert response is not None
+                        await self._ai_research.record_call(
+                            LLMCallAudit(
+                                run_id=lease.run_id,
+                                attempt_index=call_index,
+                                task_type="stock_health",
+                                provider=response.usage.provider,
+                                model=response.usage.model,
+                                requested_model=response.usage.requested_model,
+                                actual_model=response.usage.model,
+                                capability_mode=response.usage.capability_mode,
+                                input_tokens=response.usage.input_tokens,
+                                output_tokens=response.usage.output_tokens,
+                                latency_ms=response.usage.latency_ms,
+                                cost_microunits=response.usage.cost_microunits,
+                                status="rejected",
+                                finish_reason=response.finish_reason,
+                                error_code=error.code,
+                            )
+                        )
+                        if (
+                            not repair_used
+                            and error.code in repairable_validation_codes
+                            and time.monotonic() < deadline
+                        ):
+                            repair_used = True
+                            repair_source = response.data
+                            request_prompt = REPAIR_SYSTEM_PROMPT
+                            request_input = {
+                                "validation_error": error.code,
+                                "allowed_evidence_ids": [
+                                    item.evidence_id for item in context.evidence_index
+                                ],
+                                "invalid_output": response.data,
+                            }
+                            continue
+                        break
+                    else:
+                        assert response is not None
+                        await self._ai_research.record_call(
+                            LLMCallAudit(
+                                run_id=lease.run_id,
+                                attempt_index=call_index,
+                                task_type="stock_health",
+                                provider=response.usage.provider,
+                                model=response.usage.model,
+                                requested_model=response.usage.requested_model,
+                                actual_model=response.usage.model,
+                                capability_mode=response.usage.capability_mode,
+                                input_tokens=response.usage.input_tokens,
+                                output_tokens=response.usage.output_tokens,
+                                latency_ms=response.usage.latency_ms,
+                                cost_microunits=response.usage.cost_microunits,
+                                status="succeeded",
+                                finish_reason=response.finish_reason,
+                            )
+                        )
+                        generated_at = datetime.now(UTC)
+                        output = AIResearchOutputDocument(
+                            output_id=uuid5(NAMESPACE_URL, f"zhaoniu:ai-output:{idempotency_key}"),
                             run_id=lease.run_id,
-                            attempt_index=attempt,
-                            task_type="stock_health",
-                            provider=response.usage.provider,
-                            model=response.usage.model,
-                            requested_model=response.usage.requested_model,
-                            actual_model=response.usage.model,
-                            capability_mode=response.usage.capability_mode,
-                            input_tokens=response.usage.input_tokens,
-                            output_tokens=response.usage.output_tokens,
-                            latency_ms=response.usage.latency_ms,
-                            cost_microunits=response.usage.cost_microunits,
-                            status="rejected",
-                            finish_reason=response.finish_reason,
-                            error_code=error.code,
+                            symbol=canonical,
+                            snapshot_id=snapshot.id,
+                            knowledge_cutoff=snapshot.knowledge_cutoff,
+                            provider_display_name=response.usage.provider,
+                            model_display_name=response.usage.model,
+                            context_version=context.context_version,
+                            context_hash=context.context_hash,
+                            prompt_version=PROMPT_VERSION,
+                            prompt_hash=PROMPT_HASH,
+                            output_schema_version=OUTPUT_SCHEMA_VERSION,
+                            model_route_version=MODEL_ROUTE_VERSION,
+                            route_hash=route_hash,
+                            content=content,
+                            evidence_index=context.evidence_index,
+                            coverage=context.coverage,
+                            generated_at=generated_at,
                         )
-                    )
-                    continue
-
-                await self._ai_research.record_call(
-                    LLMCallAudit(
-                        run_id=lease.run_id,
-                        attempt_index=attempt,
-                        task_type="stock_health",
-                        provider=response.usage.provider,
-                        model=response.usage.model,
-                        requested_model=response.usage.requested_model,
-                        actual_model=response.usage.model,
-                        capability_mode=response.usage.capability_mode,
-                        input_tokens=response.usage.input_tokens,
-                        output_tokens=response.usage.output_tokens,
-                        latency_ms=response.usage.latency_ms,
-                        cost_microunits=response.usage.cost_microunits,
-                        status="succeeded",
-                        finish_reason=response.finish_reason,
-                    )
-                )
-                generated_at = datetime.now(UTC)
-                output = AIResearchOutputDocument(
-                    output_id=uuid5(NAMESPACE_URL, f"zhaoniu:ai-output:{idempotency_key}"),
-                    run_id=lease.run_id,
-                    symbol=canonical,
-                    snapshot_id=snapshot.id,
-                    knowledge_cutoff=snapshot.knowledge_cutoff,
-                    provider_display_name=response.usage.provider,
-                    model_display_name=response.usage.model,
-                    context_version=context.context_version,
-                    context_hash=context.context_hash,
-                    prompt_version=PROMPT_VERSION,
-                    prompt_hash=PROMPT_HASH,
-                    output_schema_version=OUTPUT_SCHEMA_VERSION,
-                    model_route_version=MODEL_ROUTE_VERSION,
-                    route_hash=route_hash,
-                    content=content,
-                    evidence_index=context.evidence_index,
-                    coverage=context.coverage,
-                    generated_at=generated_at,
-                )
-                await self._ai_research.complete_run(output, idempotency_key=idempotency_key)
-                return AIResearchBuildResult(
-                    "succeeded",
-                    lease.run_id,
-                    output.output_id,
-                    idempotency_key,
-                    output.provider_display_name,
-                    output.model_display_name,
-                )
+                        await self._ai_research.complete_run(
+                            output, idempotency_key=idempotency_key
+                        )
+                        return AIResearchBuildResult(
+                            "succeeded",
+                            lease.run_id,
+                            output.output_id,
+                            idempotency_key,
+                            output.provider_display_name,
+                            output.model_display_name,
+                        )
 
             await self._ai_research.fail_run(
                 lease.run_id,

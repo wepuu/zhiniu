@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from zhaoniu_api.ai_research.context import build_context
 from zhaoniu_api.ai_research.litellm_gateway import provider_name
 from zhaoniu_api.ai_research.models import StockHealthResearchV1
+from zhaoniu_api.ai_research.prompt import REPAIR_SYSTEM_PROMPT, SYSTEM_PROMPT
 from zhaoniu_api.ai_research.service import AIResearchOptions, AIResearchService
 from zhaoniu_api.ai_research.validation import (
     AIOutputValidationError,
@@ -137,6 +138,7 @@ class FakeGateway:
     def __init__(self, outcomes: list[dict[str, object] | Exception]) -> None:
         self.outcomes = outcomes
         self.models: list[str] = []
+        self.system_prompts: list[str] = []
 
     def supports_structured_output(self, model: str) -> bool:
         return True
@@ -155,6 +157,7 @@ class FakeGateway:
     ) -> LLMStructuredResponse:
         del max_output_tokens, thinking_enabled
         self.models.append(model)
+        self.system_prompts.append(system_prompt)
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
@@ -289,6 +292,76 @@ async def test_schema_failure_and_hard_timeout_advance_the_route() -> None:
     timeout_result = await timeout_service.generate_stock_health("600519")
     assert timeout_result.status == "failed"
     assert timeout_repository.calls[0].error_code == "provider_timeout"
+
+
+async def test_numeric_claim_gets_one_bounded_structure_preserving_repair() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    invalid = _valid_payload(evidence)
+    invalid["headline"] = {
+        "text": "收入增长达到百分之十",
+        "evidence_refs": [next(iter(evidence.values()))],
+    }
+    valid = _valid_payload(evidence)
+    gateway = FakeGateway([invalid, valid])
+    repository = InMemoryAIResearchRepository()
+    service = AIResearchService(
+        stocks=stocks,
+        research=research,
+        ai_research=repository,
+        gateway=gateway,
+        options=AIResearchOptions(enabled=True, model_chain=("deepseek/fixture",)),
+    )
+
+    result = await service.generate_stock_health("600519")
+
+    assert result.status == "succeeded"
+    assert gateway.models == ["deepseek/fixture", "deepseek/fixture"]
+    assert gateway.system_prompts == [SYSTEM_PROMPT, REPAIR_SYSTEM_PROMPT]
+    assert [item.status for item in repository.calls] == ["rejected", "succeeded"]
+    assert repository.calls[0].error_code == "numeric_claim"
+    assert len(repository.outputs) == 1
+
+
+async def test_repair_cannot_change_structure_or_evidence_references() -> None:
+    stocks = InMemoryStockRepository()
+    research = InMemoryResearchRepository()
+    snapshot = _snapshot()
+    await research.save_research_snapshot(snapshot, snapshot.observations)
+    context = build_context(snapshot)
+    evidence = {item.dimension.value: item.evidence_id for item in context.evidence_index}
+    references = list(evidence.values())
+    invalid = _valid_payload(evidence)
+    invalid["headline"] = {
+        "text": "收入增长达到百分之十",
+        "evidence_refs": [references[0]],
+    }
+    changed = _valid_payload(evidence)
+    changed["headline"] = {
+        "text": "公开信息呈现阶段性变化",
+        "evidence_refs": [references[1]],
+    }
+    gateway = FakeGateway([invalid, changed])
+    repository = InMemoryAIResearchRepository()
+    service = AIResearchService(
+        stocks=stocks,
+        research=research,
+        ai_research=repository,
+        gateway=gateway,
+        options=AIResearchOptions(enabled=True, model_chain=("deepseek/fixture",)),
+    )
+
+    result = await service.generate_stock_health("600519")
+
+    assert result.status == "failed"
+    assert gateway.models == ["deepseek/fixture", "deepseek/fixture"]
+    assert [item.status for item in repository.calls] == ["rejected", "rejected"]
+    assert repository.calls[-1].error_code == "repair_structure_invalid"
+    assert repository.outputs == {}
 
 
 def test_four_provider_route_names_are_stable() -> None:
