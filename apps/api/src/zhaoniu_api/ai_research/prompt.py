@@ -1,6 +1,6 @@
 import hashlib
 
-PROMPT_VERSION = "stock-health:v9"
+PROMPT_VERSION = "stock-health:v10"
 OUTPUT_SCHEMA_VERSION = "stock-health-v1"
 MODEL_ROUTE_VERSION = "multi-provider-route-v1"
 

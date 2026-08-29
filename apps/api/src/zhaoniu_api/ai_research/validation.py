@@ -20,6 +20,8 @@ _FORBIDDEN_PATTERN = re.compile(
     r"利好|利空|变好|变坏|\bbuy\b|\bsell\b|price target",
     re.IGNORECASE,
 )
+_SENTENCE_PATTERN = re.compile(r"[^\u3002\uff01\uff1f!?\uff1b;\n]+[\u3002\uff01\uff1f!?\uff1b;\n]*")
+_NEUTRAL_FALLBACK = "相关证据内容需结合原始资料继续核对。"
 
 
 class AIOutputValidationError(ValueError):
@@ -49,6 +51,53 @@ def forbidden_language_fragments(raw: dict[str, object]) -> list[str]:
             match.group(0)
             for cited in _cited_texts(payload)
             for match in _FORBIDDEN_PATTERN.finditer(cited.text)
+        }
+    )
+
+
+def _sanitize_cited_text(cited: CitedText) -> CitedText:
+    retained = "".join(
+        sentence
+        for sentence in _SENTENCE_PATTERN.findall(cited.text)
+        if not _FORBIDDEN_PATTERN.search(sentence)
+    ).strip()
+    return cited.model_copy(update={"text": retained or _NEUTRAL_FALLBACK})
+
+
+def sanitize_forbidden_language(raw: dict[str, object]) -> StockHealthResearchV1:
+    """Remove unsafe sentences without changing structure or evidence references."""
+    try:
+        payload = StockHealthResearchV1.model_validate(raw)
+    except ValidationError as error:
+        raise AIOutputValidationError(
+            "schema_invalid", "model output does not match StockHealthResearchV1"
+        ) from error
+
+    return payload.model_copy(
+        update={
+            "headline": _sanitize_cited_text(payload.headline),
+            "executive_summary": [_sanitize_cited_text(item) for item in payload.executive_summary],
+            "dimensions": [
+                item.model_copy(
+                    update={
+                        "interpretation": (
+                            _sanitize_cited_text(item.interpretation)
+                            if item.interpretation is not None
+                            else None
+                        )
+                    }
+                )
+                for item in payload.dimensions
+            ],
+            "attention_items": [
+                item.model_copy(
+                    update={
+                        "title": _sanitize_cited_text(item.title),
+                        "interpretation": _sanitize_cited_text(item.interpretation),
+                    }
+                )
+                for item in payload.attention_items
+            ],
         }
     )
 
