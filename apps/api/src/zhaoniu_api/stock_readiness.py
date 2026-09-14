@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -18,9 +18,11 @@ from zhaoniu_api.db import (
     ResearchSnapshotRecord,
     StockDailyBarRecord,
     StockRecord,
+    TradingSessionRecord,
 )
 from zhaoniu_api.domain.models import AdjustType, resolve_symbol
 from zhaoniu_api.schemas import (
+    MarketFreshness,
     StockReadinessResponse,
     StockReadinessStage,
     StockReadinessStatus,
@@ -39,6 +41,27 @@ _STAGE_STEPS: dict[StageKey, set[str]] = {
     "extended_research": {"event_pipeline", "peer_research", "signal_projection"},
     "ai_research": {"ai_research"},
 }
+
+
+def market_data_freshness(
+    bar: object | None,
+    expected_trade_date: date | None,
+) -> MarketFreshness:
+    """Compare the latest retained bar with a source-backed calendar date.
+
+    A missing calendar is deliberately ``unknown``.  Weekday arithmetic is
+    not a safe substitute for exchange holidays, suspension days, or delayed
+    provider delivery.
+    """
+
+    trade_date = getattr(bar, "trade_date", None)
+    if not isinstance(trade_date, date) or expected_trade_date is None:
+        return "unknown"
+    if trade_date == expected_trade_date:
+        return "current"
+    if trade_date < expected_trade_date:
+        return "stale"
+    return "unknown"
 
 
 class StockReadinessService:
@@ -94,6 +117,9 @@ class StockReadinessService:
             canonical,
             extra=(AIResearchOutputRecord.research_type == "stock_health"),
         )
+        expected_trade_dates = await self._expected_trade_dates(
+            {stock.exchange for stock in stocks.values()}
+        )
         step_rows = (
             await self._session.execute(
                 select(AutomationRunStepRecord, AutomationRunRecord)
@@ -117,6 +143,7 @@ class StockReadinessService:
                 peers.get(symbol),
                 ai_outputs.get(symbol),
                 steps.get(symbol, {}),
+                expected_trade_date=expected_trade_dates.get(stocks[symbol].exchange),
             )
             for symbol in canonical
         ]
@@ -136,6 +163,35 @@ class StockReadinessService:
         statement = statement.distinct(symbol_column).order_by(symbol_column, order_column.desc())
         rows = (await self._session.scalars(statement)).all()
         return {str(row.symbol): row for row in rows}
+
+    async def _expected_trade_dates(self, exchanges: set[str]) -> dict[str, date]:
+        """Return the latest closed open session per exchange, if available."""
+
+        if not exchanges:
+            return {}
+        now = datetime.now(UTC)
+        statement = (
+            select(TradingSessionRecord)
+            .where(
+                TradingSessionRecord.exchange.in_(exchanges),
+                TradingSessionRecord.is_open.is_(True),
+                TradingSessionRecord.trade_date <= now.date(),
+                or_(
+                    TradingSessionRecord.session_close_at.is_(None),
+                    TradingSessionRecord.session_close_at <= now,
+                ),
+            )
+            .order_by(
+                TradingSessionRecord.exchange,
+                TradingSessionRecord.trade_date.desc(),
+                TradingSessionRecord.ingested_at.desc(),
+            )
+        )
+        rows = (await self._session.scalars(statement)).all()
+        result: dict[str, date] = {}
+        for row in rows:
+            result.setdefault(row.exchange, row.trade_date)
+        return result
 
     def _task_state(
         self, step_groups: dict[str, list[AutomationRunStepRecord]], stage: StageKey
@@ -182,6 +238,8 @@ class StockReadinessService:
         peer: object | None,
         ai_output: object | None,
         step_groups: dict[str, list[AutomationRunStepRecord]],
+        *,
+        expected_trade_date: date | None = None,
     ) -> StockReadinessResponse:
         stages: list[StockReadinessStage] = []
 
@@ -284,5 +342,7 @@ class StockReadinessService:
             updated_at=max(updated_values, default=None),
             latest_price=getattr(bar, "close", None),
             latest_trade_date=getattr(bar, "trade_date", None),
+            market_freshness=market_data_freshness(bar, expected_trade_date),
+            expected_trade_date=expected_trade_date,
             stages=stages,
         )

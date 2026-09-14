@@ -1,6 +1,6 @@
 # Product Roadmap
 
-本文件记录能力演进，不代表发布批准。Phase 0-18 的实现均已进入仓库；受控 Beta 和生产
+本文件记录能力演进，不代表发布批准。Phase 0-24 的实现均已进入仓库；受控 Beta 和生产
 发布仍必须分别通过工程、数据授权、法律、Provider 与运营门禁。
 
 ## Phase 0 - Foundation
@@ -200,13 +200,34 @@ the encrypted Provider vault, the four fixed A-share samples complete Provider/d
 GitHub SSH deployment is enabled and rehearsed, and the 24–48 hour stability window is recorded.
 Staging is not a Phase 22 production event and its accounts and data remain disposable.
 
-## Phase 24 - Watchlist Research Readiness & Intelligent Stock Search (implementation)
+## Phase 24 - Watchlist Research Readiness & Intelligent Stock Search (implemented; staging canaries passed)
 
 Phase 24 closes the Chinese/full-pinyin/initial search, watchlist-triggered preparation, shared
 readiness, deterministic-before-AI generation and active-watchlist daily increment loop. Migration
-`20260828_0028` stores private search keys and the readiness lookup index. Public rollout remains
-fail-closed behind `WATCHLIST_PREPARATION_ENABLED`, `AUTOMATION_AI_ENABLED`, the environment hard
-stop and the database policy until four-symbol canary and the 24–48 hour observation pass.
+`20260828_0028` stores private search keys and the readiness lookup index. The Hong Kong staging
+environment has enabled the watchlist and automation gates and passed the fixed `600519`, `300750`,
+`300376`, `000001` and live-watchlist `300489` canaries. AI context `ai-context-v2` and prompt
+`stock-health:v10` retain evidence references and use deterministic sentence sanitization only after
+bounded model validation failure. Production eligibility is still blocked by data licensing and the
+required observation window; a successful staging canary is not a production approval.
+
+## Phase 25 - Controlled Beta Reliability & Licensed Data Acceptance (implementation)
+
+Phase 25 turns Phase 24 runtime facts into an operator-visible service-level view. The read-only
+`GET /api/v1/admin/automation/slo` projection reports the last 1–168 hours of watchlist runs without
+creating another task system: queue-to-start, market-ready, deterministic-ready and AI-terminal P95,
+acceptable terminal rate, active/stale counts and bounded failure-reason totals. The operations
+console renders the same facts on desktop and mobile.
+
+The remaining release work is operational rather than a full-market backfill: record a 24–48 hour
+stability window, complete licensed production-data acceptance for the fixed samples, confirm
+Provider quotas and source lineage, and admit only a small invitation cohort after the existing
+Phase 20–22 gates pass. Factor/backtest work does not begin until point-in-time licensed data and
+survivorship controls are available.
+
+The first Phase 25B reliability increment adds migration `20260914_0029` and the additive readiness
+fields `market_freshness` and `expected_trade_date`. They remain unknown until a licensed, versioned
+SSE/SZSE calendar is ingested; no weekday heuristic is used.
 
 ## Future - Factor / Backtest
 

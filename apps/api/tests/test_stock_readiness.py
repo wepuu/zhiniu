@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from zhaoniu_api.automation.service import AutomationService
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import StockRecord
-from zhaoniu_api.stock_readiness import StockReadinessService
+from zhaoniu_api.stock_readiness import StockReadinessService, market_data_freshness
 
 
 def _stock(*, issuer_type: str = "general") -> StockRecord:
@@ -60,6 +60,48 @@ def test_readiness_exposes_core_data_while_extended_and_ai_are_partial() -> None
     assert result.latest_price == Decimal("1292.30")
     assert result.stages[2].status == "partial"
     assert result.stages[3].reason_code == "automatic_ai_disabled"
+
+
+def test_market_freshness_requires_a_source_backed_calendar() -> None:
+    bar = SimpleNamespace(trade_date=date(2026, 8, 28))
+
+    assert market_data_freshness(bar, date(2026, 8, 28)) == "current"
+    assert market_data_freshness(bar, date(2026, 8, 29)) == "stale"
+    assert market_data_freshness(bar, None) == "unknown"
+    assert (
+        market_data_freshness(
+            SimpleNamespace(trade_date=date(2026, 8, 30)),
+            date(2026, 8, 28),
+        )
+        == "unknown"
+    )
+
+
+def test_readiness_exposes_market_freshness_without_blocking_core_data() -> None:
+    service = StockReadinessService(  # type: ignore[arg-type]
+        None,
+        Settings(automation_hard_disabled=False, watchlist_preparation_enabled=True),
+    )
+    bar = SimpleNamespace(
+        close=Decimal("1292.30"),
+        trade_date=date(2026, 8, 27),
+        collected_at=datetime(2026, 8, 27, tzinfo=UTC),
+    )
+
+    result = service._build(
+        _stock(),
+        bar,
+        None,
+        None,
+        None,
+        None,
+        {},
+        expected_trade_date=date(2026, 8, 28),
+    )
+
+    assert result.market_freshness == "stale"
+    assert result.expected_trade_date == date(2026, 8, 28)
+    assert result.stages[0].status == "ready"
 
 
 async def test_watchlist_preparation_switch_fails_closed_without_database_work() -> None:

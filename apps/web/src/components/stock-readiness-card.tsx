@@ -81,6 +81,9 @@ export function StockReadinessCard({ symbol }: { symbol: string }) {
           <p className="text-slate mt-1 text-xs">
             已完成 {state.progress}% · 可用数据会立即展示
           </p>
+          <p className="text-slate mt-1 text-xs">
+            {marketFreshnessLabel(state)}
+          </p>
         </div>
         {canRetryStockPreparation(state) && (
           <button
@@ -142,4 +145,18 @@ function stageLabel(
     paused: "已暂停",
     unsupported: "不适用",
   }[status];
+}
+
+function marketFreshnessLabel(state: StockReadinessResponse) {
+  if (state.market_freshness === "current") {
+    return state.expected_trade_date
+      ? `行情已覆盖最近交易日 ${state.expected_trade_date}`
+      : "行情已覆盖最近交易日";
+  }
+  if (state.market_freshness === "stale") {
+    return state.expected_trade_date
+      ? `行情待补齐至 ${state.expected_trade_date}`
+      : "行情待补齐至最近交易日";
+  }
+  return "行情新鲜度待交易日历确认";
 }

@@ -1937,6 +1937,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/automation/slo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Slo Snapshot */
+        get: operations["get_slo_snapshot_api_v1_admin_automation_slo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/automation/runs/{run_id}": {
         parameters: {
             query?: never;
@@ -2524,6 +2541,57 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** AutomationSLOMetric */
+        AutomationSLOMetric: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "queue_start" | "market_ready" | "deterministic_ready" | "ai_terminal";
+            /** Target Ms */
+            target_ms: number;
+            /** Sample Count */
+            sample_count: number;
+            /** P95 Ms */
+            p95_ms?: number | null;
+            /** Met */
+            met?: boolean | null;
+        };
+        /** AutomationSLOSnapshot */
+        AutomationSLOSnapshot: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Window Started At
+             * Format: date-time
+             */
+            window_started_at: string;
+            /** Window Hours */
+            window_hours: number;
+            /** Total Watchlist Runs */
+            total_watchlist_runs: number;
+            /** Terminal Runs */
+            terminal_runs: number;
+            /** Acceptable Terminal Runs */
+            acceptable_terminal_runs: number;
+            /** Acceptable Terminal Rate Percent */
+            acceptable_terminal_rate_percent?: number | null;
+            /** Pending Runs */
+            pending_runs: number;
+            /** Running Runs */
+            running_runs: number;
+            /** Stale Active Runs */
+            stale_active_runs: number;
+            /** Metrics */
+            metrics: components["schemas"]["AutomationSLOMetric"][];
+            /** Failure Reasons */
+            failure_reasons: {
+                [key: string]: number;
+            };
         };
         /** AutomationStepView */
         AutomationStepView: {
@@ -6181,6 +6249,14 @@ export interface components {
             latest_price?: string | null;
             /** Latest Trade Date */
             latest_trade_date?: string | null;
+            /**
+             * Market Freshness
+             * @default unknown
+             * @enum {string}
+             */
+            market_freshness: "current" | "stale" | "unknown";
+            /** Expected Trade Date */
+            expected_trade_date?: string | null;
             /** Stages */
             stages: components["schemas"]["StockReadinessStage"][];
         };
@@ -10538,6 +10614,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationRunListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_slo_snapshot_api_v1_admin_automation_slo_get: {
+        parameters: {
+            query?: {
+                window_hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationSLOSnapshot"];
                 };
             };
             /** @description Validation Error */

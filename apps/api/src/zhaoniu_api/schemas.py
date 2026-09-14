@@ -54,6 +54,7 @@ class StockSearchResponse(BaseModel):
 StockReadinessStatus = Literal[
     "queued", "preparing", "ready", "partial", "failed", "paused", "unsupported"
 ]
+MarketFreshness = Literal["current", "stale", "unknown"]
 
 
 class StockReadinessStage(BaseModel):
@@ -73,6 +74,8 @@ class StockReadinessResponse(BaseModel):
     updated_at: datetime | None = None
     latest_price: DecimalString | None = None
     latest_trade_date: date | None = None
+    market_freshness: MarketFreshness = "unknown"
+    expected_trade_date: date | None = None
     stages: list[StockReadinessStage]
 
 

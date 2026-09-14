@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
+from math import ceil
 from time import perf_counter
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
@@ -20,6 +22,9 @@ from zhaoniu_api.automation.models import (
     AutomationRunDetail,
     AutomationRunStatus,
     AutomationRunSummary,
+    AutomationSLOMetric,
+    AutomationSLOMetricKey,
+    AutomationSLOSnapshot,
     AutomationStepView,
     AutomationTickResult,
     AutomationTriggerResponse,
@@ -58,6 +63,13 @@ POLICY_DISPLAY_NAME = "优先股票池每日研究刷新"
 POLICY_SCHEMA_VERSION = "automation-policy-v1"
 PIPELINE_VERSION = "priority-research-pipeline-v1"
 SHANGHAI = ZoneInfo("Asia/Shanghai")
+SLO_TARGETS_MS: dict[AutomationSLOMetricKey, int] = {
+    "queue_start": 10_000,
+    "market_ready": 60_000,
+    "deterministic_ready": 600_000,
+    "ai_terminal": 600_000,
+}
+SLO_STALE_ACTIVE_MS = 600_000
 
 
 def stable_hash(value: object) -> str:
@@ -78,6 +90,120 @@ def due_slot(now: datetime, daily_time: str) -> tuple[datetime | None, datetime]
         return None, today.astimezone(UTC)
     tomorrow = today + timedelta(days=1)
     return today.astimezone(UTC), tomorrow.astimezone(UTC)
+
+
+def _utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _latency_ms(start: datetime, end: datetime) -> int | None:
+    elapsed = int((_utc(end) - _utc(start)).total_seconds() * 1000)
+    return elapsed if elapsed >= 0 else None
+
+
+def _p95(values: Sequence[int]) -> int | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    return ordered[max(0, ceil(len(ordered) * 0.95) - 1)]
+
+
+def build_automation_slo_snapshot(
+    runs: Sequence[AutomationRunRecord],
+    steps: Sequence[AutomationRunStepRecord],
+    *,
+    generated_at: datetime,
+    window_hours: int,
+) -> AutomationSLOSnapshot:
+    """Project user-facing watchlist preparation SLOs from retained run facts."""
+    generated = _utc(generated_at)
+    run_by_id = {run.id: run for run in runs}
+    latencies: dict[str, list[int]] = {key: [] for key in SLO_TARGETS_MS}
+
+    for run in runs:
+        if run.started_at is not None:
+            latency = _latency_ms(run.created_at, run.started_at)
+            if latency is not None:
+                latencies["queue_start"].append(latency)
+
+    for step in steps:
+        parent_run = run_by_id.get(step.run_id)
+        if parent_run is None or step.finished_at is None:
+            continue
+        metric_key: AutomationSLOMetricKey | None = None
+        eligible = False
+        if step.step_key == "market_sync":
+            metric_key = "market_ready"
+            eligible = step.status == "succeeded"
+        elif step.step_key == "research_build":
+            metric_key = "deterministic_ready"
+            eligible = step.status == "succeeded" or (
+                step.status == "skipped" and step.error_code == "research_input_unchanged"
+            )
+        elif step.step_key == "ai_research":
+            metric_key = "ai_terminal"
+            eligible = step.status in {"succeeded", "failed", "skipped", "blocked"}
+        if metric_key is not None and eligible:
+            latency = _latency_ms(parent_run.created_at, step.finished_at)
+            if latency is not None:
+                latencies[metric_key].append(latency)
+
+    terminal_statuses = {
+        "succeeded",
+        "succeeded_with_warnings",
+        "partial",
+        "failed",
+        "blocked",
+        "skipped",
+    }
+    acceptable_statuses = {"succeeded", "succeeded_with_warnings", "partial"}
+    terminal_runs = sum(run.status in terminal_statuses for run in runs)
+    acceptable_runs = sum(run.status in acceptable_statuses for run in runs)
+    active_runs = [run for run in runs if run.status in {"pending", "running"}]
+    stale_active_runs = sum(
+        (_latency_ms(run.created_at, generated) or 0) > SLO_STALE_ACTIVE_MS
+        for run in active_runs
+    )
+    failure_reasons = Counter(
+        reason
+        for reason in (
+            [run.error_code for run in runs if run.status in {"failed", "blocked"}]
+            + [
+                step.error_code
+                for step in steps
+                if step.status in {"failed", "blocked"}
+            ]
+        )
+        if reason
+    )
+    metrics = []
+    for key, target_ms in SLO_TARGETS_MS.items():
+        observed = _p95(latencies[key])
+        metrics.append(
+            AutomationSLOMetric(
+                key=key,
+                target_ms=target_ms,
+                sample_count=len(latencies[key]),
+                p95_ms=observed,
+                met=observed <= target_ms if observed is not None else None,
+            )
+        )
+    return AutomationSLOSnapshot(
+        generated_at=generated,
+        window_started_at=generated - timedelta(hours=window_hours),
+        window_hours=window_hours,
+        total_watchlist_runs=len(runs),
+        terminal_runs=terminal_runs,
+        acceptable_terminal_runs=acceptable_runs,
+        acceptable_terminal_rate_percent=(
+            round(acceptable_runs / terminal_runs * 100, 1) if terminal_runs else None
+        ),
+        pending_runs=sum(run.status == "pending" for run in runs),
+        running_runs=sum(run.status == "running" for run in runs),
+        stale_active_runs=stale_active_runs,
+        metrics=metrics,
+        failure_reasons=dict(sorted(failure_reasons.items())),
+    )
 
 
 def is_reporting_window(day: date) -> bool:
@@ -1034,6 +1160,41 @@ class AutomationService:
         run.finished_at = None
         await self._session.commit()
         return AutomationTriggerResponse(status="accepted", run_id=run.id, run_status="pending")
+
+    async def slo_snapshot(
+        self, window_hours: int = 24, *, now: datetime | None = None
+    ) -> AutomationSLOSnapshot:
+        generated_at = now or datetime.now(UTC)
+        window_started_at = generated_at - timedelta(hours=window_hours)
+        runs = (
+            await self._session.scalars(
+                select(AutomationRunRecord)
+                .where(
+                    AutomationRunRecord.trigger_kind == "watchlist",
+                    AutomationRunRecord.created_at >= window_started_at,
+                )
+                .order_by(AutomationRunRecord.created_at)
+            )
+        ).all()
+        run_ids = [run.id for run in runs]
+        steps: Sequence[AutomationRunStepRecord] = ()
+        if run_ids:
+            steps = (
+                await self._session.scalars(
+                    select(AutomationRunStepRecord)
+                    .where(AutomationRunStepRecord.run_id.in_(run_ids))
+                    .order_by(
+                        AutomationRunStepRecord.created_at,
+                        AutomationRunStepRecord.dependency_order,
+                    )
+                )
+            ).all()
+        return build_automation_slo_snapshot(
+            runs,
+            steps,
+            generated_at=generated_at,
+            window_hours=window_hours,
+        )
 
     async def list_runs(self, limit: int = 50) -> list[AutomationRunSummary]:
         rows = (

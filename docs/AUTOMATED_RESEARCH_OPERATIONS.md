@@ -76,7 +76,8 @@ does not repeat successful steps. Every attempt remains queryable.
 ## Operations workflow
 
 The `/admin` console includes a desktop automation workspace with policy state, run history, step
-detail, counts and resume controls. Mobile is intentionally read-only. Mutations require the
+detail, counts, a 24-hour watchlist SLO projection and resume controls. Mobile is intentionally
+read-only. Mutations require the
 `automation.manage`, `automation.run` or `automation.resume` capability, a password-confirmed
 elevated session, CSRF validation and an immutable operator audit event.
 
@@ -88,6 +89,23 @@ uv run python -m zhaoniu_api.cli automation-run priority_daily_refresh
 uv run python -m zhaoniu_api.cli automation-resume <run-id>
 uv run python -m zhaoniu_api.cli automation-refresh-stock 600519
 ```
+
+### Watchlist SLO projection
+
+`GET /api/v1/admin/automation/slo?window_hours=24` requires `automation.read` and derives its result
+only from retained `automation_runs` and `automation_run_steps`. It does not create a parallel job
+table or telemetry truth source. The four P95 targets are queue-to-start within 10 seconds, market
+ready within 60 seconds, deterministic research ready within 10 minutes, and AI terminal within 10
+minutes. A missing sample is returned as unknown rather than passing. Active watchlist runs older
+than 10 minutes are counted as stale, and failure reasons remain bounded operational reason codes.
+
+Use this view to evaluate the Phase 24 targets over the 24–48 hour observation window. A terminal
+run is acceptable when it is `succeeded`, `succeeded_with_warnings`, or `partial`; unsupported and
+partial research dimensions remain truthful coverage outcomes rather than fabricated success.
+
+Stock readiness also reports `market_freshness` (`current`, `stale`, or `unknown`) and an optional
+`expected_trade_date`. The expected date comes only from the versioned `trading_sessions` table;
+until a licensed calendar source is accepted, `unknown` is the intentional fail-closed result.
 
 ## Enablement checklist
 

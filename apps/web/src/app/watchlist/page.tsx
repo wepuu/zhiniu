@@ -335,6 +335,14 @@ function WatchlistGroup({
                       行情更新至 {state.latest_trade_date}
                     </span>
                   )}
+                  {state?.market_freshness &&
+                    state.market_freshness !== "current" && (
+                      <span className="text-slate mt-1 block text-xs">
+                        {state.market_freshness === "stale"
+                          ? `行情待补齐至 ${state.expected_trade_date ?? "最近交易日"}`
+                          : "行情新鲜度待交易日历确认"}
+                      </span>
+                    )}
                 </Link>
                 <button
                   type="button"

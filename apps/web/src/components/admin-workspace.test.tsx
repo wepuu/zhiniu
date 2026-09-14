@@ -14,12 +14,14 @@ const {
   getOperatorDashboard,
   getAutomationPolicies,
   getAutomationRuns,
+  getAutomationSLO,
   getAutomationRun,
 } = vi.hoisted(() => ({
   getOperatorContext: vi.fn(),
   getOperatorDashboard: vi.fn(),
   getAutomationPolicies: vi.fn(),
   getAutomationRuns: vi.fn(),
+  getAutomationSLO: vi.fn(),
   getAutomationRun: vi.fn(),
 }));
 
@@ -34,6 +36,7 @@ vi.mock("@zhaoniu/api-client", () => ({
     getOperatorDashboard,
     getAutomationPolicies,
     getAutomationRuns,
+    getAutomationSLO,
     getAutomationRun,
   }),
 }));
@@ -122,6 +125,49 @@ describe("AdminWorkspace", () => {
       ],
     });
     getAutomationRuns.mockResolvedValue({ items: [], total: 0 });
+    getAutomationSLO.mockResolvedValue({
+      generated_at: "2026-08-29T12:00:00Z",
+      window_started_at: "2026-08-28T12:00:00Z",
+      window_hours: 24,
+      total_watchlist_runs: 5,
+      terminal_runs: 4,
+      acceptable_terminal_runs: 4,
+      acceptable_terminal_rate_percent: 100,
+      pending_runs: 0,
+      running_runs: 1,
+      stale_active_runs: 0,
+      metrics: [
+        {
+          key: "queue_start",
+          target_ms: 10_000,
+          sample_count: 5,
+          p95_ms: 5_000,
+          met: true,
+        },
+        {
+          key: "market_ready",
+          target_ms: 60_000,
+          sample_count: 4,
+          p95_ms: 45_000,
+          met: true,
+        },
+        {
+          key: "deterministic_ready",
+          target_ms: 600_000,
+          sample_count: 4,
+          p95_ms: 300_000,
+          met: true,
+        },
+        {
+          key: "ai_terminal",
+          target_ms: 600_000,
+          sample_count: 4,
+          p95_ms: 420_000,
+          met: true,
+        },
+      ],
+      failure_reasons: {},
+    });
     render(
       <Providers>
         <AdminWorkspace />
@@ -137,6 +183,9 @@ describe("AdminWorkspace", () => {
       await screen.findByText("优先股票池每日研究刷新"),
     ).toBeInTheDocument();
     expect(await screen.findByText("尚无自动化运行记录")).toBeInTheDocument();
+    expect(await screen.findByText("自选准备 SLO")).toBeInTheDocument();
+    expect(await screen.findByText("任务开始")).toBeInTheDocument();
+    expect(await screen.findByText("100.0%")).toBeInTheDocument();
     expect(getAutomationRun).not.toHaveBeenCalled();
   });
 });

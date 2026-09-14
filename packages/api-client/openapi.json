@@ -7225,6 +7225,67 @@
         }
       }
     },
+    "/api/v1/admin/automation/slo": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Get Slo Snapshot",
+        "operationId": "get_slo_snapshot_api_v1_admin_automation_slo_get",
+        "parameters": [
+          {
+            "name": "window_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 168,
+              "minimum": 1,
+              "default": 24,
+              "title": "Window Hours"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationSLOSnapshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/automation/runs/{run_id}": {
       "get": {
         "tags": [
@@ -8674,6 +8735,152 @@
           "created_at"
         ],
         "title": "AutomationRunSummary"
+      },
+      "AutomationSLOMetric": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "queue_start",
+              "market_ready",
+              "deterministic_ready",
+              "ai_terminal"
+            ],
+            "title": "Key"
+          },
+          "target_ms": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Target Ms"
+          },
+          "sample_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sample Count"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          },
+          "met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Met"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "target_ms",
+          "sample_count"
+        ],
+        "title": "AutomationSLOMetric"
+      },
+      "AutomationSLOSnapshot": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "window_started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Window Started At"
+          },
+          "window_hours": {
+            "type": "integer",
+            "maximum": 168.0,
+            "minimum": 1.0,
+            "title": "Window Hours"
+          },
+          "total_watchlist_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Watchlist Runs"
+          },
+          "terminal_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Terminal Runs"
+          },
+          "acceptable_terminal_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Acceptable Terminal Runs"
+          },
+          "acceptable_terminal_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acceptable Terminal Rate Percent"
+          },
+          "pending_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pending Runs"
+          },
+          "running_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Running Runs"
+          },
+          "stale_active_runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Stale Active Runs"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationSLOMetric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "failure_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Failure Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "window_started_at",
+          "window_hours",
+          "total_watchlist_runs",
+          "terminal_runs",
+          "acceptable_terminal_runs",
+          "pending_runs",
+          "running_runs",
+          "stale_active_runs",
+          "metrics",
+          "failure_reasons"
+        ],
+        "title": "AutomationSLOSnapshot"
       },
       "AutomationStepView": {
         "properties": {
@@ -18470,6 +18677,28 @@
               }
             ],
             "title": "Latest Trade Date"
+          },
+          "market_freshness": {
+            "type": "string",
+            "enum": [
+              "current",
+              "stale",
+              "unknown"
+            ],
+            "title": "Market Freshness",
+            "default": "unknown"
+          },
+          "expected_trade_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Trade Date"
           },
           "stages": {
             "items": {

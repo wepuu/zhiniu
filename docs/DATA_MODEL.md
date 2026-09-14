@@ -342,3 +342,9 @@ name, full pinyin and pinyin initials. Stock-master ingestion owns their refresh
 adds automation-step creation time and a `(symbol, status, created_at)` index for readiness and
 pending-work discovery. Readiness remains derived state; no per-user market, research or AI rows
 are introduced.
+
+Migration `20260914_0029` adds `trading_sessions`, a source-backed and versioned exchange calendar
+contract. Each row records exchange, trade date, open/closed state, session timestamps, calendar
+version, source, knowledge/ingestion times and a lineage hash. The readiness service uses the latest
+closed open session for freshness only; an empty table yields `market_freshness=unknown` rather than
+assuming weekdays, holidays or suspension behavior.

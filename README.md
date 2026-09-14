@@ -3,11 +3,11 @@
 面向中国 A 股用户的证据驱动研究 SaaS。产品聚焦 Research / Data / Insight，不提供买入、
 卖出、目标价、上涨概率或个性化投资建议。
 
-当前仓库已经落地 Phase 0-21 的代码实现，包括受控 Beta、覆盖运营、运营控制台、单一
-固定调度链路、公司研究时间线、受管 Provider 配置、DeepSeek 证据解读、两家公司
-确定性对比、上线基线与 Provider/Beta 数据验收。Phase 19 内部工程基线已接受（邮件闭环
-明确延期）；Phase 20 首次真实数据基线未通过。邀请 Beta 和生产发布仍受真实邮件交付、
-获批数据源策略、Provider 数据完整性及其他发布门禁约束。
+当前仓库已经落地 Phase 0-24，包括受控 Beta、覆盖运营、运营控制台、单一固定调度链路、
+公司研究时间线、受管 Provider 配置、DeepSeek 证据解读、两家公司确定性对比，以及
+中文/拼音股票搜索和自选研究准备闭环。香港预发布环境已完成四只固定样本、自动 AI、
+自选触发和恢复演练；Phase 25 正在补齐运行 SLO 与受控 Beta 验收证据。邀请 Beta 和生产
+发布仍受获批商业数据源、Provider 数据完整性、稳定性窗口及其他发布门禁约束。
 
 项目不包含支付、订单、公开价格或结算流程。AKShare 仍仅用于开发和技术评估；荐股、
 自动化个人信息权利门户和未经审批的公开生产发布仍不在当前范围内。
@@ -175,12 +175,17 @@ POST /api/v1/comparisons
 GET /api/v1/comparisons/{request_id}
 GET /api/v1/admin/context
 GET /api/v1/admin/providers/configurations
+GET /api/v1/admin/automation/slo
 GET /api/v1/admin/releases
 ```
 
 Watchlist endpoints require a valid HttpOnly session cookie and persist user-owned records in
 PostgreSQL. Shared stocks, bars, financial facts, research snapshots and AI outputs remain global
 shared data.
+
+Readiness includes `market_freshness` and `expected_trade_date`. These values are `unknown` until
+the versioned, source-backed SSE/SZSE calendar is populated; the service never infers holidays or
+suspensions from weekdays.
 
 Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [Financial metrics](docs/FINANCIAL_METRICS.md), [Change rules](docs/CHANGE_RULES.md),
@@ -190,5 +195,6 @@ Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [event engine V2](docs/EVENT_ENGINE_V2.md),
 [production release gate](docs/PHASE_22_PRODUCTION_RELEASE_GATE.md),
 [staging deployment](docs/PHASE_23_STAGING_DEPLOYMENT.md),
+[controlled Beta readiness](docs/PHASE_25_BETA_READINESS.md),
 [screen query DSL](docs/SCREEN_QUERY_DSL.md), and [Engineering rules](AGENTS.md) before extending
 the system.

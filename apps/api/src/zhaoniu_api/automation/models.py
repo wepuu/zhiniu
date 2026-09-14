@@ -118,6 +118,37 @@ class AutomationRunListResponse(BaseModel):
     total: int
 
 
+AutomationSLOMetricKey = Literal[
+    "queue_start",
+    "market_ready",
+    "deterministic_ready",
+    "ai_terminal",
+]
+
+
+class AutomationSLOMetric(BaseModel):
+    key: AutomationSLOMetricKey
+    target_ms: int = Field(ge=1)
+    sample_count: int = Field(ge=0)
+    p95_ms: int | None = Field(default=None, ge=0)
+    met: bool | None = None
+
+
+class AutomationSLOSnapshot(BaseModel):
+    generated_at: datetime
+    window_started_at: datetime
+    window_hours: int = Field(ge=1, le=168)
+    total_watchlist_runs: int = Field(ge=0)
+    terminal_runs: int = Field(ge=0)
+    acceptable_terminal_runs: int = Field(ge=0)
+    acceptable_terminal_rate_percent: float | None = Field(default=None, ge=0, le=100)
+    pending_runs: int = Field(ge=0)
+    running_runs: int = Field(ge=0)
+    stale_active_runs: int = Field(ge=0)
+    metrics: list[AutomationSLOMetric]
+    failure_reasons: dict[str, int]
+
+
 class AutomationTriggerResponse(BaseModel):
     status: Literal["accepted", "skipped", "blocked"]
     run_id: UUID
