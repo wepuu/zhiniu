@@ -1,4 +1,5 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -7,11 +8,13 @@ from zhaoniu_api.automation.models import AutomationPolicyConfiguration
 from zhaoniu_api.automation.service import (
     ai_step_result,
     attempted_step_status,
+    build_automation_slo_snapshot,
     due_slot,
     is_reporting_window,
     persisted_step_status,
     stable_hash,
 )
+from zhaoniu_api.db import AutomationRunRecord, AutomationRunStepRecord
 from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import (
     CAPABILITIES,
@@ -91,3 +94,104 @@ def test_automation_capabilities_are_read_only_for_viewer() -> None:
         elevated=True,
     )
     OperatorService.require(operations, "automation.manage", elevated=True)
+
+
+def test_watchlist_slo_snapshot_projects_retained_run_facts() -> None:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    successful_id = uuid4()
+    running_id = uuid4()
+    failed_id = uuid4()
+    runs = [
+        AutomationRunRecord(
+            id=successful_id,
+            trigger_kind="watchlist",
+            status="succeeded_with_warnings",
+            created_at=now - timedelta(minutes=5),
+            started_at=now - timedelta(minutes=4, seconds=58),
+        ),
+        AutomationRunRecord(
+            id=running_id,
+            trigger_kind="watchlist",
+            status="running",
+            created_at=now - timedelta(minutes=30),
+            started_at=now - timedelta(minutes=29, seconds=45),
+        ),
+        AutomationRunRecord(
+            id=failed_id,
+            trigger_kind="watchlist",
+            status="failed",
+            error_code="automation_run_failed",
+            created_at=now - timedelta(minutes=40),
+            started_at=now - timedelta(minutes=39, seconds=57),
+        ),
+    ]
+    steps = [
+        AutomationRunStepRecord(
+            run_id=successful_id,
+            step_key="market_sync",
+            status="succeeded",
+            finished_at=now - timedelta(minutes=4, seconds=30),
+        ),
+        AutomationRunStepRecord(
+            run_id=successful_id,
+            step_key="research_build",
+            status="skipped",
+            error_code="research_input_unchanged",
+            finished_at=now,
+        ),
+        AutomationRunStepRecord(
+            run_id=successful_id,
+            step_key="ai_research",
+            status="failed",
+            error_code="ai_generation_failed",
+            finished_at=now,
+        ),
+        AutomationRunStepRecord(
+            run_id=failed_id,
+            step_key="market_sync",
+            status="failed",
+            error_code="provider_connection_failed",
+            finished_at=now - timedelta(minutes=39),
+        ),
+    ]
+
+    snapshot = build_automation_slo_snapshot(
+        runs,
+        steps,
+        generated_at=now,
+        window_hours=24,
+    )
+    metrics = {item.key: item for item in snapshot.metrics}
+
+    assert snapshot.total_watchlist_runs == 3
+    assert snapshot.terminal_runs == 2
+    assert snapshot.acceptable_terminal_runs == 1
+    assert snapshot.acceptable_terminal_rate_percent == 50.0
+    assert snapshot.running_runs == 1
+    assert snapshot.stale_active_runs == 1
+    assert metrics["queue_start"].sample_count == 3
+    assert metrics["queue_start"].p95_ms == 15_000
+    assert metrics["queue_start"].met is False
+    assert metrics["market_ready"].p95_ms == 30_000
+    assert metrics["market_ready"].met is True
+    assert metrics["deterministic_ready"].p95_ms == 300_000
+    assert metrics["ai_terminal"].p95_ms == 300_000
+    assert snapshot.failure_reasons == {
+        "ai_generation_failed": 1,
+        "automation_run_failed": 1,
+        "provider_connection_failed": 1,
+    }
+
+
+def test_watchlist_slo_snapshot_has_unknown_metrics_without_samples() -> None:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    snapshot = build_automation_slo_snapshot(
+        [],
+        [],
+        generated_at=now,
+        window_hours=24,
+    )
+
+    assert snapshot.acceptable_terminal_rate_percent is None
+    assert all(item.sample_count == 0 for item in snapshot.metrics)
+    assert all(item.p95_ms is None and item.met is None for item in snapshot.metrics)

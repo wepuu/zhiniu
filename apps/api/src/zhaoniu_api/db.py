@@ -444,6 +444,46 @@ class StockDailyBarRecord(TimestampMixin, Base):
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class TradingSessionRecord(Base):
+    """Versioned, source-backed A-share trading calendar facts.
+
+    Calendar rows are intentionally not seeded by the migration.  Until an
+    approved calendar source is configured, readiness must report freshness as
+    unknown instead of guessing from weekdays or server time.
+    """
+
+    __tablename__ = "trading_sessions"
+    __table_args__ = (
+        UniqueConstraint(
+            "exchange",
+            "trade_date",
+            "calendar_version",
+            name="uq_trading_session_identity",
+        ),
+        Index("ix_trading_sessions_exchange_date", "exchange", "trade_date"),
+        CheckConstraint(
+            "exchange IN ('SSE', 'SZSE')",
+            name="ck_trading_sessions_exchange",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    exchange: Mapped[str] = mapped_column(String(16), nullable=False)
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_open: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    session_open_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_close_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    calendar_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    source: Mapped[str] = mapped_column(String(80), nullable=False)
+    known_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lineage_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class IndustryTaxonomyRecord(TimestampMixin, Base):
     __tablename__ = "industry_taxonomies"
     __table_args__ = (UniqueConstraint("code", "version", name="uq_industry_taxonomy_identity"),)

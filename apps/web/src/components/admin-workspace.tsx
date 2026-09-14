@@ -490,6 +490,11 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
     queryFn: api.getAutomationRuns,
     refetchInterval: 15_000,
   });
+  const slo = useQuery({
+    queryKey: ["automation-slo", 24],
+    queryFn: () => api.getAutomationSLO(24),
+    refetchInterval: 30_000,
+  });
   const detail = useQuery({
     queryKey: ["automation-run", selectedRun],
     queryFn: () => api.getAutomationRun(selectedRun!),
@@ -581,6 +586,8 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
         </Card>
       </div>
 
+      <AutomationSLOPanel snapshot={slo.data} loading={slo.isFetching} />
+
       <Card className="mt-4 hidden p-5 md:block">
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-slate min-w-[240px] flex-1 text-xs">
@@ -671,6 +678,146 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
         />
       </div>
     </>
+  );
+}
+
+const automationSLOLabels = {
+  queue_start: { order: "01", label: "任务开始" },
+  market_ready: { order: "02", label: "基础行情" },
+  deterministic_ready: { order: "03", label: "确定性研究" },
+  ai_terminal: { order: "04", label: "AI 终态" },
+} as const;
+
+function formatSLODuration(value: number | null) {
+  if (value === null) return "暂无样本";
+  if (value < 1_000) return `${value} 毫秒`;
+  if (value < 60_000) return `${(value / 1_000).toFixed(1)} 秒`;
+  return `${(value / 60_000).toFixed(1)} 分钟`;
+}
+
+function AutomationSLOPanel({
+  snapshot,
+  loading,
+}: {
+  snapshot?: Awaited<ReturnType<typeof api.getAutomationSLO>>;
+  loading: boolean;
+}) {
+  const failures = snapshot
+    ? Object.entries(snapshot.failure_reasons)
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 4)
+    : [];
+
+  return (
+    <Card className="mt-4 overflow-hidden">
+      <div className="border-ink/8 flex flex-wrap items-start gap-3 border-b p-5">
+        <span className="bg-blue/8 text-blue grid size-10 place-items-center rounded-xl">
+          <Activity className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium">自选准备 SLO</h3>
+            {loading && (
+              <RefreshCw className="text-slate size-3.5 animate-spin" />
+            )}
+          </div>
+          <p className="text-slate mt-1 text-xs">
+            最近 {snapshot?.window_hours ?? 24} 小时 · 来自数据库运行事实
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="font-data text-xl font-semibold">
+            {snapshot?.acceptable_terminal_rate_percent === null ||
+            snapshot?.acceptable_terminal_rate_percent === undefined
+              ? "—"
+              : `${snapshot.acceptable_terminal_rate_percent.toFixed(1)}%`}
+          </p>
+          <p className="text-slate mt-1 text-[10px]">可接受终态率</p>
+        </div>
+      </div>
+
+      <div className="grid gap-px bg-black/[0.06] sm:grid-cols-2 xl:grid-cols-4">
+        {snapshot?.metrics.map((metric) => (
+          <div key={metric.key} className="bg-paper relative p-4 pt-5">
+            <span
+              aria-hidden="true"
+              className={`absolute inset-x-0 top-0 h-1 ${
+                metric.met === true
+                  ? "bg-emerald-500"
+                  : metric.met === false
+                    ? "bg-red-500"
+                    : "bg-slate-200"
+              }`}
+            />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-data text-blue text-[10px]">
+                  {automationSLOLabels[metric.key].order}
+                </span>
+                <p className="text-xs font-medium">
+                  {automationSLOLabels[metric.key].label}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  metric.met === true
+                    ? "bg-emerald-50 text-emerald-700"
+                    : metric.met === false
+                      ? "bg-red-50 text-red-700"
+                      : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {metric.met === true
+                  ? "达标"
+                  : metric.met === false
+                    ? "未达标"
+                    : "待采样"}
+              </span>
+            </div>
+            <p className="font-data mt-3 text-lg font-semibold">
+              {formatSLODuration(metric.p95_ms ?? null)}
+            </p>
+            <p className="text-slate mt-1 text-[10px]">
+              P95 · 目标 {formatSLODuration(metric.target_ms)} · 样本{" "}
+              {metric.sample_count}
+            </p>
+          </div>
+        )) ??
+          Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="bg-paper text-slate p-4 text-xs">
+              正在读取指标…
+            </div>
+          ))}
+      </div>
+
+      <div className="grid gap-4 p-5 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+        <div className="grid grid-cols-3 gap-3">
+          <Metric
+            label="自选任务"
+            value={snapshot?.total_watchlist_runs ?? 0}
+          />
+          <Metric label="运行中" value={snapshot?.running_runs ?? 0} />
+          <Metric label="超时活跃" value={snapshot?.stale_active_runs ?? 0} />
+        </div>
+        <div>
+          <p className="text-slate text-[10px]">主要失败原因</p>
+          {failures.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {failures.map(([reason, count]) => (
+                <span
+                  key={reason}
+                  className="border-ink/8 rounded-full border bg-white px-2.5 py-1 text-[11px]"
+                >
+                  {automationReasonCopy[reason] ?? reason} · {count}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate mt-2 text-xs">窗口内没有失败记录</p>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

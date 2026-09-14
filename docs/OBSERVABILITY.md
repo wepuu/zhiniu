@@ -8,13 +8,17 @@ tokens are excluded.
 - `/readyz`: PostgreSQL connectivity, exact Alembic head and Redis health.
 - `uv run python -m zhaoniu_api.cli beta-status`: active-user count and release blockers.
 - Celery operations use `celery inspect ping` plus existing queryable job/run tables.
+- `/api/v1/admin/automation/slo`: authenticated 1–168 hour watchlist preparation P95, terminal rate,
+  stale active runs and bounded failure reasons derived from retained automation facts.
 
 Alert on sustained readiness failures, migration mismatch, repeated authentication/email failures,
 queue backlog and backup verification failures. Redis degradation must be visible even where a
 read-only database-backed endpoint can continue serving.
 
-On Phase 23 staging, public monitoring uses `/livez`; Nginx restricts `/readyz` to administrator
-addresses. Also alert at 75% disk, sustained 85% CPU or memory, any OOM restart, failed systemd
+On Phase 23 staging, public monitoring may use `/livez` and the deliberately metadata-limited
+`/readyz`; administrator source-IP restriction is not required because the operator address is
+dynamic. Neither endpoint exposes secrets, customer data or Provider configuration. Also alert at
+75% disk, sustained 85% CPU or memory, any OOM restart, failed systemd
 backup, or a deployment health rollback. Docker JSON logs rotate at 10 MB with three files per
 container. The immutable release record under `/opt/zhiniu/releases/current` identifies the exact
 commit, API/Web digests and migration head.

@@ -10,6 +10,7 @@ from zhaoniu_api.automation.models import (
     AutomationPolicyView,
     AutomationRunDetail,
     AutomationRunListResponse,
+    AutomationSLOSnapshot,
     AutomationTriggerResponse,
 )
 from zhaoniu_api.automation.service import POLICY_KEY
@@ -106,6 +107,17 @@ async def list_runs(
     _require(context, operators, "automation.read")
     items = await automation.list_runs(limit)
     return AutomationRunListResponse(items=items, total=len(items))
+
+
+@router.get("/slo", response_model=AutomationSLOSnapshot)
+async def get_slo_snapshot(
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    automation: AutomationServiceDependency,
+    window_hours: Annotated[int, Query(ge=1, le=168)] = 24,
+) -> AutomationSLOSnapshot:
+    _require(context, operators, "automation.read")
+    return await automation.slo_snapshot(window_hours)
 
 
 @router.get("/runs/{run_id}", response_model=AutomationRunDetail)

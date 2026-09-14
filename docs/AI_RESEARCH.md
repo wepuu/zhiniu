@@ -22,9 +22,13 @@ numeric-claim and investment-language validation. Every prose field has one to f
 references. AI prose cannot contain financial numbers, percentages, dates, currency values or price
 targets; UI number cards come from the persisted evidence index.
 
-If a provider call, parsing or safety validation fails, orchestration advances to the next configured
-model within the total attempt and deadline budget. Context, database and unknown application errors
-terminate immediately. A complete failure stores no output.
+If a provider call, parsing or safety validation fails, orchestration advances within the bounded
+route and total deadline budget. For the `stock-health:v10` contract, a final response rejected only
+for prohibited investment-language may pass through a deterministic sentence sanitizer. The
+sanitizer removes complete offending sentences, never invents prose or evidence, and the resulting
+document must pass the full schema, citation, coverage, numeric and language validation suite before
+storage. Context, database and unknown application errors terminate immediately. Any result that
+still fails validation stores no output.
 
 ## Operations
 

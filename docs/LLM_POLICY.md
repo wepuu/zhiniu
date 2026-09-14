@@ -5,8 +5,9 @@
 - DeepSeek or Qwen may be preferred only after provider terms, financial-data licensing and data
   handling review. OpenAI and Gemini are technically supported but are not default routes before
   data-export review.
-- Each model is attempted once. LiteLLM internal retries are disabled; Zhaoniu owns timeout,
-  fallback, total deadline, validation and audit behavior.
+- Each configured model is attempted once per normal route pass. Explicit schema/safety repair is a
+  separately bounded application call, not an SDK retry. LiteLLM internal retries are disabled;
+  Zhaoniu owns timeout, fallback, total deadline, validation and audit behavior.
 - Provider-local network, timeout, rate-limit, authentication, quota, model-availability, parse and
   output-validation failures may fall back. Internal context, repository or unknown errors may not.
 - API keys are resolved from the encrypted managed-provider vault after publication, with
@@ -16,6 +17,10 @@
   output, public evidence mapping, route/version hashes and bounded operational metadata.
 - Public UI must carry an explicit AI-generated label and continue to prohibit buy/sell language,
   target prices, return probabilities, ratings and personalized securities advice.
+- `stock-health:v10` may deterministically remove complete sentences after a final
+  investment-language rejection. It may not rewrite claims, add citations, retain sentence
+  fragments or bypass the full output validator. The call audit remains queryable even when the
+  sanitized document is accepted.
 
 ## DeepSeek research explanation profile
 

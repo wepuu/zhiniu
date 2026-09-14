@@ -113,7 +113,9 @@ Bootstrap the first operator without direct database writes:
 
 Start from a clean stock database and run Provider acceptance for `600519`, `300750`, `300376`, and
 `000001`. Hong Kong egress failures remain visible blockers; do not add a personal proxy as a
-production dependency. Automation, AI explanation and natural-language screening stay disabled.
+production dependency. Automation and AI began fail-closed, then were enabled for the Phase 24
+staging rollout after the fixed-sample canaries passed. Natural-language screening remains a
+separate gated capability. Re-enabling a staging feature does not satisfy production data licensing.
 
 ## Operations and rollback
 

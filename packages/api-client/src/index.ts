@@ -4,6 +4,8 @@ export type StockResponse = components["schemas"]["StockResponse"];
 export type StockSearchResponse = components["schemas"]["StockSearchResponse"];
 export type StockReadinessResponse =
   components["schemas"]["StockReadinessResponse"];
+export type MarketFreshness =
+  components["schemas"]["StockReadinessResponse"]["market_freshness"];
 export type StockReadinessStage = components["schemas"]["StockReadinessStage"];
 export type StockReadinessListResponse =
   components["schemas"]["StockReadinessListResponse"];
@@ -172,6 +174,9 @@ export type AutomationPolicyView =
 export type AutomationRunListResponse =
   components["schemas"]["AutomationRunListResponse"];
 export type AutomationRunDetail = components["schemas"]["AutomationRunDetail"];
+export type AutomationSLOMetric = components["schemas"]["AutomationSLOMetric"];
+export type AutomationSLOSnapshot =
+  components["schemas"]["AutomationSLOSnapshot"];
 export type AutomationTriggerResponse =
   components["schemas"]["AutomationTriggerResponse"];
 export type ComparisonCatalogResponse =
@@ -998,6 +1003,11 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getAutomationRuns() {
       return request<AutomationRunListResponse>(
         "/api/v1/admin/automation/runs?limit=50",
+      );
+    },
+    getAutomationSLO(windowHours = 24) {
+      return request<AutomationSLOSnapshot>(
+        `/api/v1/admin/automation/slo?window_hours=${windowHours}`,
       );
     },
     getAutomationRun(runId: string) {
