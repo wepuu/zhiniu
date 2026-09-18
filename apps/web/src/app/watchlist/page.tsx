@@ -340,7 +340,9 @@ function WatchlistGroup({
                       <span className="text-slate mt-1 block text-xs">
                         {state.market_freshness === "stale"
                           ? `行情待补齐至 ${state.expected_trade_date ?? "最近交易日"}`
-                          : "行情新鲜度待交易日历确认"}
+                          : state.calendar_status === "stale"
+                            ? "交易日历核验已过期，暂不判断行情是否最新"
+                            : "行情新鲜度待交易日历确认"}
                       </span>
                     )}
                 </Link>

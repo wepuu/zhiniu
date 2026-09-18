@@ -14,6 +14,7 @@ from zhaoniu_api.fundamentals.models import (
     FundamentalSnapshot,
     ValuationObservation,
 )
+from zhaoniu_api.market_data.trading_calendar import TradingSession
 from zhaoniu_api.research.models import (
     FundamentalMetricPoint,
     ResearchObservation,
@@ -99,6 +100,10 @@ class SyncRunRepository(Protocol):
         error_summary: str | None,
         finished_at: datetime,
     ) -> None: ...
+
+
+class TradingSessionRepository(Protocol):
+    async def upsert_many(self, sessions: list[TradingSession]) -> int: ...
 
 
 class ResearchRepository(Protocol):

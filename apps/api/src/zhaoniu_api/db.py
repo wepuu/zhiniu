@@ -447,9 +447,9 @@ class StockDailyBarRecord(TimestampMixin, Base):
 class TradingSessionRecord(Base):
     """Versioned, source-backed A-share trading calendar facts.
 
-    Calendar rows are intentionally not seeded by the migration.  Until an
-    approved calendar source is configured, readiness must report freshness as
-    unknown instead of guessing from weekdays or server time.
+    Calendar rows are intentionally not seeded by the migration.  A free
+    development/evaluation adapter may populate them, while Beta/production
+    gates still require a commercially approved calendar source.
     """
 
     __tablename__ = "trading_sessions"
@@ -2888,6 +2888,57 @@ class ProductionReleaseCandidateRecord(Base):
     quality_gate_status: Mapped[str] = mapped_column(String(16), nullable=False)
     e2e_status: Mapped[str] = mapped_column(String(16), nullable=False)
     security_scan_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class BetaReliabilityObservationRecord(Base):
+    """Immutable, release-bound controlled-Beta reliability evidence."""
+
+    __tablename__ = "beta_reliability_observations"
+    __table_args__ = (
+        CheckConstraint(
+            "environment IN ('staging', 'production')",
+            name="ck_beta_reliability_observation_environment",
+        ),
+        CheckConstraint(
+            "status IN ('passed', 'failed')",
+            name="ck_beta_reliability_observation_status",
+        ),
+        UniqueConstraint(
+            "environment",
+            "release_commit",
+            "configuration_fingerprint",
+            "window_started_at",
+            "window_ended_at",
+            name="uq_beta_reliability_observation_identity",
+        ),
+        Index(
+            "ix_beta_reliability_observation_latest",
+            "environment",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    environment: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    release_commit: Mapped[str] = mapped_column(String(64), nullable=False)
+    api_image_digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    web_image_digest: Mapped[str] = mapped_column(String(71), nullable=False)
+    migration_head: Mapped[str] = mapped_column(String(32), nullable=False)
+    configuration_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    slo_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    calendar_health: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    blocking_reasons: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     created_by_user_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

@@ -18,6 +18,8 @@ function readiness(
     latest_trade_date: null,
     market_freshness: "unknown",
     expected_trade_date: null,
+    calendar_status: "unknown",
+    calendar_checked_at: null,
     stages: [
       {
         key: "ai_research",

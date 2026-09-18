@@ -42,9 +42,37 @@ distinguish ready, partial, unsupported, missing source data, and failed states.
 Readiness now exposes `market_freshness` (`current`, `stale`, or `unknown`) and an optional
 `expected_trade_date`. The expected date is derived only from the versioned `trading_sessions`
 table, keyed by exchange and calendar version. Migration `20260914_0029` creates this source-backed
-contract without seeding guessed weekdays or holidays. Until an approved calendar provider is
-accepted and ingested, the API returns `unknown`; a missing calendar never turns into a false
-provider failure and a future-dated bar never counts as current.
+contract without seeding guessed weekdays or holidays. For development/evaluation, operators may
+ingest the free AKShare/Sina date list with `uv run python -m zhaoniu_api.cli
+sync-trading-calendar`; the normalizer records explicit SSE/SZSE rows and 09:30–15:00 China-time
+session boundaries. This does not make the source commercially approved: until a licensed calendar
+provider is accepted for Beta, production gates continue to treat the source as evaluation-only.
+A missing calendar still returns `unknown`, and a future-dated bar never counts as current.
+The endpoint has no publication timestamp, so ingestion time is retained conservatively as
+`known_at`.
+
+Market freshness also requires a successful `trading_calendar` sync audit within 36 hours. A
+retained calendar row without a recent successful check cannot keep old market data marked current;
+the readiness API returns `calendar_status=stale` or `unknown` and suppresses
+`expected_trade_date`. The latest closed session becomes expected only after a 30-minute
+post-close publication grace period. Exchange calendars do not prove whether an individual
+security was suspended, so user copy says that coverage needs confirmation rather than claiming a
+Provider failure. BSE remains unsupported by this SSE/SZSE calendar contract.
+
+### Immutable reliability observations
+
+Migration `20260914_0030` adds append-only `beta_reliability_observations`. An elevated operations
+user may freeze a 24- or 48-hour database-backed observation through
+`POST /api/v1/admin/automation/observations`. Each record binds the window to the release commit,
+immutable API/Web image digests, migration head and configuration fingerprint, and stores the SLO
+projection, calendar health, bounded blocking reasons and a deterministic result fingerprint.
+
+The initial `beta-reliability-v1` rule set requires at least 20 samples for every SLO dimension,
+all four P95 targets to pass, at least 95 percent acceptable terminal runs, no active run older
+than 10 minutes, no failed/blocked facts without a reason code, and healthy SSE/SZSE calendar
+checks. A failed observation remains useful evidence and is never overwritten. Host OOM, container
+restart and sustained broker-depth evidence remains a deployment/operations gate because those
+facts are not currently retained in the application database.
 
 ## Controlled-Beta entry gates
 
@@ -61,6 +89,11 @@ All gates remain fail-closed:
   backup, and successful isolated restore drill.
 - Existing Phase 20 Provider/Beta, Phase 21 invitation, and Phase 22 release gates all pass using
   current evidence rather than screenshots or operator assertion.
+
+The release state must match the product path: `closed_deployment` keeps the emergency automation
+stop enabled, while `invite_activation` requires `AUTOMATION_HARD_DISABLED=false` and
+`WATCHLIST_PREPARATION_ENABLED=true`. The daily database policy remains an independent, bounded
+choice; enabling user-triggered preparation does not silently enable the scheduled refresh.
 
 AKShare and the Sina fallback remain development/evaluation inputs. Their technical health does not
 satisfy the commercial-data gate.
@@ -83,10 +116,12 @@ silently mix sources, overwrite lineage, or change a retained snapshot's knowled
 ## Rollout order
 
 1. Deploy the SLO projection and read-only operations panel.
-2. Observe staging for 24 hours; classify each failure reason and confirm queue recovery.
-3. Complete licensed-provider legal and technical acceptance, then repeat the four fixed samples.
-4. Create a small invitation cohort only after all existing gates pass.
-5. Review first-value completion, readiness latency, Provider usage, support feedback, backups, and
+2. Ingest and verify the evaluation trading calendar, then observe staging for 24 hours; classify
+   each failure reason and confirm queue recovery.
+3. Freeze a release-bound 24-hour observation; continue to 48 hours when it passes.
+4. Complete licensed-provider legal and technical acceptance, then repeat the four fixed samples.
+5. Create a small invitation cohort only after all existing gates pass.
+6. Review first-value completion, readiness latency, Provider usage, support feedback, backups, and
    OOM/queue guardrails daily for 48 hours before expanding the cohort.
 
 Factor/backtest development remains deferred until point-in-time licensed history, delisting data,

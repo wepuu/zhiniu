@@ -22,6 +22,7 @@ from zhaoniu_api.composition import (
     build_research_feed_service,
     build_research_service,
     build_screening_service,
+    build_trading_calendar_service,
 )
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.corporate_events.models import EventBuildResult
@@ -33,6 +34,7 @@ from zhaoniu_api.invite_beta.service import InviteBetaService
 from zhaoniu_api.market_data.akshare_provider import AKShareProvider
 from zhaoniu_api.market_data.errors import safe_market_error_code
 from zhaoniu_api.market_data.service import SyncResult
+from zhaoniu_api.market_data.trading_calendar_service import TradingCalendarSyncResult
 from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.service import OperatorService
 from zhaoniu_api.peer_research.models import PeerBuildResult
@@ -88,6 +90,10 @@ def _parser() -> argparse.ArgumentParser:
     ai_research.add_argument("symbol")
     ai_research.add_argument("--retry-failed", action="store_true")
     subcommands.add_parser("sync-industries")
+    calendar = subcommands.add_parser("sync-trading-calendar")
+    calendar.add_argument("--start", type=_date, default=date(1992, 5, 4))
+    calendar.add_argument("--end", type=_date)
+    calendar.add_argument("--force", action="store_true")
     peer_benchmark = subcommands.add_parser("build-peer-benchmark")
     peer_benchmark.add_argument("symbol")
     peer_benchmark.add_argument("--as-of", type=datetime.fromisoformat)
@@ -222,6 +228,7 @@ async def _run(args: argparse.Namespace) -> None:
                 | ResearchBuildResult
                 | AIResearchBuildResult
                 | IndustrySyncResult
+                | TradingCalendarSyncResult
                 | PeerBuildResult
                 | EventBuildResult
                 | ScreeningBuildResult
@@ -279,6 +286,12 @@ async def _run(args: argparse.Namespace) -> None:
                 )
             elif args.command == "sync-industries":
                 result = await build_peer_research_service(session).sync_industries()
+            elif args.command == "sync-trading-calendar":
+                result = await build_trading_calendar_service(session).sync(
+                    start=args.start,
+                    end=args.end,
+                    force=args.force,
+                )
             elif args.command == "build-peer-benchmark":
                 result = await build_peer_research_service(session).build_peer_benchmark(
                     args.symbol, as_of=args.as_of

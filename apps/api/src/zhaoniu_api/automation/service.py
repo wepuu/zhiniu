@@ -28,6 +28,9 @@ from zhaoniu_api.automation.models import (
     AutomationStepView,
     AutomationTickResult,
     AutomationTriggerResponse,
+    BetaReliabilityObservation,
+    BetaReliabilityObservationCreate,
+    TradingCalendarHealth,
 )
 from zhaoniu_api.config import Settings
 from zhaoniu_api.coverage.service import ResearchCoverageService
@@ -38,6 +41,7 @@ from zhaoniu_api.db import (
     AutomationRunRecord,
     AutomationRunStepRecord,
     AutomationStepAttemptRecord,
+    BetaReliabilityObservationRecord,
     BetaResearchUniverseMemberRecord,
     CompanyPeerMetricPositionRecord,
     DataSyncRunRecord,
@@ -49,14 +53,22 @@ from zhaoniu_api.db import (
     ResearchSnapshotRecord,
     StockDailyBarRecord,
     StockRecord,
+    TradingSessionRecord,
     ValuationObservationRecord,
 )
 from zhaoniu_api.market_data.errors import MarketDataError, safe_market_error_code
+from zhaoniu_api.market_data.trading_calendar import (
+    CALENDAR_PROVIDER,
+    CALENDAR_SOURCE,
+    CALENDAR_VERSION,
+    calendar_health_status,
+)
 from zhaoniu_api.provider_configuration.models import (
     DeepSeekConfiguration,
     deepseek_route_available,
 )
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
+from zhaoniu_api.system import MIGRATION_HEAD
 
 POLICY_KEY = "priority_daily_refresh"
 POLICY_DISPLAY_NAME = "优先股票池每日研究刷新"
@@ -70,6 +82,8 @@ SLO_TARGETS_MS: dict[AutomationSLOMetricKey, int] = {
     "ai_terminal": 600_000,
 }
 SLO_STALE_ACTIVE_MS = 600_000
+SLO_MINIMUM_SAMPLE_COUNT = 20
+BETA_RELIABILITY_RULE_SET_VERSION = "beta-reliability-v1"
 
 
 def stable_hash(value: object) -> str:
@@ -176,9 +190,19 @@ def build_automation_slo_snapshot(
         )
         if reason
     )
+    unclassified_failure_count = sum(
+        run.status in {"failed", "blocked"} and not run.error_code for run in runs
+    ) + sum(
+        step.status in {"failed", "blocked"} and not step.error_code for step in steps
+    )
     metrics = []
+    blocking_reasons: list[str] = []
     for key, target_ms in SLO_TARGETS_MS.items():
         observed = _p95(latencies[key])
+        if len(latencies[key]) < SLO_MINIMUM_SAMPLE_COUNT:
+            blocking_reasons.append(f"insufficient_samples:{key}")
+        elif observed is not None and observed > target_ms:
+            blocking_reasons.append(f"slo_target_missed:{key}")
         metrics.append(
             AutomationSLOMetric(
                 key=key,
@@ -188,6 +212,13 @@ def build_automation_slo_snapshot(
                 met=observed <= target_ms if observed is not None else None,
             )
         )
+    terminal_rate = round(acceptable_runs / terminal_runs * 100, 1) if terminal_runs else None
+    if terminal_rate is None or terminal_rate < 95:
+        blocking_reasons.append("acceptable_terminal_rate_below_target")
+    if stale_active_runs:
+        blocking_reasons.append("stale_active_runs_present")
+    if unclassified_failure_count:
+        blocking_reasons.append("unclassified_failures_present")
     return AutomationSLOSnapshot(
         generated_at=generated,
         window_started_at=generated - timedelta(hours=window_hours),
@@ -195,12 +226,14 @@ def build_automation_slo_snapshot(
         total_watchlist_runs=len(runs),
         terminal_runs=terminal_runs,
         acceptable_terminal_runs=acceptable_runs,
-        acceptable_terminal_rate_percent=(
-            round(acceptable_runs / terminal_runs * 100, 1) if terminal_runs else None
-        ),
+        acceptable_terminal_rate_percent=terminal_rate,
         pending_runs=sum(run.status == "pending" for run in runs),
         running_runs=sum(run.status == "running" for run in runs),
         stale_active_runs=stale_active_runs,
+        unclassified_failure_count=unclassified_failure_count,
+        minimum_sample_count=SLO_MINIMUM_SAMPLE_COUNT,
+        release_gate_met=not blocking_reasons,
+        blocking_reasons=blocking_reasons,
         metrics=metrics,
         failure_reasons=dict(sorted(failure_reasons.items())),
     )
@@ -294,11 +327,15 @@ class ProductionAutomationExecutor:
             build_peer_research_service,
             build_research_feed_service,
             build_research_service,
+            build_trading_calendar_service,
         )
 
         result: Any
         if step_key == "stock_master_sync":
             result = await build_market_data_service(self._session).sync_stock_master()
+            return _service_result(result, provider_calls=1)
+        if step_key == "trading_calendar_sync":
+            result = await build_trading_calendar_service(self._session).sync()
             return _service_result(result, provider_calls=1)
         if step_key == "coverage_finalize":
             if universe_snapshot_id is None:
@@ -679,6 +716,7 @@ class AutomationService:
         symbols: list[str],
     ) -> None:
         if run.trigger_kind == "scheduled":
+            self._add_step(run, "run", str(run.id), "trading_calendar_sync", 4, None)
             self._add_step(run, "run", str(run.id), "stock_master_sync", 5, None)
         symbol_steps = [
             (10, "market_sync"),
@@ -900,6 +938,16 @@ class AutomationService:
             await self._session.commit()
 
     async def _skip_reason(self, run_id: UUID, step: AutomationRunStepRecord) -> str | None:
+        if step.step_key == "trading_calendar_sync":
+            latest = await self._session.scalar(
+                select(func.max(DataSyncRunRecord.finished_at)).where(
+                    DataSyncRunRecord.dataset == "trading_calendar",
+                    DataSyncRunRecord.provider == CALENDAR_PROVIDER,
+                    DataSyncRunRecord.status == "succeeded",
+                )
+            )
+            if latest is not None and latest > datetime.now(UTC) - timedelta(hours=24):
+                return "trading_calendar_check_not_due"
         if step.step_key == "stock_master_sync":
             latest = await self._session.scalar(
                 select(func.max(DataSyncRunRecord.finished_at)).where(
@@ -1036,6 +1084,19 @@ class AutomationService:
         )
 
     async def _artifact_fingerprint(self, step_key: str, symbol: str | None, scope_key: str) -> str:
+        if step_key == "trading_calendar_sync":
+            count, latest = (
+                await self._session.execute(
+                    select(
+                        func.count(TradingSessionRecord.id),
+                        func.max(TradingSessionRecord.ingested_at),
+                    ).where(
+                        TradingSessionRecord.source == CALENDAR_SOURCE,
+                        TradingSessionRecord.calendar_version == CALENDAR_VERSION,
+                    )
+                )
+            ).one()
+            return stable_hash([("trading_sessions", int(count or 0), latest)])
         if step_key == "stock_master_sync":
             count, latest = (
                 await self._session.execute(
@@ -1195,6 +1256,139 @@ class AutomationService:
             generated_at=generated_at,
             window_hours=window_hours,
         )
+
+    async def trading_calendar_health(
+        self, *, now: datetime | None = None
+    ) -> list[TradingCalendarHealth]:
+        moment = now or datetime.now(UTC)
+        checked_at = await self._session.scalar(
+            select(func.max(DataSyncRunRecord.finished_at)).where(
+                DataSyncRunRecord.dataset == "trading_calendar",
+                DataSyncRunRecord.provider == CALENDAR_PROVIDER,
+                DataSyncRunRecord.status == "succeeded",
+            )
+        )
+        rows = (
+            await self._session.scalars(
+                select(TradingSessionRecord)
+                .where(
+                    TradingSessionRecord.is_open.is_(True),
+                    TradingSessionRecord.source == CALENDAR_SOURCE,
+                    TradingSessionRecord.calendar_version == CALENDAR_VERSION,
+                )
+                .distinct(TradingSessionRecord.exchange)
+                .order_by(
+                    TradingSessionRecord.exchange,
+                    TradingSessionRecord.trade_date.desc(),
+                    TradingSessionRecord.ingested_at.desc(),
+                )
+            )
+        ).all()
+        latest: dict[str, TradingSessionRecord] = {}
+        for row in rows:
+            latest.setdefault(row.exchange, row)
+
+        normalized_check = None
+        if checked_at is not None:
+            normalized_check = _utc(checked_at)
+        result: list[TradingCalendarHealth] = []
+        for exchange in ("SSE", "SZSE"):
+            latest_row = latest.get(exchange)
+            if latest_row is None:
+                result.append(
+                    TradingCalendarHealth(
+                        exchange=cast(Any, exchange),
+                        status="unknown",
+                        reason_code="trading_calendar_missing",
+                    )
+                )
+                continue
+            status = calendar_health_status(normalized_check, now=moment)
+            if status == "unknown":
+                reason_code = "trading_calendar_audit_missing"
+            elif status == "stale":
+                reason_code = "trading_calendar_check_stale"
+            else:
+                reason_code = None
+            result.append(
+                TradingCalendarHealth(
+                    exchange=cast(Any, exchange),
+                    status=status,
+                    source=latest_row.source,
+                    calendar_version=latest_row.calendar_version,
+                    latest_trade_date=latest_row.trade_date,
+                    checked_at=normalized_check,
+                    reason_code=reason_code,
+                )
+            )
+        return result
+
+    async def freeze_beta_reliability_observation(
+        self,
+        payload: BetaReliabilityObservationCreate,
+        *,
+        actor_user_id: UUID,
+        now: datetime | None = None,
+    ) -> BetaReliabilityObservation:
+        window_ended_at = now or datetime.now(UTC)
+        snapshot = await self.slo_snapshot(payload.window_hours, now=window_ended_at)
+        calendar_health = await self.trading_calendar_health(now=window_ended_at)
+        blocking_reasons = list(snapshot.blocking_reasons)
+        blocking_reasons.extend(
+            f"calendar_{item.exchange.lower()}_{item.status}"
+            for item in calendar_health
+            if item.status != "healthy"
+        )
+        blocking_reasons = sorted(set(blocking_reasons))
+        evidence = {
+            "environment": payload.environment,
+            "release_commit": payload.release_commit,
+            "api_image_digest": payload.api_image_digest,
+            "web_image_digest": payload.web_image_digest,
+            "migration_head": MIGRATION_HEAD,
+            "configuration_fingerprint": payload.configuration_fingerprint,
+            "window_started_at": snapshot.window_started_at,
+            "window_ended_at": window_ended_at,
+            "slo_snapshot": snapshot.model_dump(mode="json"),
+            "calendar_health": [item.model_dump(mode="json") for item in calendar_health],
+            "blocking_reasons": blocking_reasons,
+        }
+        record = BetaReliabilityObservationRecord(
+            id=uuid4(),
+            environment=payload.environment,
+            status="failed" if blocking_reasons else "passed",
+            rule_set_version=BETA_RELIABILITY_RULE_SET_VERSION,
+            release_commit=payload.release_commit,
+            api_image_digest=payload.api_image_digest,
+            web_image_digest=payload.web_image_digest,
+            migration_head=MIGRATION_HEAD,
+            configuration_fingerprint=payload.configuration_fingerprint,
+            window_started_at=snapshot.window_started_at,
+            window_ended_at=window_ended_at,
+            slo_snapshot=snapshot.model_dump(mode="json"),
+            calendar_health={
+                "items": [item.model_dump(mode="json") for item in calendar_health]
+            },
+            blocking_reasons={"items": blocking_reasons},
+            result_fingerprint=stable_hash(evidence),
+            created_by_user_id=actor_user_id,
+        )
+        self._session.add(record)
+        await self._session.commit()
+        await self._session.refresh(record)
+        return self._observation_view(record)
+
+    async def list_beta_reliability_observations(
+        self, *, limit: int = 20
+    ) -> list[BetaReliabilityObservation]:
+        rows = (
+            await self._session.scalars(
+                select(BetaReliabilityObservationRecord)
+                .order_by(BetaReliabilityObservationRecord.created_at.desc())
+                .limit(limit)
+            )
+        ).all()
+        return [self._observation_view(row) for row in rows]
 
     async def list_runs(self, limit: int = 50) -> list[AutomationRunSummary]:
         rows = (
@@ -1366,6 +1560,33 @@ class AutomationService:
             error_code=step.error_code,
             started_at=step.started_at,
             finished_at=step.finished_at,
+        )
+
+    @staticmethod
+    def _observation_view(
+        row: BetaReliabilityObservationRecord,
+    ) -> BetaReliabilityObservation:
+        return BetaReliabilityObservation(
+            id=row.id,
+            environment=cast(Any, row.environment),
+            status=cast(Any, row.status),
+            rule_set_version=row.rule_set_version,
+            release_commit=row.release_commit,
+            api_image_digest=row.api_image_digest,
+            web_image_digest=row.web_image_digest,
+            migration_head=row.migration_head,
+            configuration_fingerprint=row.configuration_fingerprint,
+            window_started_at=row.window_started_at,
+            window_ended_at=row.window_ended_at,
+            slo_snapshot=AutomationSLOSnapshot.model_validate(row.slo_snapshot),
+            calendar_health=[
+                TradingCalendarHealth.model_validate(item)
+                for item in row.calendar_health.get("items", [])
+            ],
+            blocking_reasons=[str(item) for item in row.blocking_reasons.get("items", [])],
+            result_fingerprint=row.result_fingerprint,
+            created_by_user_id=row.created_by_user_id,
+            created_at=row.created_at,
         )
 
 

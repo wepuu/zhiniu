@@ -158,5 +158,8 @@ function marketFreshnessLabel(state: StockReadinessResponse) {
       ? `行情待补齐至 ${state.expected_trade_date}`
       : "行情待补齐至最近交易日";
   }
+  if (state.calendar_status === "stale") {
+    return "交易日历核验已过期，暂不判断行情是否最新";
+  }
   return "行情新鲜度待交易日历确认";
 }

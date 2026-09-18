@@ -15,6 +15,8 @@ const {
   getAutomationPolicies,
   getAutomationRuns,
   getAutomationSLO,
+  getTradingCalendarHealth,
+  getBetaReliabilityObservations,
   getAutomationRun,
 } = vi.hoisted(() => ({
   getOperatorContext: vi.fn(),
@@ -22,6 +24,8 @@ const {
   getAutomationPolicies: vi.fn(),
   getAutomationRuns: vi.fn(),
   getAutomationSLO: vi.fn(),
+  getTradingCalendarHealth: vi.fn(),
+  getBetaReliabilityObservations: vi.fn(),
   getAutomationRun: vi.fn(),
 }));
 
@@ -37,6 +41,8 @@ vi.mock("@zhaoniu/api-client", () => ({
     getAutomationPolicies,
     getAutomationRuns,
     getAutomationSLO,
+    getTradingCalendarHealth,
+    getBetaReliabilityObservations,
     getAutomationRun,
   }),
 }));
@@ -136,6 +142,10 @@ describe("AdminWorkspace", () => {
       pending_runs: 0,
       running_runs: 1,
       stale_active_runs: 0,
+      unclassified_failure_count: 0,
+      minimum_sample_count: 20,
+      release_gate_met: false,
+      blocking_reasons: ["insufficient_samples:queue_start"],
       metrics: [
         {
           key: "queue_start",
@@ -168,6 +178,27 @@ describe("AdminWorkspace", () => {
       ],
       failure_reasons: {},
     });
+    getTradingCalendarHealth.mockResolvedValue([
+      {
+        exchange: "SSE",
+        status: "healthy",
+        source: "akshare_sina",
+        calendar_version: "sina-trading-calendar-v1",
+        latest_trade_date: "2026-08-28",
+        checked_at: "2026-08-29T11:30:00Z",
+        reason_code: null,
+      },
+      {
+        exchange: "SZSE",
+        status: "healthy",
+        source: "akshare_sina",
+        calendar_version: "sina-trading-calendar-v1",
+        latest_trade_date: "2026-08-28",
+        checked_at: "2026-08-29T11:30:00Z",
+        reason_code: null,
+      },
+    ]);
+    getBetaReliabilityObservations.mockResolvedValue({ items: [] });
     render(
       <Providers>
         <AdminWorkspace />
@@ -186,6 +217,8 @@ describe("AdminWorkspace", () => {
     expect(await screen.findByText("自选准备 SLO")).toBeInTheDocument();
     expect(await screen.findByText("任务开始")).toBeInTheDocument();
     expect(await screen.findByText("100.0%")).toBeInTheDocument();
+    expect(await screen.findByText("交易日历核验")).toBeInTheDocument();
+    expect(await screen.findAllByText("已核验")).toHaveLength(2);
     expect(getAutomationRun).not.toHaveBeenCalled();
   });
 });

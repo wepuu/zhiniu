@@ -252,6 +252,12 @@ const reasonCodeCopy: Record<string, string> = {
   transactional_email_disabled: "事务邮件服务未启用",
   legal_review_not_approved: "法律审核尚未批准",
   data_use_not_approved: "数据使用审核尚未批准",
+  trading_calendar_missing: "尚未取得交易所日历数据",
+  trading_calendar_audit_missing: "交易所日历尚未完成健康检查",
+  trading_calendar_check_stale: "交易所日历检查已过期",
+  beta_reliability_observation_unavailable: "缺少当前发布的有效可靠性观察证据",
+  automation_still_hard_disabled: "自动化紧急停止开关仍开启",
+  watchlist_preparation_disabled: "自选研究准备功能尚未开启",
 };
 
 export function translateReasonCode(

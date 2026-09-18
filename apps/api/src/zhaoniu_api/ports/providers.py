@@ -37,12 +37,30 @@ class RawValuationObservation(BaseModel):
     payload: dict[str, object]
 
 
+class RawTradingSession(BaseModel):
+    """Untyped exchange-calendar row received from a market-data provider."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    exchange: str = Field(pattern=r"^(SSE|SZSE)$")
+    payload: dict[str, object]
+
+
 class MarketDataProvider(Protocol):
     name: str
 
     async def get_stock_master(self) -> list[RawStock]: ...
 
     async def get_daily_bars(self, symbol: str, start: date, end: date) -> list[RawDailyBar]: ...
+
+
+class TradingCalendarProvider(Protocol):
+    name: str
+
+    async def get_trading_sessions(
+        self, start: date, end: date
+    ) -> list[RawTradingSession]: ...
 
 
 class FinancialDataProvider(Protocol):

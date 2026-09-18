@@ -37,6 +37,15 @@ OHLC, duplicate-date, nonnegative amount/volume, symbol, and deterministic order
 repository writes. A successful fallback is technical availability evidence only and does not
 change AKShare's `development_evaluation` usage policy or grant commercial display rights.
 
+## Free trading-calendar input
+
+The Phase 25C adapter uses AKShare `tool_trade_date_hist_sina` (Sina's historical A-share
+trade-date list) only for development/evaluation freshness checks. It emits the same open dates
+for SSE and SZSE, records the source as `akshare_sina`, and applies the explicit 09:30–15:00
+Asia/Shanghai session boundary in the canonical model. The endpoint does not publish a
+publication/known timestamp, so ingestion time is retained conservatively. This calendar does not
+identify security-level suspensions and does not satisfy the licensed-data Beta or production gate.
+
 ## Phase 6 industry classification
 
 Phase 6 introduces a development taxonomy named `akshare_dev_industry / phase6-dev-v1` by importing

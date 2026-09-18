@@ -1,11 +1,17 @@
 from datetime import UTC, date, datetime, timedelta
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 from zhaoniu_api.ai_research.models import AIResearchBuildResult
-from zhaoniu_api.automation.models import AutomationPolicyConfiguration
+from zhaoniu_api.automation.models import (
+    AutomationPolicyConfiguration,
+    BetaReliabilityObservationCreate,
+    TradingCalendarHealth,
+)
 from zhaoniu_api.automation.service import (
+    AutomationService,
     ai_step_result,
     attempted_step_status,
     build_automation_slo_snapshot,
@@ -14,6 +20,7 @@ from zhaoniu_api.automation.service import (
     persisted_step_status,
     stable_hash,
 )
+from zhaoniu_api.config import Settings
 from zhaoniu_api.db import AutomationRunRecord, AutomationRunStepRecord
 from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import (
@@ -169,6 +176,11 @@ def test_watchlist_slo_snapshot_projects_retained_run_facts() -> None:
     assert snapshot.acceptable_terminal_rate_percent == 50.0
     assert snapshot.running_runs == 1
     assert snapshot.stale_active_runs == 1
+    assert snapshot.unclassified_failure_count == 0
+    assert snapshot.minimum_sample_count == 20
+    assert snapshot.release_gate_met is False
+    assert "insufficient_samples:queue_start" in snapshot.blocking_reasons
+    assert "stale_active_runs_present" in snapshot.blocking_reasons
     assert metrics["queue_start"].sample_count == 3
     assert metrics["queue_start"].p95_ms == 15_000
     assert metrics["queue_start"].met is False
@@ -195,3 +207,140 @@ def test_watchlist_slo_snapshot_has_unknown_metrics_without_samples() -> None:
     assert snapshot.acceptable_terminal_rate_percent is None
     assert all(item.sample_count == 0 for item in snapshot.metrics)
     assert all(item.p95_ms is None and item.met is None for item in snapshot.metrics)
+    assert snapshot.release_gate_met is False
+
+
+def test_watchlist_slo_release_gate_requires_sufficient_healthy_samples() -> None:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    runs = []
+    steps = []
+    for index in range(20):
+        run_id = uuid4()
+        created_at = now - timedelta(hours=1, minutes=index)
+        runs.append(
+            AutomationRunRecord(
+                id=run_id,
+                trigger_kind="watchlist",
+                status="succeeded",
+                created_at=created_at,
+                started_at=created_at + timedelta(seconds=2),
+            )
+        )
+        steps.extend(
+            [
+                AutomationRunStepRecord(
+                    run_id=run_id,
+                    step_key="market_sync",
+                    status="succeeded",
+                    finished_at=created_at + timedelta(seconds=30),
+                ),
+                AutomationRunStepRecord(
+                    run_id=run_id,
+                    step_key="research_build",
+                    status="skipped",
+                    error_code="research_input_unchanged",
+                    finished_at=created_at + timedelta(minutes=4),
+                ),
+                AutomationRunStepRecord(
+                    run_id=run_id,
+                    step_key="ai_research",
+                    status="succeeded",
+                    finished_at=created_at + timedelta(minutes=5),
+                ),
+            ]
+        )
+
+    snapshot = build_automation_slo_snapshot(
+        runs,
+        steps,
+        generated_at=now,
+        window_hours=24,
+    )
+
+    assert snapshot.release_gate_met is True
+    assert snapshot.blocking_reasons == []
+    assert all(item.sample_count == 20 and item.met for item in snapshot.metrics)
+
+
+def test_watchlist_slo_counts_failures_without_reason_codes() -> None:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    run_id = uuid4()
+    snapshot = build_automation_slo_snapshot(
+        [
+            AutomationRunRecord(
+                id=run_id,
+                trigger_kind="watchlist",
+                status="failed",
+                created_at=now - timedelta(minutes=1),
+                started_at=now - timedelta(seconds=58),
+            )
+        ],
+        [
+            AutomationRunStepRecord(
+                run_id=run_id,
+                step_key="market_sync",
+                status="failed",
+                finished_at=now,
+            )
+        ],
+        generated_at=now,
+        window_hours=24,
+    )
+
+    assert snapshot.unclassified_failure_count == 2
+    assert "unclassified_failures_present" in snapshot.blocking_reasons
+
+
+class _ObservationSession:
+    def __init__(self) -> None:
+        self.records: list[object] = []
+
+    def add(self, record: object) -> None:
+        self.records.append(record)
+
+    async def commit(self) -> None:
+        return None
+
+    async def refresh(self, record: object) -> None:
+        record.created_at = datetime(2026, 8, 29, 12, 1, tzinfo=UTC)  # type: ignore[attr-defined]
+
+
+async def test_freeze_beta_observation_persists_release_bound_evidence() -> None:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    snapshot = build_automation_slo_snapshot([], [], generated_at=now, window_hours=48)
+    snapshot = snapshot.model_copy(
+        update={"release_gate_met": True, "blocking_reasons": []}
+    )
+    calendar = [
+        TradingCalendarHealth(
+            exchange=exchange,
+            status="healthy",
+            source="akshare_sina",
+            calendar_version="sina-trading-calendar-v1",
+            latest_trade_date=date(2026, 8, 28),
+            checked_at=now,
+        )
+        for exchange in ("SSE", "SZSE")
+    ]
+    session = _ObservationSession()
+    service = AutomationService(session, Settings())  # type: ignore[arg-type]
+    service.slo_snapshot = AsyncMock(return_value=snapshot)  # type: ignore[method-assign]
+    service.trading_calendar_health = AsyncMock(return_value=calendar)  # type: ignore[method-assign]
+
+    result = await service.freeze_beta_reliability_observation(
+        BetaReliabilityObservationCreate(
+            environment="staging",
+            window_hours=48,
+            release_commit="a" * 40,
+            api_image_digest="sha256:" + "b" * 64,
+            web_image_digest="sha256:" + "c" * 64,
+            configuration_fingerprint="d" * 64,
+        ),
+        actor_user_id=uuid4(),
+        now=now,
+    )
+
+    assert result.status == "passed"
+    assert result.migration_head == "20260914_0030"
+    assert len(result.result_fingerprint) == 64
+    assert len(session.records) == 1

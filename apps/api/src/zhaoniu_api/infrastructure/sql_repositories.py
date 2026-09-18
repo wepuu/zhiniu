@@ -18,6 +18,7 @@ from zhaoniu_api.db import (
     IncomeStatementRecord,
     StockDailyBarRecord,
     StockRecord,
+    TradingSessionRecord,
     ValuationObservationRecord,
     WatchlistItemRecord,
     WatchlistRecord,
@@ -44,6 +45,7 @@ from zhaoniu_api.fundamentals.models import (
     StatementScope,
     ValuationObservation,
 )
+from zhaoniu_api.market_data.trading_calendar import TradingSession
 from zhaoniu_api.stock_search import normalize_stock_search_text, stock_name_search_terms
 
 
@@ -752,6 +754,51 @@ class SQLAlchemyFundamentalRepository:
             )
             for row in reversed(rows)
         ]
+
+
+class SQLAlchemyTradingSessionRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert_many(self, sessions: list[TradingSession]) -> int:
+        if not sessions:
+            return 0
+        values = [
+            {
+                "exchange": item.exchange,
+                "trade_date": item.trade_date,
+                "is_open": item.is_open,
+                "session_open_at": item.session_open_at,
+                "session_close_at": item.session_close_at,
+                "calendar_version": item.calendar_version,
+                "source": item.source,
+                "known_at": item.known_at,
+                "ingested_at": item.ingested_at,
+                "lineage_hash": item.lineage_hash,
+            }
+            for item in sessions
+        ]
+        try:
+            statement = insert(TradingSessionRecord).values(values)
+            await self._session.execute(
+                statement.on_conflict_do_update(
+                    constraint="uq_trading_session_identity",
+                    set_={
+                        "is_open": statement.excluded.is_open,
+                        "session_open_at": statement.excluded.session_open_at,
+                        "session_close_at": statement.excluded.session_close_at,
+                        "source": statement.excluded.source,
+                        "known_at": statement.excluded.known_at,
+                        "ingested_at": statement.excluded.ingested_at,
+                        "lineage_hash": statement.excluded.lineage_hash,
+                    },
+                )
+            )
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        return len(sessions)
 
 
 class SQLAlchemySyncRunRepository:

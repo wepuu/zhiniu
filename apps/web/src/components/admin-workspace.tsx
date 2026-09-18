@@ -495,6 +495,15 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
     queryFn: () => api.getAutomationSLO(24),
     refetchInterval: 30_000,
   });
+  const calendarHealth = useQuery({
+    queryKey: ["automation-calendar-health"],
+    queryFn: api.getTradingCalendarHealth,
+    refetchInterval: 60_000,
+  });
+  const observations = useQuery({
+    queryKey: ["beta-reliability-observations"],
+    queryFn: () => api.getBetaReliabilityObservations(5),
+  });
   const detail = useQuery({
     queryKey: ["automation-run", selectedRun],
     queryFn: () => api.getAutomationRun(selectedRun!),
@@ -586,7 +595,14 @@ function AutomationPanel({ capabilities }: { capabilities: string[] }) {
         </Card>
       </div>
 
-      <AutomationSLOPanel snapshot={slo.data} loading={slo.isFetching} />
+      <AutomationSLOPanel
+        snapshot={slo.data}
+        calendarHealth={calendarHealth.data}
+        latestObservation={observations.data?.items[0]}
+        loading={
+          slo.isFetching || calendarHealth.isFetching || observations.isFetching
+        }
+      />
 
       <Card className="mt-4 hidden p-5 md:block">
         <div className="flex flex-wrap items-end gap-3">
@@ -697,9 +713,15 @@ function formatSLODuration(value: number | null) {
 
 function AutomationSLOPanel({
   snapshot,
+  calendarHealth,
+  latestObservation,
   loading,
 }: {
   snapshot?: Awaited<ReturnType<typeof api.getAutomationSLO>>;
+  calendarHealth?: Awaited<ReturnType<typeof api.getTradingCalendarHealth>>;
+  latestObservation?: Awaited<
+    ReturnType<typeof api.getBetaReliabilityObservations>
+  >["items"][number];
   loading: boolean;
 }) {
   const failures = snapshot
@@ -733,6 +755,15 @@ function AutomationSLOPanel({
               : `${snapshot.acceptable_terminal_rate_percent.toFixed(1)}%`}
           </p>
           <p className="text-slate mt-1 text-[10px]">可接受终态率</p>
+          <p
+            className={`mt-1 text-[10px] ${
+              snapshot?.release_gate_met ? "text-emerald-700" : "text-amber"
+            }`}
+          >
+            {snapshot?.release_gate_met
+              ? "当前窗口满足 SLO 门槛"
+              : "当前窗口尚未满足门槛"}
+          </p>
         </div>
       </div>
 
@@ -814,6 +845,65 @@ function AutomationSLOPanel({
             </div>
           ) : (
             <p className="text-slate mt-2 text-xs">窗口内没有失败记录</p>
+          )}
+        </div>
+      </div>
+      <div className="border-ink/8 grid gap-4 border-t p-5 md:grid-cols-2">
+        <div>
+          <p className="text-slate text-[10px]">交易日历核验</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {calendarHealth?.map((item) => (
+              <div key={item.exchange} className="bg-mist rounded-xl px-3 py-2">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="font-medium">{item.exchange}</span>
+                  <span
+                    className={
+                      item.status === "healthy"
+                        ? "text-emerald-700"
+                        : "text-amber"
+                    }
+                  >
+                    {item.status === "healthy"
+                      ? "已核验"
+                      : item.status === "stale"
+                        ? "核验已过期"
+                        : "待核验"}
+                  </span>
+                </div>
+                <p className="text-slate mt-1 text-[10px]">
+                  最近交易日 {item.latest_trade_date ?? "—"} · 核验于{" "}
+                  {item.checked_at ? dateTime(item.checked_at) : "—"}
+                </p>
+              </div>
+            )) ?? <p className="text-slate text-xs">正在读取日历状态…</p>}
+          </div>
+        </div>
+        <div>
+          <p className="text-slate text-[10px]">最近冻结的稳定性证据</p>
+          {latestObservation ? (
+            <div className="bg-mist mt-2 rounded-xl px-3 py-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-data">
+                  {latestObservation.release_commit.slice(0, 8)}
+                </span>
+                <span
+                  className={
+                    latestObservation.status === "passed"
+                      ? "text-emerald-700"
+                      : "text-risk"
+                  }
+                >
+                  {latestObservation.status === "passed" ? "通过" : "未通过"}
+                </span>
+              </div>
+              <p className="text-slate mt-1 text-[10px]">
+                {latestObservation.environment} ·{" "}
+                {dateTime(latestObservation.window_started_at)}至{" "}
+                {dateTime(latestObservation.window_ended_at)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-slate mt-2 text-xs">尚未冻结稳定性观察记录</p>
           )}
         </div>
       </div>

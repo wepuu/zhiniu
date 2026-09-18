@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
     BetaFeedbackItemRecord,
+    BetaReliabilityObservationRecord,
     ProductionDeploymentEventRecord,
     ProductionReleaseApprovalRecord,
     ProductionReleaseCandidateRecord,
@@ -50,6 +51,7 @@ from zhaoniu_api.system import MIGRATION_HEAD
 RULE_SET_VERSION = "phase22-production-release-v1"
 INVITE_EVIDENCE_MAX_AGE = timedelta(hours=24)
 RESTORE_EVIDENCE_MAX_AGE = timedelta(hours=72)
+RELIABILITY_EVIDENCE_MAX_AGE = timedelta(hours=24)
 
 
 class ProductionReleaseError(ValueError):
@@ -69,6 +71,71 @@ class GateCheck:
     evidence: dict[str, object]
     expires_at: datetime | None = None
     mandatory: bool = True
+
+
+def reliability_observation_eligible(
+    observation: BetaReliabilityObservationRecord | None,
+    *,
+    now: datetime,
+) -> tuple[bool, bool, bool]:
+    """Return overall, freshness and duration eligibility for retained evidence."""
+
+    fresh = bool(
+        observation
+        and observation.window_ended_at >= now - RELIABILITY_EVIDENCE_MAX_AGE
+        and observation.window_ended_at <= now
+    )
+    has_48h = bool(
+        observation
+        and observation.window_ended_at - observation.window_started_at >= timedelta(hours=48)
+    )
+    eligible = bool(observation and observation.status == "passed" and fresh and has_48h)
+    return eligible, fresh, has_48h
+
+
+def automation_gate_checks(settings: Settings, gate_type: GateType) -> list[GateCheck]:
+    """Project automation switches for each release phase.
+
+    A closed deployment must keep every automation path stopped while an invite
+    activation must explicitly release the emergency stop and enable the
+    watchlist preparation path.  Keeping these checks in one projection avoids
+    the previous contradiction where the invite gate required the same switch
+    that user-triggered preparation needs to be off.
+    """
+
+    if gate_type == "closed_deployment":
+        return [
+            GateCheck(
+                key="automation.hard_disabled",
+                category="automation",
+                passed=settings.automation_hard_disabled,
+                evidence={"hard_disabled": settings.automation_hard_disabled},
+                reason_code=None
+                if settings.automation_hard_disabled
+                else "automation_not_hard_disabled",
+            )
+        ]
+
+    return [
+        GateCheck(
+            key="automation.emergency_stop",
+            category="automation",
+            passed=not settings.automation_hard_disabled,
+            evidence={"hard_disabled": settings.automation_hard_disabled},
+            reason_code=None
+            if not settings.automation_hard_disabled
+            else "automation_still_hard_disabled",
+        ),
+        GateCheck(
+            key="automation.watchlist_preparation",
+            category="automation",
+            passed=settings.watchlist_preparation_enabled,
+            evidence={"watchlist_preparation_enabled": settings.watchlist_preparation_enabled},
+            reason_code=None
+            if settings.watchlist_preparation_enabled
+            else "watchlist_preparation_disabled",
+        ),
+    ]
 
 
 def evidence_fingerprint(value: object) -> str:
@@ -378,13 +445,7 @@ class ProductionReleaseService:
                 {"registration_mode": self._settings.registration_mode},
                 "registration_not_closed",
             ),
-            self._check(
-                "automation.hard_disabled",
-                "automation",
-                self._settings.automation_hard_disabled,
-                {"hard_disabled": self._settings.automation_hard_disabled},
-                "automation_not_hard_disabled",
-            ),
+            *automation_gate_checks(self._settings, "closed_deployment"),
             self._check(
                 "approval.engineering",
                 "approval",
@@ -397,6 +458,23 @@ class ProductionReleaseService:
     async def _invite_activation_checks(
         self, candidate: ProductionReleaseCandidateRecord, now: datetime
     ) -> list[GateCheck]:
+        reliability = await self._session.scalar(
+            select(BetaReliabilityObservationRecord)
+            .where(
+                BetaReliabilityObservationRecord.environment == "production",
+                BetaReliabilityObservationRecord.release_commit == candidate.commit_sha,
+                BetaReliabilityObservationRecord.api_image_digest == candidate.api_image_digest,
+                BetaReliabilityObservationRecord.web_image_digest == candidate.web_image_digest,
+                BetaReliabilityObservationRecord.configuration_fingerprint
+                == candidate.configuration_fingerprint,
+                BetaReliabilityObservationRecord.migration_head == candidate.migration_head,
+            )
+            .order_by(BetaReliabilityObservationRecord.created_at.desc())
+            .limit(1)
+        )
+        reliability_eligible, reliability_fresh, reliability_has_48h = (
+            reliability_observation_eligible(reliability, now=now)
+        )
         acceptance = await self._session.scalar(
             select(ProviderAcceptanceRunRecord)
             .where(ProviderAcceptanceRunRecord.environment == "production")
@@ -490,6 +568,24 @@ class ProductionReleaseService:
                 "closed_deployment_not_recorded",
             ),
             self._check(
+                "reliability.observation",
+                "quality",
+                reliability_eligible,
+                {
+                    "observation_id": str(reliability.id) if reliability else None,
+                    "status": reliability.status if reliability else "missing",
+                    "fresh": reliability_fresh,
+                    "window_48h": reliability_has_48h,
+                    "release_bound": reliability is not None,
+                },
+                "beta_reliability_observation_unavailable",
+                (
+                    reliability.window_ended_at + RELIABILITY_EVIDENCE_MAX_AGE
+                    if reliability
+                    else None
+                ),
+            ),
+            self._check(
                 "registration.invite_only",
                 "access",
                 self._settings.registration_mode == "invite_only",
@@ -577,13 +673,7 @@ class ProductionReleaseService:
                 {"active_users": active_users, "capacity": self._settings.beta_max_active_users},
                 "beta_capacity_reached",
             ),
-            self._check(
-                "automation.hard_disabled",
-                "automation",
-                self._settings.automation_hard_disabled,
-                {"hard_disabled": self._settings.automation_hard_disabled},
-                "automation_not_hard_disabled",
-            ),
+            *automation_gate_checks(self._settings, "invite_activation"),
             *[
                 self._check(
                     f"approval.{role}",
