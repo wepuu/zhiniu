@@ -145,7 +145,11 @@ def test_stale_calendar_suppresses_a_false_market_freshness_claim() -> None:
 def test_stalled_preparation_is_not_reported_as_78_percent_queued() -> None:
     service = StockReadinessService(  # type: ignore[arg-type]
         None,
-        Settings(automation_hard_disabled=False, watchlist_preparation_enabled=True),
+        Settings(
+            automation_hard_disabled=False,
+            automation_ai_enabled=True,
+            watchlist_preparation_enabled=True,
+        ),
     )
     stale = SimpleNamespace(
         status="pending",
