@@ -177,6 +177,14 @@ export type AutomationRunDetail = components["schemas"]["AutomationRunDetail"];
 export type AutomationSLOMetric = components["schemas"]["AutomationSLOMetric"];
 export type AutomationSLOSnapshot =
   components["schemas"]["AutomationSLOSnapshot"];
+export type TradingCalendarHealth =
+  components["schemas"]["TradingCalendarHealth"];
+export type BetaReliabilityObservationCreate =
+  components["schemas"]["BetaReliabilityObservationCreate"];
+export type BetaReliabilityObservation =
+  components["schemas"]["BetaReliabilityObservation"];
+export type BetaReliabilityObservationList =
+  components["schemas"]["BetaReliabilityObservationList"];
 export type AutomationTriggerResponse =
   components["schemas"]["AutomationTriggerResponse"];
 export type ComparisonCatalogResponse =
@@ -1008,6 +1016,25 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getAutomationSLO(windowHours = 24) {
       return request<AutomationSLOSnapshot>(
         `/api/v1/admin/automation/slo?window_hours=${windowHours}`,
+      );
+    },
+    getTradingCalendarHealth() {
+      return request<TradingCalendarHealth[]>(
+        "/api/v1/admin/automation/calendar-health",
+      );
+    },
+    getBetaReliabilityObservations(limit = 20) {
+      return request<BetaReliabilityObservationList>(
+        `/api/v1/admin/automation/observations?limit=${limit}`,
+      );
+    },
+    freezeBetaReliabilityObservation(
+      payload: BetaReliabilityObservationCreate,
+    ) {
+      return jsonRequest<BetaReliabilityObservation>(
+        "/api/v1/admin/automation/observations",
+        "POST",
+        payload,
       );
     },
     getAutomationRun(runId: string) {

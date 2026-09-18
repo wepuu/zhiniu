@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, date, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, or_, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -13,6 +14,7 @@ from zhaoniu_api.db import (
     AIResearchOutputRecord,
     AutomationRunRecord,
     AutomationRunStepRecord,
+    DataSyncRunRecord,
     EventRadarSnapshotRecord,
     PeerPositionObservationRecord,
     ResearchSnapshotRecord,
@@ -21,6 +23,12 @@ from zhaoniu_api.db import (
     TradingSessionRecord,
 )
 from zhaoniu_api.domain.models import AdjustType, resolve_symbol
+from zhaoniu_api.market_data.trading_calendar import (
+    CALENDAR_PROVIDER,
+    CALENDAR_SOURCE,
+    CALENDAR_VERSION,
+    calendar_health_status,
+)
 from zhaoniu_api.schemas import (
     MarketFreshness,
     StockReadinessResponse,
@@ -29,6 +37,16 @@ from zhaoniu_api.schemas import (
 )
 
 StageKey = Literal["market", "deterministic_research", "extended_research", "ai_research"]
+MARKET_PUBLICATION_GRACE = timedelta(minutes=30)
+
+
+@dataclass(frozen=True, slots=True)
+class CalendarContext:
+    expected_trade_date: date | None = None
+    status: Literal["healthy", "stale", "unknown"] = "unknown"
+    checked_at: datetime | None = None
+    source: str | None = None
+    calendar_version: str | None = None
 
 _STAGE_STEPS: dict[StageKey, set[str]] = {
     "market": {"market_sync"},
@@ -117,7 +135,7 @@ class StockReadinessService:
             canonical,
             extra=(AIResearchOutputRecord.research_type == "stock_health"),
         )
-        expected_trade_dates = await self._expected_trade_dates(
+        calendar_context = await self._calendar_context(
             {stock.exchange for stock in stocks.values()}
         )
         step_rows = (
@@ -143,7 +161,7 @@ class StockReadinessService:
                 peers.get(symbol),
                 ai_outputs.get(symbol),
                 steps.get(symbol, {}),
-                expected_trade_date=expected_trade_dates.get(stocks[symbol].exchange),
+                calendar=calendar_context.get(stocks[symbol].exchange),
             )
             for symbol in canonical
         ]
@@ -164,23 +182,37 @@ class StockReadinessService:
         rows = (await self._session.scalars(statement)).all()
         return {str(row.symbol): row for row in rows}
 
-    async def _expected_trade_dates(self, exchanges: set[str]) -> dict[str, date]:
-        """Return the latest closed open session per exchange, if available."""
+    async def _calendar_context(self, exchanges: set[str]) -> dict[str, CalendarContext]:
+        """Return source-backed dates only while the calendar audit is recent."""
 
         if not exchanges:
             return {}
         now = datetime.now(UTC)
+        availability_cutoff = now - MARKET_PUBLICATION_GRACE
+        checked_at = await self._session.scalar(
+            select(func.max(DataSyncRunRecord.finished_at)).where(
+                DataSyncRunRecord.dataset == "trading_calendar",
+                DataSyncRunRecord.provider == CALENDAR_PROVIDER,
+                DataSyncRunRecord.status == "succeeded",
+            )
+        )
         statement = (
             select(TradingSessionRecord)
             .where(
                 TradingSessionRecord.exchange.in_(exchanges),
                 TradingSessionRecord.is_open.is_(True),
+                TradingSessionRecord.source == CALENDAR_SOURCE,
+                TradingSessionRecord.calendar_version == CALENDAR_VERSION,
                 TradingSessionRecord.trade_date <= now.date(),
                 or_(
-                    TradingSessionRecord.session_close_at.is_(None),
-                    TradingSessionRecord.session_close_at <= now,
+                    TradingSessionRecord.session_close_at <= availability_cutoff,
+                    and_(
+                        TradingSessionRecord.session_close_at.is_(None),
+                        TradingSessionRecord.trade_date < now.date(),
+                    ),
                 ),
             )
+            .distinct(TradingSessionRecord.exchange)
             .order_by(
                 TradingSessionRecord.exchange,
                 TradingSessionRecord.trade_date.desc(),
@@ -188,9 +220,36 @@ class StockReadinessService:
             )
         )
         rows = (await self._session.scalars(statement)).all()
-        result: dict[str, date] = {}
+        latest_rows: dict[str, TradingSessionRecord] = {}
         for row in rows:
-            result.setdefault(row.exchange, row.trade_date)
+            latest_rows.setdefault(row.exchange, row)
+        result: dict[str, CalendarContext] = {}
+        for exchange in exchanges:
+            latest_row = latest_rows.get(exchange)
+            if latest_row is None:
+                result[exchange] = CalendarContext()
+                continue
+            if checked_at is None:
+                result[exchange] = CalendarContext(
+                    source=latest_row.source,
+                    calendar_version=latest_row.calendar_version,
+                )
+                continue
+            normalized_check = (
+                checked_at.replace(tzinfo=UTC)
+                if checked_at.tzinfo is None
+                else checked_at.astimezone(UTC)
+            )
+            status = calendar_health_status(normalized_check, now=now)
+            result[exchange] = CalendarContext(
+                expected_trade_date=(
+                    latest_row.trade_date if status == "healthy" else None
+                ),
+                status=status,
+                checked_at=normalized_check,
+                source=latest_row.source,
+                calendar_version=latest_row.calendar_version,
+            )
         return result
 
     def _task_state(
@@ -240,7 +299,11 @@ class StockReadinessService:
         step_groups: dict[str, list[AutomationRunStepRecord]],
         *,
         expected_trade_date: date | None = None,
+        calendar: CalendarContext | None = None,
     ) -> StockReadinessResponse:
+        if calendar is None:
+            calendar = CalendarContext(expected_trade_date=expected_trade_date)
+        effective_expected_date = calendar.expected_trade_date
         stages: list[StockReadinessStage] = []
 
         def stage(
@@ -342,7 +405,9 @@ class StockReadinessService:
             updated_at=max(updated_values, default=None),
             latest_price=getattr(bar, "close", None),
             latest_trade_date=getattr(bar, "trade_date", None),
-            market_freshness=market_data_freshness(bar, expected_trade_date),
-            expected_trade_date=expected_trade_date,
+            market_freshness=market_data_freshness(bar, effective_expected_date),
+            expected_trade_date=effective_expected_date,
+            calendar_status=calendar.status,
+            calendar_checked_at=calendar.checked_at,
             stages=stages,
         )

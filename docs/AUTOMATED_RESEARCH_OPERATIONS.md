@@ -88,6 +88,7 @@ uv run python -m zhaoniu_api.cli automation-tick
 uv run python -m zhaoniu_api.cli automation-run priority_daily_refresh
 uv run python -m zhaoniu_api.cli automation-resume <run-id>
 uv run python -m zhaoniu_api.cli automation-refresh-stock 600519
+uv run python -m zhaoniu_api.cli sync-trading-calendar
 ```
 
 ### Watchlist SLO projection
@@ -104,8 +105,21 @@ run is acceptable when it is `succeeded`, `succeeded_with_warnings`, or `partial
 partial research dimensions remain truthful coverage outcomes rather than fabricated success.
 
 Stock readiness also reports `market_freshness` (`current`, `stale`, or `unknown`) and an optional
-`expected_trade_date`. The expected date comes only from the versioned `trading_sessions` table;
-until a licensed calendar source is accepted, `unknown` is the intentional fail-closed result.
+`expected_trade_date`. The expected date comes only from the versioned `trading_sessions` table.
+Development/evaluation operators can populate it with the free AKShare/Sina adapter using
+`uv run python -m zhaoniu_api.cli sync-trading-calendar`; this remains outside the licensed Beta
+acceptance gate and is never a weekday heuristic.
+
+The release-level SLO result requires 20 samples per dimension, at least 95 percent acceptable
+terminal runs, no stale active runs and no unclassified failures. The readiness service also
+requires a successful calendar check within 36 hours and waits through a 30-minute post-close
+publication grace before expecting the current session's daily bar.
+
+`GET /api/v1/admin/automation/calendar-health` exposes bounded SSE/SZSE calendar health.
+Elevated operations users freeze append-only, release-bound evidence with
+`POST /api/v1/admin/automation/observations`; the observation history is available from
+`GET /api/v1/admin/automation/observations`. These records do not replace host OOM/restart or
+broker-depth checks and do not turn free data into licensed Beta evidence.
 
 ## Enablement checklist
 

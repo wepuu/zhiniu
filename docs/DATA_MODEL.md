@@ -345,6 +345,17 @@ are introduced.
 
 Migration `20260914_0029` adds `trading_sessions`, a source-backed and versioned exchange calendar
 contract. Each row records exchange, trade date, open/closed state, session timestamps, calendar
-version, source, knowledge/ingestion times and a lineage hash. The readiness service uses the latest
-closed open session for freshness only; an empty table yields `market_freshness=unknown` rather than
-assuming weekdays, holidays or suspension behavior.
+version, source, knowledge/ingestion times and a lineage hash. The free development/evaluation
+`akshare_sina` adapter is ingested through `sync-trading-calendar`; it emits shared SSE/SZSE dates
+with explicit China-time session boundaries and retains source lineage. The readiness service uses
+the latest closed open session for freshness only; an empty table yields
+`market_freshness=unknown` rather than assuming weekdays, holidays or suspension behavior. This
+free source is not a production/Beta licensing approval. Because the free endpoint supplies dates
+but no publication timestamp, the adapter records the fetch time conservatively as `known_at`.
+
+Migration `20260914_0030` adds `beta_reliability_observations`. These immutable records bind a
+24/48-hour watchlist SLO projection and trading-calendar health facts to an environment, release
+commit, immutable image digests, migration head and configuration fingerprint. `slo_snapshot`,
+`calendar_health` and `blocking_reasons` are retained as bounded JSON contracts; the deterministic
+`result_fingerprint` makes later evidence substitution detectable. Records are append-only and
+retain the operator identity that froze the observation.

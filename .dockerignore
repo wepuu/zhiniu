@@ -6,6 +6,10 @@
 node_modules
 **/node_modules
 **/.next
+**/.next-*
+**/playwright-report
+**/test-results
+**/*.tsbuildinfo
 **/__pycache__
 **/.pytest_cache
 **/.mypy_cache

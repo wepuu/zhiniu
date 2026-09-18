@@ -20,10 +20,14 @@ from zhaoniu_api.infrastructure.sql_repositories import (
     SQLAlchemyFundamentalRepository,
     SQLAlchemyStockRepository,
     SQLAlchemySyncRunRepository,
+    SQLAlchemyTradingSessionRepository,
 )
+from zhaoniu_api.market_data.akshare_calendar_provider import AKShareTradingCalendarProvider
 from zhaoniu_api.market_data.akshare_provider import AKShareProvider
 from zhaoniu_api.market_data.normalizer import AKShareNormalizer
 from zhaoniu_api.market_data.service import MarketDataSyncService
+from zhaoniu_api.market_data.trading_calendar import AKShareTradingCalendarNormalizer
+from zhaoniu_api.market_data.trading_calendar_service import TradingCalendarSyncService
 from zhaoniu_api.peer_research.service import PeerResearchService
 from zhaoniu_api.peer_research.sql_repository import SQLAlchemyPeerResearchRepository
 from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
@@ -49,6 +53,19 @@ def build_market_data_service(session: AsyncSession) -> MarketDataSyncService:
         normalizer=AKShareNormalizer(),
         stocks=SQLAlchemyStockRepository(session),
         bars=SQLAlchemyDailyBarRepository(session),
+        runs=SQLAlchemySyncRunRepository(session),
+    )
+
+
+def build_trading_calendar_service(session: AsyncSession) -> TradingCalendarSyncService:
+    settings = get_settings()
+    return TradingCalendarSyncService(
+        provider=AKShareTradingCalendarProvider(
+            max_attempts=settings.akshare_max_attempts,
+            retry_backoff_seconds=settings.akshare_retry_backoff_seconds,
+        ),
+        normalizer=AKShareTradingCalendarNormalizer(),
+        sessions=SQLAlchemyTradingSessionRepository(session),
         runs=SQLAlchemySyncRunRepository(session),
     )
 

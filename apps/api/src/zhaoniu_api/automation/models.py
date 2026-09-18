@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AutomationRunStatus = Literal[
     "pending",
@@ -145,8 +145,96 @@ class AutomationSLOSnapshot(BaseModel):
     pending_runs: int = Field(ge=0)
     running_runs: int = Field(ge=0)
     stale_active_runs: int = Field(ge=0)
+    unclassified_failure_count: int = Field(ge=0)
+    minimum_sample_count: int = Field(ge=1)
+    release_gate_met: bool
+    blocking_reasons: list[str] = Field(default_factory=list)
     metrics: list[AutomationSLOMetric]
     failure_reasons: dict[str, int]
+
+
+CalendarHealthStatus = Literal["healthy", "stale", "unknown"]
+
+
+class TradingCalendarHealth(BaseModel):
+    exchange: Literal["SSE", "SZSE"]
+    status: CalendarHealthStatus
+    source: str | None = None
+    calendar_version: str | None = None
+    latest_trade_date: date | None = None
+    checked_at: datetime | None = None
+    reason_code: str | None = None
+
+
+BetaObservationStatus = Literal["passed", "failed"]
+
+
+class BetaReliabilityObservationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    environment: Literal["staging", "production"]
+    window_hours: Literal[24, 48] = 48
+    release_commit: str = Field(min_length=40, max_length=64)
+    api_image_digest: str = Field(min_length=71, max_length=71)
+    web_image_digest: str = Field(min_length=71, max_length=71)
+    configuration_fingerprint: str = Field(min_length=64, max_length=64)
+
+    @field_validator("release_commit")
+    @classmethod
+    def validate_commit(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if len(normalized) not in {40, 64} or any(
+            character not in "0123456789abcdef" for character in normalized
+        ):
+            raise ValueError("release_commit_must_be_hex")
+        return normalized
+
+    @field_validator("configuration_fingerprint")
+    @classmethod
+    def validate_fingerprint(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if len(normalized) != 64 or any(
+            character not in "0123456789abcdef" for character in normalized
+        ):
+            raise ValueError("configuration_fingerprint_must_be_sha256")
+        return normalized
+
+    @field_validator("api_image_digest", "web_image_digest")
+    @classmethod
+    def validate_digest(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        digest = normalized.removeprefix("sha256:")
+        if (
+            not normalized.startswith("sha256:")
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise ValueError("image_digest_must_be_sha256")
+        return normalized
+
+
+class BetaReliabilityObservation(BaseModel):
+    id: UUID
+    environment: Literal["staging", "production"]
+    status: BetaObservationStatus
+    rule_set_version: str
+    release_commit: str
+    api_image_digest: str
+    web_image_digest: str
+    migration_head: str
+    configuration_fingerprint: str
+    window_started_at: datetime
+    window_ended_at: datetime
+    slo_snapshot: AutomationSLOSnapshot
+    calendar_health: list[TradingCalendarHealth]
+    blocking_reasons: list[str]
+    result_fingerprint: str
+    created_by_user_id: UUID
+    created_at: datetime
+
+
+class BetaReliabilityObservationList(BaseModel):
+    items: list[BetaReliabilityObservation]
 
 
 class AutomationTriggerResponse(BaseModel):

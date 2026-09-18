@@ -4,14 +4,16 @@ import pytest
 from zhaoniu_api.domain.models import Watchlist
 from zhaoniu_api.infrastructure.mock_repositories import InMemoryWatchlistRepository
 from zhaoniu_api.infrastructure.sql_repositories import SQLAlchemyStockRepository
-from zhaoniu_api.ports.providers import MarketDataProvider
-from zhaoniu_api.ports.repositories import StockRepository
+from zhaoniu_api.ports.providers import MarketDataProvider, TradingCalendarProvider
+from zhaoniu_api.ports.repositories import StockRepository, TradingSessionRepository
 
 
 def test_port_contracts_are_runtime_structural() -> None:
     assert hasattr(StockRepository, "search")
     assert hasattr(MarketDataProvider, "get_stock_master")
     assert hasattr(MarketDataProvider, "get_daily_bars")
+    assert hasattr(TradingCalendarProvider, "get_trading_sessions")
+    assert hasattr(TradingSessionRepository, "upsert_many")
 
 
 @pytest.mark.asyncio

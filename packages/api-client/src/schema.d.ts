@@ -1954,6 +1954,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/automation/calendar-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trading Calendar Health */
+        get: operations["get_trading_calendar_health_api_v1_admin_automation_calendar_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/automation/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Beta Reliability Observations */
+        get: operations["list_beta_reliability_observations_api_v1_admin_automation_observations_get"];
+        put?: never;
+        /** Freeze Beta Reliability Observation */
+        post: operations["freeze_beta_reliability_observation_api_v1_admin_automation_observations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/automation/runs/{run_id}": {
         parameters: {
             query?: never;
@@ -2586,6 +2621,14 @@ export interface components {
             running_runs: number;
             /** Stale Active Runs */
             stale_active_runs: number;
+            /** Unclassified Failure Count */
+            unclassified_failure_count: number;
+            /** Minimum Sample Count */
+            minimum_sample_count: number;
+            /** Release Gate Met */
+            release_gate_met: boolean;
+            /** Blocking Reasons */
+            blocking_reasons?: string[];
             /** Metrics */
             metrics: components["schemas"]["AutomationSLOMetric"][];
             /** Failure Reasons */
@@ -2935,6 +2978,90 @@ export interface components {
         BetaRecipientsAdd: {
             /** Emails */
             emails: string[];
+        };
+        /** BetaReliabilityObservation */
+        BetaReliabilityObservation: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "staging" | "production";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "failed";
+            /** Rule Set Version */
+            rule_set_version: string;
+            /** Release Commit */
+            release_commit: string;
+            /** Api Image Digest */
+            api_image_digest: string;
+            /** Web Image Digest */
+            web_image_digest: string;
+            /** Migration Head */
+            migration_head: string;
+            /** Configuration Fingerprint */
+            configuration_fingerprint: string;
+            /**
+             * Window Started At
+             * Format: date-time
+             */
+            window_started_at: string;
+            /**
+             * Window Ended At
+             * Format: date-time
+             */
+            window_ended_at: string;
+            slo_snapshot: components["schemas"]["AutomationSLOSnapshot"];
+            /** Calendar Health */
+            calendar_health: components["schemas"]["TradingCalendarHealth"][];
+            /** Blocking Reasons */
+            blocking_reasons: string[];
+            /** Result Fingerprint */
+            result_fingerprint: string;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** BetaReliabilityObservationCreate */
+        BetaReliabilityObservationCreate: {
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "staging" | "production";
+            /**
+             * Window Hours
+             * @default 48
+             * @enum {integer}
+             */
+            window_hours: 24 | 48;
+            /** Release Commit */
+            release_commit: string;
+            /** Api Image Digest */
+            api_image_digest: string;
+            /** Web Image Digest */
+            web_image_digest: string;
+            /** Configuration Fingerprint */
+            configuration_fingerprint: string;
+        };
+        /** BetaReliabilityObservationList */
+        BetaReliabilityObservationList: {
+            /** Items */
+            items: components["schemas"]["BetaReliabilityObservation"][];
         };
         /** CalculationTrace */
         CalculationTrace: {
@@ -6257,6 +6384,14 @@ export interface components {
             market_freshness: "current" | "stale" | "unknown";
             /** Expected Trade Date */
             expected_trade_date?: string | null;
+            /**
+             * Calendar Status
+             * @default unknown
+             * @enum {string}
+             */
+            calendar_status: "healthy" | "stale" | "unknown";
+            /** Calendar Checked At */
+            calendar_checked_at?: string | null;
             /** Stages */
             stages: components["schemas"]["StockReadinessStage"][];
         };
@@ -6367,6 +6502,29 @@ export interface components {
              * Format: date
              */
             effective_on: string;
+        };
+        /** TradingCalendarHealth */
+        TradingCalendarHealth: {
+            /**
+             * Exchange
+             * @enum {string}
+             */
+            exchange: "SSE" | "SZSE";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "stale" | "unknown";
+            /** Source */
+            source?: string | null;
+            /** Calendar Version */
+            calendar_version?: string | null;
+            /** Latest Trade Date */
+            latest_trade_date?: string | null;
+            /** Checked At */
+            checked_at?: string | null;
+            /** Reason Code */
+            reason_code?: string | null;
         };
         /** UserResponse */
         UserResponse: {
@@ -10647,6 +10805,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationSLOSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trading_calendar_health_api_v1_admin_automation_calendar_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingCalendarHealth"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_beta_reliability_observations_api_v1_admin_automation_observations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaReliabilityObservationList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_beta_reliability_observation_api_v1_admin_automation_observations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaReliabilityObservationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaReliabilityObservation"];
                 };
             };
             /** @description Validation Error */

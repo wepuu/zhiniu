@@ -10,6 +10,7 @@ import { CheckCircle2, CircleX, Play, RotateCcw, Rocket } from "lucide-react";
 import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
+import { translateReasonCode } from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
@@ -223,7 +224,8 @@ export function ProductionReleasePanel({
                             {item.check_key}
                             {item.reason_code && (
                               <span className="text-slate ml-1">
-                                · {item.reason_code}
+                                ·{" "}
+                                {translateReasonCode(item.reason_code, "admin")}
                               </span>
                             )}
                           </span>

@@ -55,6 +55,7 @@ StockReadinessStatus = Literal[
     "queued", "preparing", "ready", "partial", "failed", "paused", "unsupported"
 ]
 MarketFreshness = Literal["current", "stale", "unknown"]
+CalendarHealthStatus = Literal["healthy", "stale", "unknown"]
 
 
 class StockReadinessStage(BaseModel):
@@ -76,6 +77,8 @@ class StockReadinessResponse(BaseModel):
     latest_trade_date: date | None = None
     market_freshness: MarketFreshness = "unknown"
     expected_trade_date: date | None = None
+    calendar_status: CalendarHealthStatus = "unknown"
+    calendar_checked_at: datetime | None = None
     stages: list[StockReadinessStage]
 
 

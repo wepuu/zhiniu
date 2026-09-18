@@ -13,7 +13,7 @@ Phase 22 的发布证据、双阶段门禁、职责分离、管理 API、CLI 和
 3. `closed_deployment` 检查生产安全配置、数据库和候选迁移头、连续质量/E2E/安全结果、72 小时内恢复演练、注册关闭、自动化硬关闭及工程批准。通过后为 `ready_closed`。
 4. CI/CD 部署同一镜像；记录不可变部署引用前，服务端会再次实时执行关闭部署检查。成功后为 `deployed_observing`。
 5. 完成观察后，将动态访问模式切换为 `invite_only`。此动态门禁状态不属于镜像 digest；每次评估会把实际值写入门禁证据。
-6. `invite_activation` 要求 24 小时内的 production / production usage scope Provider 验收、真实 Resend 凭证与健康诊断、真实 delivered 邮件和已处理 webhook、法律与数据使用批准、P0/P1 为零、容量可用、自动化硬关闭，以及工程、数据合规、产品运营三个不同人的批准。
+6. `invite_activation` 要求与当前 commit、API/Web 镜像、迁移头和配置指纹精确绑定的 48 小时可靠性观察（结束时间不超过 24 小时），并要求 24 小时内的 production / production usage scope Provider 验收、真实 Resend 凭证与健康诊断、真实 delivered 邮件和已处理 webhook、法律与数据使用批准、P0/P1 为零、容量可用、释放紧急自动化停止开关并开启受控自选准备，以及工程、数据合规、产品运营三个不同人的批准。
 7. 记录 `released` 前服务端再次实时执行全部邀请检查。任何漂移都会拒绝状态推进。事故可记录 `failed` 或 `rolled_back`，但不会删除此前证据。
 
 ## 职责与权限
@@ -44,11 +44,13 @@ uv run python -m zhaoniu_api.cli run-production-release-gate CANDIDATE_ID --gate
 - Phase 22 不开放公开注册、不自动发送 Beta 邀请、不启用全市场自动化。
 - 不允许用模拟邮件、开发用途数据或单独重跑成功替代真实证据。
 - `ready_closed`、`deployed_observing` 和 `ready_invites` 都不是“生产就绪”宣传口径；只有流水线记录 `released` 且当前证据可追溯时，才表示内部发布状态完成。
+- `closed_deployment` 必须保持 `AUTOMATION_HARD_DISABLED=true`；`invite_activation` 则必须同时满足 `AUTOMATION_HARD_DISABLED=false` 与 `WATCHLIST_PREPARATION_ENABLED=true`，否则自选添加后的准备任务会被系统暂停。
+- `invite_activation` 不接受只绑定分支名、浮动 tag 或另一套配置的观察记录；可靠性证据必须与候选发布的不可变标识完全一致。
 - 生产 Resend 域名、Provider 商业用途授权和真实生产验收仍是外部前置条件；缺失时门禁保持阻断。
 
 ## 验收
 
-- 迁移头：`20260826_0027`，`alembic check` 无 ORM 漂移。
+- 当前迁移头：`20260914_0030`，`alembic check` 无 ORM 漂移。
 - 新增公开面仅为受保护的 `/api/v1/admin/releases` 管理路由，不改变研究 API 合同。
 - 所有失败使用稳定 reason code；证据仅含有界、非敏感摘要及 SHA-256 指纹。
 - 同一失败不能通过覆盖旧记录消失：每次 gate run 和 item 都是新行。

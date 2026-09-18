@@ -108,7 +108,8 @@ Database-owned automation policies and immutable revisions, a single Celery Beat
 priority-universe runs, allow-listed symbol/industry/run steps, change-aware downstream rebuilds,
 leases and resumable failures, automatic signal and in-app alert projection, an optional bounded AI
 lane, and a desktop-first operations workspace. Full-market screening schedules, free-form cron,
-user schedules, exchange-calendar semantics and automated marketing email remain deferred.
+user schedules and automated marketing email remain deferred; source-backed exchange-calendar
+ingestion is addressed for development/evaluation in Phase 25C below.
 
 ## Phase 16 - Company Research Timeline & Event Engine V2 (implemented)
 
@@ -226,8 +227,27 @@ Phase 20–22 gates pass. Factor/backtest work does not begin until point-in-tim
 survivorship controls are available.
 
 The first Phase 25B reliability increment adds migration `20260914_0029` and the additive readiness
-fields `market_freshness` and `expected_trade_date`. They remain unknown until a licensed, versioned
-SSE/SZSE calendar is ingested; no weekday heuristic is used.
+fields `market_freshness` and `expected_trade_date`. They remain unknown until a versioned SSE/SZSE
+calendar is ingested; no weekday heuristic is used. The free development/evaluation calendar is
+described below and does not satisfy the licensed-data gate.
+
+The Phase 25C gate-alignment increment keeps `AUTOMATION_HARD_DISABLED=true` for closed deployment,
+then requires `AUTOMATION_HARD_DISABLED=false` together with
+`WATCHLIST_PREPARATION_ENABLED=true` before invite activation. This preserves an emergency stop
+without blocking the user-triggered preparation path; scheduled database policies remain separately
+controlled.
+
+The Phase 25C data-foundation increment adds the free `akshare_sina` trading-calendar adapter and
+the `sync-trading-calendar` CLI. It populates the existing versioned `trading_sessions` contract
+for development/evaluation freshness checks, and the scheduled pipeline refreshes it once per day,
+without relaxing the licensed-data Beta gate or adding weekday guesses.
+
+The Phase 25D reliability-evidence increment adds migration `20260914_0030`, recent calendar-check
+health, a 30-minute post-close publication grace, explicit stale/unknown calendar UX, minimum SLO
+sample thresholds and immutable 24/48-hour observations bound to release artifacts and
+configuration. The operations console shows live SLOs, SSE/SZSE calendar health and the latest
+frozen result. Host OOM/restart and broker-depth evidence remains part of the deployment checklist;
+external invitation remains blocked while only development/evaluation data sources are configured.
 
 ## Future - Factor / Backtest
 

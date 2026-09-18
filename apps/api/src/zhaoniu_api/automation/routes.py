@@ -12,6 +12,10 @@ from zhaoniu_api.automation.models import (
     AutomationRunListResponse,
     AutomationSLOSnapshot,
     AutomationTriggerResponse,
+    BetaReliabilityObservation,
+    BetaReliabilityObservationCreate,
+    BetaReliabilityObservationList,
+    TradingCalendarHealth,
 )
 from zhaoniu_api.automation.service import POLICY_KEY
 from zhaoniu_api.config import get_settings
@@ -118,6 +122,65 @@ async def get_slo_snapshot(
 ) -> AutomationSLOSnapshot:
     _require(context, operators, "automation.read")
     return await automation.slo_snapshot(window_hours)
+
+
+@router.get("/calendar-health", response_model=list[TradingCalendarHealth])
+async def get_trading_calendar_health(
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    automation: AutomationServiceDependency,
+) -> list[TradingCalendarHealth]:
+    _require(context, operators, "automation.read")
+    return await automation.trading_calendar_health()
+
+
+@router.get("/observations", response_model=BetaReliabilityObservationList)
+async def list_beta_reliability_observations(
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    automation: AutomationServiceDependency,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> BetaReliabilityObservationList:
+    _require(context, operators, "automation.read")
+    return BetaReliabilityObservationList(
+        items=await automation.list_beta_reliability_observations(limit=limit)
+    )
+
+
+@router.post(
+    "/observations",
+    response_model=BetaReliabilityObservation,
+    status_code=status.HTTP_201_CREATED,
+)
+async def freeze_beta_reliability_observation(
+    payload: BetaReliabilityObservationCreate,
+    request: Request,
+    _csrf: CSRFSafe,
+    user: CurrentUser,
+    context: OperatorContextDependency,
+    operators: OperatorServiceDependency,
+    automation: AutomationServiceDependency,
+) -> BetaReliabilityObservation:
+    _require(context, operators, "automation.manage", elevated=True)
+    result = await automation.freeze_beta_reliability_observation(
+        payload,
+        actor_user_id=user.id,
+    )
+    await operators.audit(
+        user.id,
+        context,
+        "automation.beta_reliability.freeze",
+        "beta_reliability_observation",
+        str(result.id),
+        request_id=request.headers.get("x-request-id"),
+        metadata={
+            "environment": result.environment,
+            "status": result.status,
+            "release_commit": result.release_commit,
+            "result_fingerprint": result.result_fingerprint,
+        },
+    )
+    return result
 
 
 @router.get("/runs/{run_id}", response_model=AutomationRunDetail)

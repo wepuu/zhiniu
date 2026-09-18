@@ -7286,6 +7286,177 @@
         }
       }
     },
+    "/api/v1/admin/automation/calendar-health": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Get Trading Calendar Health",
+        "operationId": "get_trading_calendar_health_api_v1_admin_automation_calendar_health_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TradingCalendarHealth"
+                  },
+                  "title": "Response Get Trading Calendar Health Api V1 Admin Automation Calendar Health Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/automation/observations": {
+      "get": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "List Beta Reliability Observations",
+        "operationId": "list_beta_reliability_observations_api_v1_admin_automation_observations_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaReliabilityObservationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "automation operations"
+        ],
+        "summary": "Freeze Beta Reliability Observation",
+        "operationId": "freeze_beta_reliability_observation_api_v1_admin_automation_observations_post",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaReliabilityObservationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaReliabilityObservation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/automation/runs/{run_id}": {
       "get": {
         "tags": [
@@ -8851,6 +9022,27 @@
             "minimum": 0.0,
             "title": "Stale Active Runs"
           },
+          "unclassified_failure_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unclassified Failure Count"
+          },
+          "minimum_sample_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Minimum Sample Count"
+          },
+          "release_gate_met": {
+            "type": "boolean",
+            "title": "Release Gate Met"
+          },
+          "blocking_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blocking Reasons"
+          },
           "metrics": {
             "items": {
               "$ref": "#/components/schemas/AutomationSLOMetric"
@@ -8877,6 +9069,9 @@
           "pending_runs",
           "running_runs",
           "stale_active_runs",
+          "unclassified_failure_count",
+          "minimum_sample_count",
+          "release_gate_met",
           "metrics",
           "failure_reasons"
         ],
@@ -9763,6 +9958,188 @@
           "emails"
         ],
         "title": "BetaRecipientsAdd"
+      },
+      "BetaReliabilityObservation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "staging",
+              "production"
+            ],
+            "title": "Environment"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "rule_set_version": {
+            "type": "string",
+            "title": "Rule Set Version"
+          },
+          "release_commit": {
+            "type": "string",
+            "title": "Release Commit"
+          },
+          "api_image_digest": {
+            "type": "string",
+            "title": "Api Image Digest"
+          },
+          "web_image_digest": {
+            "type": "string",
+            "title": "Web Image Digest"
+          },
+          "migration_head": {
+            "type": "string",
+            "title": "Migration Head"
+          },
+          "configuration_fingerprint": {
+            "type": "string",
+            "title": "Configuration Fingerprint"
+          },
+          "window_started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Window Started At"
+          },
+          "window_ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Window Ended At"
+          },
+          "slo_snapshot": {
+            "$ref": "#/components/schemas/AutomationSLOSnapshot"
+          },
+          "calendar_health": {
+            "items": {
+              "$ref": "#/components/schemas/TradingCalendarHealth"
+            },
+            "type": "array",
+            "title": "Calendar Health"
+          },
+          "blocking_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blocking Reasons"
+          },
+          "result_fingerprint": {
+            "type": "string",
+            "title": "Result Fingerprint"
+          },
+          "created_by_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Created By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "environment",
+          "status",
+          "rule_set_version",
+          "release_commit",
+          "api_image_digest",
+          "web_image_digest",
+          "migration_head",
+          "configuration_fingerprint",
+          "window_started_at",
+          "window_ended_at",
+          "slo_snapshot",
+          "calendar_health",
+          "blocking_reasons",
+          "result_fingerprint",
+          "created_by_user_id",
+          "created_at"
+        ],
+        "title": "BetaReliabilityObservation"
+      },
+      "BetaReliabilityObservationCreate": {
+        "properties": {
+          "environment": {
+            "type": "string",
+            "enum": [
+              "staging",
+              "production"
+            ],
+            "title": "Environment"
+          },
+          "window_hours": {
+            "type": "integer",
+            "enum": [
+              24,
+              48
+            ],
+            "title": "Window Hours",
+            "default": 48
+          },
+          "release_commit": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 40,
+            "title": "Release Commit"
+          },
+          "api_image_digest": {
+            "type": "string",
+            "maxLength": 71,
+            "minLength": 71,
+            "title": "Api Image Digest"
+          },
+          "web_image_digest": {
+            "type": "string",
+            "maxLength": 71,
+            "minLength": 71,
+            "title": "Web Image Digest"
+          },
+          "configuration_fingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Configuration Fingerprint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "environment",
+          "release_commit",
+          "api_image_digest",
+          "web_image_digest",
+          "configuration_fingerprint"
+        ],
+        "title": "BetaReliabilityObservationCreate"
+      },
+      "BetaReliabilityObservationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BetaReliabilityObservation"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "BetaReliabilityObservationList"
       },
       "CalculationTrace": {
         "properties": {
@@ -18700,6 +19077,28 @@
             ],
             "title": "Expected Trade Date"
           },
+          "calendar_status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "stale",
+              "unknown"
+            ],
+            "title": "Calendar Status",
+            "default": "unknown"
+          },
+          "calendar_checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Checked At"
+          },
           "stages": {
             "items": {
               "$ref": "#/components/schemas/StockReadinessStage"
@@ -19035,6 +19434,90 @@
           "effective_on"
         ],
         "title": "TimelineUpcomingEvent"
+      },
+      "TradingCalendarHealth": {
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "enum": [
+              "SSE",
+              "SZSE"
+            ],
+            "title": "Exchange"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "stale",
+              "unknown"
+            ],
+            "title": "Status"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "calendar_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Version"
+          },
+          "latest_trade_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Trade Date"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exchange",
+          "status"
+        ],
+        "title": "TradingCalendarHealth"
       },
       "UserResponse": {
         "properties": {
