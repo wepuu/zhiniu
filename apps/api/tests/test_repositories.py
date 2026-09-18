@@ -26,6 +26,20 @@ async def test_watchlist_ownership_is_enforced() -> None:
     assert await repository.get_owned(created.id, intruder) is None
 
 
+@pytest.mark.asyncio
+async def test_watchlist_delete_preserves_default_and_removes_custom() -> None:
+    owner = uuid4()
+    repository = InMemoryWatchlistRepository()
+    default = await repository.create(Watchlist(user_id=owner, name="默认", is_default=True))
+    custom = await repository.create(Watchlist(user_id=owner, name="研究"))
+
+    with pytest.raises(ValueError, match="default_watchlist_cannot_be_deleted"):
+        await repository.delete_owned(default.id, owner)
+    assert await repository.get_owned(default.id, owner) is not None
+    assert await repository.delete_owned(custom.id, owner) is True
+    assert await repository.get_owned(custom.id, owner) is None
+
+
 class _EmptyResult:
     def all(self) -> list[object]:
         return []

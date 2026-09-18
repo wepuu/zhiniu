@@ -74,6 +74,7 @@ from zhaoniu_api.schemas import (
     ValuationCoverageResponse,
     ValuationListResponse,
     ValuationObservationResponse,
+    WatchlistDeleteResponse,
     WatchlistMembershipResponse,
     WatchlistResponse,
 )
@@ -442,7 +443,10 @@ async def request_stock_preparation(
         )
     except AccessRateLimitExceeded as error:
         raise HTTPException(status_code=429, detail="stock_preparation_rate_limited") from error
-    preparation_status, result = await automation.request_watchlist_preparation(canonical)
+    preparation_status, result = await automation.request_watchlist_preparation(
+        canonical,
+        force_retry=True,
+    )
     if result is not None and result.status == "accepted":
         try:
             _dispatch_automation_run(result.run_id)
@@ -762,6 +766,31 @@ async def create_watchlist(
         )
     item = await repository.create(Watchlist(user_id=user_id, name=payload.name))
     return WatchlistResponse.from_domain(item)
+
+
+@router.delete(
+    "/watchlists/{watchlist_id}",
+    response_model=WatchlistDeleteResponse,
+    tags=["watchlists"],
+)
+async def delete_watchlist(
+    watchlist_id: UUID,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    repository: WatchlistRepo,
+) -> WatchlistDeleteResponse:
+    try:
+        deleted = await repository.delete_owned(watchlist_id, user_id)
+    except ValueError as error:
+        if str(error) == "default_watchlist_cannot_be_deleted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="default_watchlist_cannot_be_deleted",
+            ) from error
+        raise
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found")
+    return WatchlistDeleteResponse(id=watchlist_id)
 
 
 @router.post(

@@ -451,3 +451,12 @@ class InMemoryWatchlistRepository:
     async def save(self, watchlist: Watchlist) -> Watchlist:
         self._watchlists[watchlist.id] = watchlist
         return watchlist
+
+    async def delete_owned(self, watchlist_id: UUID, user_id: UUID) -> bool:
+        item = await self.get_owned(watchlist_id, user_id)
+        if item is None:
+            return False
+        if item.is_default:
+            raise ValueError("default_watchlist_cannot_be_deleted")
+        del self._watchlists[watchlist_id]
+        return True

@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -140,6 +140,38 @@ def test_stale_calendar_suppresses_a_false_market_freshness_claim() -> None:
     assert result.expected_trade_date is None
     assert result.calendar_status == "stale"
     assert result.calendar_checked_at == checked_at
+
+
+def test_stalled_preparation_is_not_reported_as_78_percent_queued() -> None:
+    service = StockReadinessService(  # type: ignore[arg-type]
+        None,
+        Settings(automation_hard_disabled=False, watchlist_preparation_enabled=True),
+    )
+    stale = SimpleNamespace(
+        status="pending",
+        created_at=datetime.now(UTC) - timedelta(minutes=11),
+        started_at=None,
+        finished_at=None,
+        error_code=None,
+    )
+
+    result = service._build(
+        _stock(),
+        SimpleNamespace(
+            close=Decimal("1292.30"),
+            trade_date=date(2026, 8, 27),
+            collected_at=datetime(2026, 8, 27, tzinfo=UTC),
+        ),
+        SimpleNamespace(generated_at=datetime(2026, 8, 27, tzinfo=UTC)),
+        SimpleNamespace(generated_at=datetime(2026, 8, 27, tzinfo=UTC)),
+        None,
+        None,
+        {"ai_research": [stale]},
+    )
+
+    assert result.stages[3].status == "failed"
+    assert result.stages[3].reason_code == "preparation_stalled"
+    assert result.progress == 75
 
 
 async def test_watchlist_preparation_switch_fails_closed_without_database_work() -> None:

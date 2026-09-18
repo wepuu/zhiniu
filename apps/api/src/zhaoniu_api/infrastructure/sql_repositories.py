@@ -961,3 +961,24 @@ class SQLAlchemyWatchlistRepository:
         if updated is None:
             raise RuntimeError("watchlist save failed")
         return updated
+
+    async def delete_owned(self, watchlist_id: UUID, user_id: UUID) -> bool:
+        row = await self._session.scalar(
+            select(WatchlistRecord)
+            .where(
+                WatchlistRecord.id == watchlist_id,
+                WatchlistRecord.user_id == user_id,
+            )
+            .with_for_update()
+        )
+        if row is None:
+            return False
+        if row.is_default:
+            raise ValueError("default_watchlist_cannot_be_deleted")
+        await self._session.delete(row)
+        try:
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        return True
