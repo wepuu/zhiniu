@@ -308,6 +308,11 @@ class WatchlistResponse(BaseModel):
         )
 
 
+class WatchlistDeleteResponse(BaseModel):
+    id: UUID
+    deleted: bool = True
+
+
 class CreateWatchlistRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=80)

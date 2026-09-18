@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -12,7 +13,7 @@ from zhaoniu_api.dependencies import (
     get_watchlist_repository,
     require_csrf,
 )
-from zhaoniu_api.domain.models import AdjustType, DailyBar
+from zhaoniu_api.domain.models import AdjustType, DailyBar, Watchlist
 from zhaoniu_api.infrastructure.mock_repositories import (
     InMemoryDailyBarRepository,
     InMemoryStockRepository,
@@ -99,3 +100,19 @@ def test_watchlist_api_flow() -> None:
     removed = client.delete(f"/api/v1/watchlists/{watchlist_id}/items/600519")
     assert removed.status_code == 200
     assert removed.json()["items"] == []
+    deleted = client.delete(f"/api/v1/watchlists/{watchlist_id}")
+    assert deleted.status_code == 200
+    assert deleted.json() == {"id": watchlist_id, "deleted": True}
+    assert all(item["id"] != watchlist_id for item in client.get("/api/v1/watchlists").json())
+    default = asyncio.run(
+        watchlists.create(
+            Watchlist(
+                user_id=UUID("00000000-0000-4000-8000-000000000001"),
+                name="默认",
+                is_default=True,
+            )
+        )
+    )
+    protected = client.delete(f"/api/v1/watchlists/{default.id}")
+    assert protected.status_code == 409
+    assert protected.json()["detail"] == "default_watchlist_cannot_be_deleted"

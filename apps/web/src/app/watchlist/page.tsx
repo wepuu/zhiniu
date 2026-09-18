@@ -30,6 +30,8 @@ export default function WatchlistPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [targetWatchlistId, setTargetWatchlistId] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentlyAdded, setRecentlyAdded] = useState<StockResponse | null>(
     null,
@@ -40,6 +42,10 @@ export default function WatchlistPage() {
     queryFn: () => api.getWatchlists(),
     retry: false,
   });
+  const defaultList = watchlists.data?.[0];
+  const targetList = watchlists.data?.find(
+    (list) => list.id === targetWatchlistId,
+  );
   const symbols = useMemo(
     () =>
       Array.from(
@@ -125,7 +131,20 @@ export default function WatchlistPage() {
     onError: (caught) => setError(formatWatchlistError(caught)),
   });
 
-  const defaultList = watchlists.data?.[0];
+  const deleteList = useMutation({
+    mutationFn: (watchlistId: string) => api.deleteWatchlist(watchlistId),
+    onSuccess: async (_result, watchlistId) => {
+      setDeleteCandidate(null);
+      if (targetWatchlistId === watchlistId) setTargetWatchlistId("");
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ["watchlists"] });
+    },
+    onError: (caught) => {
+      setDeleteCandidate(null);
+      setError(formatWatchlistError(caught));
+    },
+  });
+
   const totalItems =
     watchlists.data?.reduce((sum, item) => sum + item.item_count, 0) ?? 0;
 
@@ -133,6 +152,12 @@ export default function WatchlistPage() {
     event.preventDefault();
     const trimmed = name.trim();
     if (trimmed) createList.mutate(trimmed);
+  }
+
+  function openSearch(watchlistId: string) {
+    if (!watchlistId) return;
+    setTargetWatchlistId(watchlistId);
+    setSearchOpen(true);
   }
 
   return (
@@ -196,15 +221,36 @@ export default function WatchlistPage() {
                     {watchlists.data.length}/5 个分组，{totalItems}/30 只股票
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSearchOpen(true)}
-                  className="bg-blue inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium text-white disabled:opacity-50"
-                  disabled={!defaultList || addItem.isPending}
-                >
-                  <Plus className="size-4" />
-                  搜索并添加股票
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="选择自选分组"
+                    className="border-ink/15 min-h-10 rounded-xl border bg-white px-3 text-sm"
+                    value={targetWatchlistId || defaultList?.id || ""}
+                    onChange={(event) =>
+                      setTargetWatchlistId(event.target.value)
+                    }
+                    disabled={!watchlists.data.length || addItem.isPending}
+                  >
+                    {watchlists.data.map((list) => (
+                      <option key={list.id} value={list.id}>
+                        {list.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openSearch(targetList?.id ?? defaultList?.id ?? "")
+                    }
+                    className="bg-blue inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium text-white disabled:opacity-50"
+                    disabled={
+                      (!targetList && !defaultList) || addItem.isPending
+                    }
+                  >
+                    <Plus className="size-4" />
+                    添加股票
+                  </button>
+                </div>
               </div>
               {error && (
                 <p className="border-risk/20 bg-risk/5 text-risk mt-4 rounded-xl border px-3 py-2 text-sm">
@@ -257,6 +303,12 @@ export default function WatchlistPage() {
                   watchlist={item}
                   readiness={readinessBySymbol}
                   removing={removeItem.isPending}
+                  deleting={deleteList.isPending}
+                  deleteCandidate={deleteCandidate === item.id}
+                  onAdd={() => openSearch(item.id)}
+                  onDelete={() => setDeleteCandidate(item.id)}
+                  onCancelDelete={() => setDeleteCandidate(null)}
+                  onConfirmDelete={() => deleteList.mutate(item.id)}
                   onRemove={(value) =>
                     removeItem.mutate({ watchlistId: item.id, value })
                   }
@@ -269,13 +321,14 @@ export default function WatchlistPage() {
       <StockSearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
-        title="添加到默认自选分组"
-        description="按代码、中文名称、全拼或首字母查找，选择后直接添加"
+        title={`添加到${targetList?.name ?? defaultList?.name ?? "自选分组"}`}
+        description="按代码、中文名称、全拼或首字母查找，选择后加入当前分组。"
         onSelect={(stock) => {
-          if (defaultList) {
+          const destination = targetList ?? defaultList;
+          if (destination) {
             setRecentlyAdded(stock);
             addItem.mutate({
-              watchlistId: defaultList.id,
+              watchlistId: destination.id,
               value: stock.canonical_symbol,
             });
           }
@@ -289,11 +342,23 @@ function WatchlistGroup({
   watchlist,
   readiness,
   removing,
+  deleting,
+  deleteCandidate,
+  onAdd,
+  onDelete,
+  onCancelDelete,
+  onConfirmDelete,
   onRemove,
 }: {
   watchlist: WatchlistResponse;
   readiness: Map<string, StockReadinessResponse>;
   removing: boolean;
+  deleting: boolean;
+  deleteCandidate: boolean;
+  onAdd: () => void;
+  onDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
   onRemove: (symbol: string) => void;
 }) {
   return (
@@ -307,6 +372,49 @@ function WatchlistGroup({
             {watchlist.is_default ? "默认分组" : "自定义分组"} ·{" "}
             {watchlist.item_count} 只股票
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="text-blue hover:bg-blue/5 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm disabled:opacity-50"
+            onClick={onAdd}
+            disabled={deleting}
+          >
+            <Plus className="size-4" />
+            添加
+          </button>
+          {!watchlist.is_default && !deleteCandidate && (
+            <button
+              type="button"
+              aria-label={`删除分组 ${watchlist.name}`}
+              className="text-slate hover:text-risk grid size-9 place-items-center rounded-xl transition disabled:opacity-50"
+              onClick={onDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
+          {!watchlist.is_default && deleteCandidate && (
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-risk">确认删除？</span>
+              <button
+                type="button"
+                className="bg-risk rounded-lg px-2 py-1 text-white disabled:opacity-50"
+                onClick={onConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? "删除中" : "确认"}
+              </button>
+              <button
+                type="button"
+                className="border-ink/10 rounded-lg border px-2 py-1 disabled:opacity-50"
+                onClick={onCancelDelete}
+                disabled={deleting}
+              >
+                取消
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {watchlist.items.length === 0 ? (
@@ -386,6 +494,9 @@ function formatWatchlistError(error: unknown) {
     return "没有找到这只股票，或你没有访问该分组的权限。";
   }
   if (error instanceof ApiError && error.status === 409) {
+    if (error.message.includes("default_watchlist_cannot_be_deleted")) {
+      return "默认分组不可删除。";
+    }
     return "已达到当前内测阶段的自选股额度。";
   }
   if (error instanceof ApiError && error.status === 422) {

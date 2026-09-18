@@ -1,4 +1,4 @@
-import { createZhaoniuClient } from "@zhaoniu/api-client";
+import { ApiError, createZhaoniuClient } from "@zhaoniu/api-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("browser API gateway", () => {
@@ -37,6 +37,29 @@ describe("browser API gateway", () => {
     expect(fetcher).toHaveBeenCalledWith(
       "/gateway/api/v1/stocks/600519/ai/questions",
       expect.objectContaining({ credentials: "include" }),
+    );
+  });
+
+  it("preserves API detail codes for actionable mutation errors", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ detail: "default_watchlist_cannot_be_deleted" }),
+        {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    vi.stubGlobal("fetch", fetcher);
+
+    await expect(
+      createZhaoniuClient().deleteWatchlist("watchlist-id"),
+    ).rejects.toEqual(
+      expect.objectContaining<ApiError>({
+        status: 409,
+        name: "ApiError",
+        message: "default_watchlist_cannot_be_deleted",
+      }),
     );
   });
 });

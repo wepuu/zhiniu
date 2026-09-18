@@ -38,6 +38,7 @@ from zhaoniu_api.schemas import (
 
 StageKey = Literal["market", "deterministic_research", "extended_research", "ai_research"]
 MARKET_PUBLICATION_GRACE = timedelta(minutes=30)
+PREPARATION_STALE_AFTER = timedelta(minutes=10)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +48,11 @@ class CalendarContext:
     checked_at: datetime | None = None
     source: str | None = None
     calendar_version: str | None = None
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
 
 _STAGE_STEPS: dict[StageKey, set[str]] = {
     "market": {"market_sync"},
@@ -256,14 +262,24 @@ class StockReadinessService:
         self, step_groups: dict[str, list[AutomationRunStepRecord]], stage: StageKey
     ) -> tuple[StockReadinessStatus | None, datetime | None, str | None]:
         relevant = [step for key in _STAGE_STEPS[stage] for step in step_groups.get(key, [])[:1]]
-        if any(step.status == "running" for step in relevant):
+        running = [step for step in relevant if step.status == "running"]
+        if running:
+            started = max((step.started_at for step in running if step.started_at), default=None)
+            if started is not None and _as_utc(started) <= (
+                datetime.now(UTC) - PREPARATION_STALE_AFTER
+            ):
+                return "failed", started, "preparation_stalled"
             return (
                 "preparing",
-                max((step.started_at for step in relevant if step.started_at), default=None),
+                started,
                 None,
             )
-        if any(step.status == "pending" for step in relevant):
-            return "queued", max(step.created_at for step in relevant), None
+        pending = [step for step in relevant if step.status == "pending"]
+        if pending:
+            created = max(step.created_at for step in pending)
+            if _as_utc(created) <= datetime.now(UTC) - PREPARATION_STALE_AFTER:
+                return "failed", created, "preparation_stalled"
+            return "queued", created, None
         failed = next((step for step in relevant if step.status in {"failed", "blocked"}), None)
         if failed is not None:
             return (

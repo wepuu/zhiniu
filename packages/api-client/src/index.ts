@@ -11,6 +11,8 @@ export type StockReadinessListResponse =
   components["schemas"]["StockReadinessListResponse"];
 export type StockPreparationResponse =
   components["schemas"]["StockPreparationResponse"];
+export type WatchlistDeleteResponse =
+  components["schemas"]["WatchlistDeleteResponse"];
 export type DailyBarResponse = components["schemas"]["DailyBarResponse"];
 export type DailyBarListResponse =
   components["schemas"]["DailyBarListResponse"];
@@ -250,9 +252,16 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       },
     });
     if (!response.ok) {
+      let detail: string | undefined;
+      try {
+        const payload = (await response.json()) as { detail?: unknown };
+        if (typeof payload.detail === "string") detail = payload.detail;
+      } catch {
+        // Preserve the status-based fallback for non-JSON gateway errors.
+      }
       throw new ApiError(
         response.status,
-        `API request failed with status ${response.status}`,
+        detail ?? `API request failed with status ${response.status}`,
       );
     }
     if (response.status === 204) {
@@ -560,6 +569,12 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       return jsonRequest<WatchlistResponse>("/api/v1/watchlists", "POST", {
         name,
       });
+    },
+    deleteWatchlist(watchlistId: string) {
+      return request<components["schemas"]["WatchlistDeleteResponse"]>(
+        `/api/v1/watchlists/${encodeURIComponent(watchlistId)}`,
+        { method: "DELETE" },
+      );
     },
     addWatchlistItem(watchlistId: string, symbol: string) {
       return jsonRequest<WatchlistResponse>(

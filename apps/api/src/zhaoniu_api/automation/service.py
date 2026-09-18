@@ -12,7 +12,7 @@ from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -542,13 +542,22 @@ class AutomationService:
         policy = await self.ensure_default_policy()
         if self._settings.automation_hard_disabled:
             return AutomationTickResult(status="disabled")
-        pending_watchlist_ids = list(
+        recoverable_run_ids = list(
             (
                 await self._session.scalars(
                     select(AutomationRunRecord.id)
                     .where(
-                        AutomationRunRecord.trigger_kind == "watchlist",
-                        AutomationRunRecord.status == "pending",
+                        AutomationRunRecord.status.in_(("pending", "running")),
+                        or_(
+                            AutomationRunRecord.status == "pending",
+                            and_(
+                                AutomationRunRecord.status == "running",
+                                or_(
+                                    AutomationRunRecord.lease_expires_at.is_(None),
+                                    AutomationRunRecord.lease_expires_at <= moment,
+                                ),
+                            ),
+                        ),
                     )
                     .order_by(AutomationRunRecord.created_at)
                     .limit(self._settings.automation_max_concurrency)
@@ -563,15 +572,15 @@ class AutomationService:
         if not policy.enabled or slot is None:
             await self._session.commit()
             return AutomationTickResult(
-                status="scheduled" if pending_watchlist_ids else "idle",
-                run_ids=pending_watchlist_ids,
+                status="scheduled" if recoverable_run_ids else "idle",
+                run_ids=recoverable_run_ids,
             )
         await self._session.commit()
         if moment - slot > timedelta(minutes=self._settings.automation_catchup_window_minutes):
             await self._create_missed_run(policy, revision, slot)
             return AutomationTickResult(
-                status="scheduled" if pending_watchlist_ids else "idle",
-                run_ids=pending_watchlist_ids,
+                status="scheduled" if recoverable_run_ids else "idle",
+                run_ids=recoverable_run_ids,
             )
         result = await self.trigger_run(
             policy.policy_key,
@@ -581,11 +590,11 @@ class AutomationService:
         )
         return AutomationTickResult(
             status="scheduled",
-            run_ids=[*pending_watchlist_ids, result.run_id],
+            run_ids=[*recoverable_run_ids, result.run_id],
         )
 
     async def request_watchlist_preparation(
-        self, symbol: str
+        self, symbol: str, *, force_retry: bool = False
     ) -> tuple[Literal["queued", "reused", "paused"], AutomationTriggerResponse | None]:
         if self._settings.automation_hard_disabled:
             return "paused", None
@@ -594,6 +603,7 @@ class AutomationService:
         from zhaoniu_api.domain.models import resolve_symbol
 
         canonical = resolve_symbol(symbol).canonical
+        now = datetime.now(UTC)
         existing = await self._session.scalar(
             select(AutomationRunRecord)
             .join(
@@ -609,22 +619,65 @@ class AutomationService:
             .limit(1)
         )
         if existing is not None:
-            return (
-                "reused",
-                AutomationTriggerResponse(
-                    status="skipped",
-                    run_id=existing.id,
-                    run_status=cast(Any, existing.status),
-                ),
+            stale = (
+                existing.status == "pending"
+                and existing.created_at
+                <= now - timedelta(minutes=self._settings.automation_lease_minutes)
+            ) or (
+                existing.status == "running"
+                and (
+                    existing.lease_expires_at is None
+                    or existing.lease_expires_at <= now
+                )
             )
-        bucket = int(datetime.now(UTC).timestamp()) // (30 * 60)
+            if not stale:
+                return (
+                    "reused",
+                    AutomationTriggerResponse(
+                        status="skipped",
+                        run_id=existing.id,
+                        run_status=cast(Any, existing.status),
+                    ),
+                )
+            await self._mark_stalled_run(existing.id, now)
+
+        bucket = int(now.timestamp()) // (30 * 60)
+        if force_retry:
+            request_key = f"{canonical}:retry:{bucket}"
+        elif existing is not None:
+            request_key = f"{canonical}:recovery:{bucket}"
+        else:
+            request_key = f"{canonical}:{bucket}"
         result = await self.trigger_run(
             POLICY_KEY,
             trigger_kind="watchlist",
-            request_key=f"{canonical}:{bucket}",
+            request_key=request_key,
             symbols=(canonical,),
         )
         return ("queued" if result.status == "accepted" else "reused"), result
+
+    async def _mark_stalled_run(self, run_id: UUID, now: datetime) -> None:
+        await self._session.execute(
+            update(AutomationRunStepRecord)
+            .where(
+                AutomationRunStepRecord.run_id == run_id,
+                AutomationRunStepRecord.status.in_(("pending", "running")),
+            )
+            .values(
+                status="failed",
+                error_code="preparation_stalled",
+                finished_at=now,
+                lease_owner=None,
+                lease_expires_at=None,
+                heartbeat_at=None,
+            )
+        )
+        await self._session.flush()
+        await self._finalize_run(run_id)
+        run = await self._session.get(AutomationRunRecord, run_id)
+        if run is not None:
+            run.error_code = "preparation_stalled"
+            await self._session.commit()
 
     async def trigger_run(
         self,
@@ -799,7 +852,10 @@ class AutomationService:
             .where(
                 AutomationRunStepRecord.run_id == run.id,
                 AutomationRunStepRecord.status == "running",
-                AutomationRunStepRecord.lease_expires_at < now,
+                or_(
+                    AutomationRunStepRecord.lease_expires_at.is_(None),
+                    AutomationRunStepRecord.lease_expires_at < now,
+                ),
             )
             .values(
                 status="pending",
