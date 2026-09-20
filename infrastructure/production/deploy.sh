@@ -201,5 +201,7 @@ done
 install -m 0755 "${repo_dir}/infrastructure/production/deploy.sh" /usr/local/sbin/zhaoniu-deploy
 install -m 0755 "${repo_dir}/infrastructure/production/backup.sh" /usr/local/sbin/zhaoniu-backup
 install -m 0755 "${repo_dir}/infrastructure/production/restore-drill.sh" /usr/local/sbin/zhaoniu-restore-drill
+install -m 0755 "${repo_dir}/infrastructure/production/phase25g-host-evidence.py" \
+  /usr/local/sbin/zhaoniu-phase25g-host-evidence
 
 echo "deployed ${commit_sha} at migration ${migration_head}"

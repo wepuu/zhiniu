@@ -37,6 +37,12 @@ updates are applied before publication.
    - `STAGING_SSH_USER` (`zhaoniu-deploy`)
    - `STAGING_SSH_KEY`
    - `STAGING_KNOWN_HOSTS` captured out-of-band with the VPS host fingerprint verified
+
+   Set repository variable `BACKUP_RECEIVER_HOST` to the isolated receiver address. The deploy job
+   rejects a staging target that equals this receiver and validates the private key and exact
+   host/port known-host entry before opening SSH. The application host and backup receiver must
+   remain separate trust boundaries.
+
 6. Add a separate read-only repository Deploy Key for root's repository checkout on the VPS. The
    workflow SSH key and the repository Deploy Key must not be the same key.
 

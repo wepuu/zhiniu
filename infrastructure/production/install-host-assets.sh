@@ -29,6 +29,8 @@ install -d -m 0700 -o root -g root /etc/zhiniu /var/backups/zhiniu
 install -m 0755 "${repo_dir}/infrastructure/production/deploy.sh" /usr/local/sbin/zhaoniu-deploy
 install -m 0755 "${repo_dir}/infrastructure/production/backup.sh" /usr/local/sbin/zhaoniu-backup
 install -m 0755 "${repo_dir}/infrastructure/production/restore-drill.sh" /usr/local/sbin/zhaoniu-restore-drill
+install -m 0755 "${repo_dir}/infrastructure/production/phase25g-host-evidence.py" \
+  /usr/local/sbin/zhaoniu-phase25g-host-evidence
 visudo -cf "${repo_dir}/infrastructure/production/sudoers-zhaoniu-deploy"
 install -m 0440 "${repo_dir}/infrastructure/production/sudoers-zhaoniu-deploy" /etc/sudoers.d/zhaoniu-deploy
 install -m 0644 "${repo_dir}/infrastructure/production/systemd/zhaoniu-backup.service" /etc/systemd/system/

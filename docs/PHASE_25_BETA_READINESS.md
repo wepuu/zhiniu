@@ -74,6 +74,31 @@ checks. A failed observation remains useful evidence and is never overwritten. H
 restart and sustained broker-depth evidence remains a deployment/operations gate because those
 facts are not currently retained in the application database.
 
+### Phase 25F watchlist recovery contract
+
+Watchlist preparation now treats an expired run lease as recoverable operational state. The fixed
+Beat tick reclaims stale pending/running work, and the public readiness projection cannot remain at
+an intermediate percentage after the underlying run has reached a terminal state. An authenticated
+owner may request a bounded retry without deleting the retained failed run. Watchlist group writes
+retain `user_id` ownership; the default group is protected, while custom groups can be selected when
+adding a stock and deleted explicitly.
+
+### Phase 25G host evidence
+
+The database observation cannot prove host OOM state, Docker restart counts, broker depth, worker
+reachability, backup timer state or resource headroom. On the exact release host, run:
+
+```text
+sudo /usr/local/sbin/zhaoniu-phase25g-host-evidence \
+  --configuration-fingerprint RELEASE_CONFIGURATION_SHA256
+```
+
+The command reads the immutable current-release metadata, performs read-only host and loopback
+checks, and creates a root-only, append-only JSON record under
+`/opt/zhiniu/releases/reliability-evidence`. It exits nonzero when any bounded host reason is
+present. The JSON supplements the 24/48-hour database observation; it neither creates that
+observation nor converts development/evaluation data into licensed Beta evidence.
+
 ## Controlled-Beta entry gates
 
 All gates remain fail-closed:
@@ -112,6 +137,8 @@ Before integrating a production source, retain a signed decision record covering
 
 The first adapter release must run alongside the evaluation adapter in acceptance mode. It may not
 silently mix sources, overwrite lineage, or change a retained snapshot's knowledge cutoff.
+Use `docs/LICENSED_PROVIDER_ACCEPTANCE.md` as the dataset-by-dataset legal and engineering decision
+record; a healthy Provider diagnostic alone is not an admission decision.
 
 ## Rollout order
 
