@@ -249,6 +249,19 @@ configuration. The operations console shows live SLOs, SSE/SZSE calendar health 
 frozen result. Host OOM/restart and broker-depth evidence remains part of the deployment checklist;
 external invitation remains blocked while only development/evaluation data sources are configured.
 
+The Phase 25E security increment upgrades the public Web runtime and image dependencies while
+preserving the existing API contract. The Phase 25F watchlist-reliability increment recovers stale
+pending/running symbol runs, prevents permanent intermediate readiness, adds an explicit owned
+retry path, protects the default watchlist, and lets users choose and delete custom watchlist
+groups on desktop and mobile.
+
+The Phase 25G gate-closure increment does not create a new research task system. It binds host-only
+evidence (container OOM/restarts, worker reachability, broker depth, resource headroom, backup timer
+and loopback health) to the same immutable release and configuration fingerprint as the database
+observation. It also fails staging deployment before SSH when required secrets or the
+deployment/backup host boundary is invalid. Licensed-data acceptance remains an external legal and
+Provider gate; Phase 25G tooling must not represent free evaluation data as commercially approved.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

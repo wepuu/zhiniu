@@ -265,19 +265,54 @@ jobs:
       API_DIGEST: ${{ needs.build_scan_publish.outputs.api_digest }}
       WEB_DIGEST: ${{ needs.build_scan_publish.outputs.web_digest }}
     steps:
-      - name: Deploy exact digests over SSH
+      - name: Validate staging SSH configuration
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
           STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
           STAGING_USER: ${{ secrets.STAGING_SSH_USER }}
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
           STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          BACKUP_RECEIVER_HOST: ${{ vars.BACKUP_RECEIVER_HOST }}
         run: |
-          [[ "$STAGING_PORT" =~ ^[0-9]+$ ]]
+          missing=0
+          for name in STAGING_HOST STAGING_PORT STAGING_USER STAGING_SSH_KEY STAGING_KNOWN_HOSTS BACKUP_RECEIVER_HOST; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required staging deployment configuration: ${name}"
+              missing=1
+            fi
+          done
+          [[ "$missing" -eq 0 ]] || exit 1
+          [[ "$STAGING_PORT" =~ ^[0-9]+$ ]] \
+            && ((STAGING_PORT >= 1 && STAGING_PORT <= 65535)) \
+            || { echo "::error::STAGING_SSH_PORT must be between 1 and 65535"; exit 1; }
+          [[ "$STAGING_USER" == 'zhaoniu-deploy' ]] \
+            || { echo "::error::STAGING_SSH_USER must be zhaoniu-deploy"; exit 1; }
+          if [[ "$STAGING_HOST" == "$BACKUP_RECEIVER_HOST" ]]; then
+            echo "::error::Application deployment host must not be the backup receiver"
+            exit 1
+          fi
+
           install -m 0700 -d "$HOME/.ssh"
           printf '%s\n' "$STAGING_SSH_KEY" > "$HOME/.ssh/staging_key"
           chmod 0600 "$HOME/.ssh/staging_key"
           printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/staging_key" >/dev/null
+          ssh-keygen -l -f "$HOME/.ssh/known_hosts" >/dev/null
+          known_host="$STAGING_HOST"
+          if [[ "$STAGING_PORT" != '22' ]]; then
+            known_host="[$STAGING_HOST]:$STAGING_PORT"
+          fi
+          ssh-keygen -F "$known_host" -f "$HOME/.ssh/known_hosts" >/dev/null \
+            || { echo "::error::STAGING_KNOWN_HOSTS has no entry for the deployment target"; exit 1; }
+
+      - name: Deploy exact digests over SSH
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          STAGING_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          [[ "$STAGING_PORT" =~ ^[0-9]+$ ]]
           ssh -i "$HOME/.ssh/staging_key" -p "$STAGING_PORT" \
             -o BatchMode=yes -o IdentitiesOnly=yes \
             "$STAGING_USER@$STAGING_HOST" \
