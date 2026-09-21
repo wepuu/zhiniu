@@ -127,6 +127,8 @@ export type BetaOnboardingView = components["schemas"]["BetaOnboardingView"];
 export type OperatorContext = components["schemas"]["OperatorContext"];
 export type OperatorDashboardResponse =
   components["schemas"]["OperatorDashboardResponse"];
+export type BetaAdmissionSnapshot =
+  components["schemas"]["BetaAdmissionSnapshot"];
 export type OperatorUserListResponse =
   components["schemas"]["OperatorUserListResponse"];
 export type OperatorFeedbackListResponse =
@@ -1011,6 +1013,9 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
       return request<AutomationPolicyListResponse>(
         "/api/v1/admin/automation/policies",
       );
+    },
+    getBetaAdmission() {
+      return request<BetaAdmissionSnapshot>("/api/v1/admin/beta-admission");
     },
     updateAutomationPolicy(
       policyKey: string,

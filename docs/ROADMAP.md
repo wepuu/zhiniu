@@ -262,6 +262,14 @@ observation. It also fails staging deployment before SSH when required secrets o
 deployment/backup host boundary is invalid. Licensed-data acceptance remains an external legal and
 Provider gate; Phase 25G tooling must not represent free evaluation data as commercially approved.
 
+The Phase 25H evidence-orchestration increment makes that gate reproducible rather than
+operator-assembled. A secret-free allowlist of release-affecting environment settings produces the
+configuration fingerprint; every healthy deployment freezes a new host evidence record against
+that fingerprint. The read-only `GET /api/v1/admin/beta-admission` projection combines existing
+platform, invitation, automation, database reliability and production-release facts into one
+fail-closed operator view. It does not create a second state machine, mutate release status, or
+turn an AKShare/Sina technical pass into commercial-data approval.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

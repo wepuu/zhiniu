@@ -27,6 +27,13 @@ def _load_module() -> ModuleType:
 evidence = _load_module()
 
 
+def test_phase25g_accepts_honest_post_deployment_snapshot_window() -> None:
+    args = evidence._parser().parse_args(
+        ["--configuration-fingerprint", "d" * 64, "--window-hours", "0"]
+    )
+    assert args.window_hours == 0
+
+
 def _healthy_facts() -> dict[str, object]:
     return {
         "containers": [

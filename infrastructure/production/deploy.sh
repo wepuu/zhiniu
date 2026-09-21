@@ -203,5 +203,21 @@ install -m 0755 "${repo_dir}/infrastructure/production/backup.sh" /usr/local/sbi
 install -m 0755 "${repo_dir}/infrastructure/production/restore-drill.sh" /usr/local/sbin/zhaoniu-restore-drill
 install -m 0755 "${repo_dir}/infrastructure/production/phase25g-host-evidence.py" \
   /usr/local/sbin/zhaoniu-phase25g-host-evidence
+install -m 0755 "${repo_dir}/infrastructure/production/phase25h-configuration-fingerprint.py" \
+  /usr/local/sbin/zhaoniu-phase25h-configuration-fingerprint
+
+configuration_fingerprint=$(
+  /usr/local/sbin/zhaoniu-phase25h-configuration-fingerprint --env-file "${env_file}"
+)
+evidence_status=0
+/usr/local/sbin/zhaoniu-phase25g-host-evidence \
+  --configuration-fingerprint "${configuration_fingerprint}" \
+  --project-name "${project_name}" \
+  --public-host "${trusted_host}" \
+  --window-hours 0 || evidence_status=$?
+if [[ ${evidence_status} -ne 0 ]]; then
+  echo "deployment completed but Phase 25 host evidence failed" >&2
+  exit "${evidence_status}"
+fi
 
 echo "deployed ${commit_sha} at migration ${migration_head}"

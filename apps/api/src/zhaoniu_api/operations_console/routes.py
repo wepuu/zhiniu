@@ -17,6 +17,7 @@ from zhaoniu_api.dependencies import (
     ProviderConfigurationServiceDependency,
 )
 from zhaoniu_api.operations_console.models import (
+    BetaAdmissionSnapshot,
     OperatorAccessCodeCreate,
     OperatorAccessCodeResponse,
     OperatorActionResponse,
@@ -131,6 +132,15 @@ async def dashboard(
 ) -> OperatorDashboardResponse:
     _require(context, service, "dashboard.read")
     return await service.dashboard()
+
+
+@router.get("/beta-admission", response_model=BetaAdmissionSnapshot)
+async def beta_admission(
+    context: OperatorContextDependency,
+    service: OperatorServiceDependency,
+) -> BetaAdmissionSnapshot:
+    _require(context, service, "dashboard.read")
+    return await service.beta_admission()
 
 
 @router.get("/users", response_model=OperatorUserListResponse)

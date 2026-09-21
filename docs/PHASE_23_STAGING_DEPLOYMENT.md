@@ -131,6 +131,11 @@ services, and waits up to two minutes for API/Web health. Failure restores the p
 never downgrades the database. Therefore every migration merged to `main` must remain compatible
 with the prior application release.
 
+Phase 25H adds a post-health configuration fingerprint and host snapshot. On the one rollout that
+upgrades an older installed wrapper, the workflow detects the missing fingerprint tool and repeats
+the same idempotent commit/digest deployment once after the wrapper has refreshed itself. Later
+deployments run only once.
+
 After the first deployment and backup test:
 
 ```text

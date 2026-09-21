@@ -32,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { ProviderConfigurationPanel } from "@/components/provider-configuration-panel";
 import { ProviderAcceptancePanel } from "@/components/provider-acceptance-panel";
 import { BetaCohortPanel } from "@/components/beta-cohort-panel";
+import { BetaAdmissionPanel } from "@/components/beta-admission-panel";
 import { ProductionReleasePanel } from "@/components/production-release-panel";
 import {
   providerDisplayName,
@@ -228,7 +229,12 @@ export function AdminWorkspace() {
           {view === "feedback" && (
             <FeedbackPanel capabilities={operator.capabilities} />
           )}
-          {view === "beta" && <BetaCohortPanel elevated={operator.elevated} />}
+          {view === "beta" && (
+            <>
+              <BetaAdmissionPanel />
+              <BetaCohortPanel elevated={operator.elevated} />
+            </>
+          )}
           {view === "providers" && (
             <ProvidersPanel
               capabilities={operator.capabilities}

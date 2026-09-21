@@ -99,6 +99,27 @@ checks, and creates a root-only, append-only JSON record under
 present. The JSON supplements the 24/48-hour database observation; it neither creates that
 observation nor converts development/evaluation data into licensed Beta evidence.
 
+### Phase 25H evidence orchestration
+
+The deployment wrapper now derives the configuration fingerprint from a fixed, secret-free
+allowlist in `/etc/zhiniu/staging.env` and automatically runs the Phase 25G collector after the new
+release is healthy with `window_hours=0`. This immediate snapshot proves only post-deployment host
+health; it does not claim that the new release has already completed a 24/48-hour stability window.
+Credential values, database/Redis URLs, HMAC material and recipient addresses are excluded. A
+host-evidence failure makes the deployment workflow fail after recording the exact failed evidence;
+it does not rewrite that record into a pass. The later 24/48-hour records remain separately required.
+
+Operators can inspect the application-side aggregate through:
+
+```text
+GET /api/v1/admin/beta-admission
+```
+
+The projection is read-only and composes the existing readiness, invitation, automation,
+48-hour reliability-observation and production-release-candidate facts. It never activates an
+invitation cohort or changes a release candidate. Host evidence remains a root-owned deployment
+artifact because the API container must not read the host filesystem.
+
 ## Controlled-Beta entry gates
 
 All gates remain fail-closed:

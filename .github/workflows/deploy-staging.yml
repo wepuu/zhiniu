@@ -313,7 +313,8 @@ jobs:
           STAGING_USER: ${{ secrets.STAGING_SSH_USER }}
         run: |
           [[ "$STAGING_PORT" =~ ^[0-9]+$ ]]
+          deploy_command="sudo /usr/local/sbin/zhaoniu-deploy '$RELEASE_SHA' 'ghcr.io/wepuu/zhiniu-api@$API_DIGEST' 'ghcr.io/wepuu/zhiniu-web@$WEB_DIGEST'"
           ssh -i "$HOME/.ssh/staging_key" -p "$STAGING_PORT" \
             -o BatchMode=yes -o IdentitiesOnly=yes \
             "$STAGING_USER@$STAGING_HOST" \
-            "sudo /usr/local/sbin/zhaoniu-deploy '$RELEASE_SHA' 'ghcr.io/wepuu/zhiniu-api@$API_DIGEST' 'ghcr.io/wepuu/zhiniu-web@$WEB_DIGEST'"
+            "${deploy_command} && if [ ! -x /usr/local/sbin/zhaoniu-phase25h-configuration-fingerprint ]; then echo 'bootstrapping Phase 25H evidence-enabled deploy wrapper'; ${deploy_command}; fi"
