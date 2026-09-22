@@ -18,6 +18,17 @@ HMAC digest, code prefix, batch, expiry, revocation state and atomic consumption
 retains the complete code. A code is single-use and registration consumes it in the same database
 transaction that creates the user.
 
+`GET /api/v1/auth/registration` is an unauthenticated, secret-free preflight for the registration
+screen. It reports whether invitation registration is currently open, whether an invitation and
+email verification are required, and the active minimum password length. The Web client fails
+closed: it does not display a usable registration form until this preflight and the current legal
+documents both load successfully. A closed response does not inspect or consume an invitation.
+
+Registration failures use stable reason codes. The Web client distinguishes a closed registration
+gate, an unavailable/expired/consumed or email-mismatched invitation, an existing account, a full
+controlled-Beta cohort, rate limiting, password validation and stale legal acceptance. It never
+claims that an invitation was consumed unless account creation committed successfully.
+
 New invitation registrations receive the versioned `basic` access baseline. Accounts created
 before the Phase 11 migration retain the versioned `legacy_beta` baseline so deployment does not
 silently remove existing capabilities.

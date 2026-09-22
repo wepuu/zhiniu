@@ -64,6 +64,7 @@ from zhaoniu_api.schemas import (
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     RegistrationRequest,
+    RegistrationStatusResponse,
     SessionListResponse,
     SessionResponse,
     StockPreparationResponse,
@@ -102,6 +103,20 @@ def _dispatch_automation_run(run_id: UUID) -> None:
 @router.get("/health", response_model=HealthResponse, tags=["system"])
 async def health() -> HealthResponse:
     return HealthResponse(status="ok", service="zhaoniu-api", version="0.1.0")
+
+
+@router.get(
+    "/auth/registration",
+    response_model=RegistrationStatusResponse,
+    tags=["auth"],
+)
+async def registration_status(response: Response) -> RegistrationStatusResponse:
+    settings = get_settings()
+    response.headers["Cache-Control"] = "no-store"
+    return RegistrationStatusResponse(
+        status="open" if settings.registration_mode == "invite_only" else "closed",
+        password_min_length=settings.auth_password_min_length,
+    )
 
 
 @router.post(
