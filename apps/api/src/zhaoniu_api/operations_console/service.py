@@ -21,7 +21,10 @@ from zhaoniu_api.db import (
     LLMCallRecord,
     OperatorAuditEventRecord,
     OperatorMembershipRecord,
+    ProductionDeploymentEventRecord,
     ProductionReleaseCandidateRecord,
+    ProductionReleaseGateItemRecord,
+    ProductionReleaseGateRunRecord,
     ProviderDiagnosticRunRecord,
     RegistrationInviteRecord,
     ResearchCoverageMemberRecord,
@@ -36,6 +39,8 @@ from zhaoniu_api.db import (
 from zhaoniu_api.invite_beta.service import InviteBetaService
 from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.models import (
+    BetaAdmissionCandidate,
+    BetaAdmissionCandidateStatus,
     BetaAdmissionCheck,
     BetaAdmissionSnapshot,
     OperatorAccessCodeResponse,
@@ -475,13 +480,25 @@ class OperatorService:
             },
         )
 
-    async def beta_admission(self) -> BetaAdmissionSnapshot:
+    async def beta_admission(self, candidate_id: UUID | None = None) -> BetaAdmissionSnapshot:
         """Project existing immutable facts into one read-only admission decision."""
 
         now = datetime.now(UTC)
+        if candidate_id is None:
+            release = await self._session.scalar(
+                select(ProductionReleaseCandidateRecord)
+                .order_by(ProductionReleaseCandidateRecord.created_at.desc())
+                .limit(1)
+            )
+        else:
+            release = await self._session.get(ProductionReleaseCandidateRecord, candidate_id)
+            if release is None:
+                raise LookupError("production_release_candidate_not_found")
+        environment = release.target_environment if release else (
+            "production" if self._settings.app_env == "production" else "staging"
+        )
         readiness = await evaluate_beta_readiness(self._session, self._settings)
         invite_reasons = await InviteBetaService(self._session, self._settings).gate_reasons()
-        environment = "production" if self._settings.app_env == "production" else "staging"
         provider_service = ProviderConfigurationService(self._session, self._settings)
         deepseek_runtime = await provider_service.runtime("deepseek")
         deepseek_view = await provider_service.get_configuration("deepseek")
@@ -501,20 +518,54 @@ class OperatorService:
             and deepseek_view.diagnostic_status == "healthy"
             and deepseek_diagnostic_fresh
         )
+        reliability_query = select(BetaReliabilityObservationRecord).where(
+            BetaReliabilityObservationRecord.environment == environment
+        )
+        if release is not None:
+            reliability_query = reliability_query.where(
+                BetaReliabilityObservationRecord.release_commit == release.commit_sha,
+                BetaReliabilityObservationRecord.api_image_digest == release.api_image_digest,
+                BetaReliabilityObservationRecord.web_image_digest == release.web_image_digest,
+                BetaReliabilityObservationRecord.migration_head == release.migration_head,
+                BetaReliabilityObservationRecord.configuration_fingerprint
+                == release.configuration_fingerprint,
+            )
         reliability = await self._session.scalar(
-            select(BetaReliabilityObservationRecord)
-            .where(BetaReliabilityObservationRecord.environment == environment)
-            .order_by(BetaReliabilityObservationRecord.created_at.desc())
-            .limit(1)
+            reliability_query.order_by(BetaReliabilityObservationRecord.created_at.desc()).limit(1)
         )
         reliability_ok, reliability_fresh, reliability_has_48h = (
             reliability_observation_eligible(reliability, now=now)
         )
-        release = await self._session.scalar(
-            select(ProductionReleaseCandidateRecord)
-            .order_by(ProductionReleaseCandidateRecord.created_at.desc())
-            .limit(1)
-        )
+        invite_gate = None
+        invite_gate_items: list[ProductionReleaseGateItemRecord] = []
+        deployment = None
+        if release is not None:
+            invite_gate = await self._session.scalar(
+                select(ProductionReleaseGateRunRecord)
+                .where(
+                    ProductionReleaseGateRunRecord.candidate_id == release.id,
+                    ProductionReleaseGateRunRecord.gate_type == "invite_activation",
+                )
+                .order_by(ProductionReleaseGateRunRecord.started_at.desc())
+                .limit(1)
+            )
+            if invite_gate is not None:
+                invite_gate_items = list(
+                    await self._session.scalars(
+                        select(ProductionReleaseGateItemRecord).where(
+                            ProductionReleaseGateItemRecord.run_id == invite_gate.id
+                        )
+                    )
+                )
+            deployment = await self._session.scalar(
+                select(ProductionDeploymentEventRecord)
+                .where(
+                    ProductionDeploymentEventRecord.candidate_id == release.id,
+                    ProductionDeploymentEventRecord.event_type.in_(("deployed", "released")),
+                )
+                .order_by(ProductionDeploymentEventRecord.created_at.desc())
+                .limit(1)
+            )
 
         checks: list[BetaAdmissionCheck] = []
 
@@ -551,6 +602,21 @@ class OperatorService:
                 "capacity": readiness.capacity,
                 "migration_head": MIGRATION_HEAD,
             },
+        )
+        release_environment_ok = bool(
+            release and release.target_environment == self._settings.app_env == "production"
+        )
+        add_check(
+            "release.environment",
+            "release",
+            release_environment_ok,
+            "release_candidate_environment_mismatch",
+            observed_at=release.created_at if release else None,
+            evidence={
+                "candidate_environment": release.target_environment if release else None,
+                "runtime_environment": self._settings.app_env,
+            },
+            pending=release is None,
         )
         add_check(
             "invitation.gates",
@@ -612,6 +678,7 @@ class OperatorService:
                 reliability.window_ended_at + timedelta(hours=24) if reliability else None
             ),
             evidence={
+                "observation_id": str(reliability.id) if reliability else None,
                 "window_hours": int(
                     (reliability.window_ended_at - reliability.window_started_at).total_seconds()
                     // 3600
@@ -619,23 +686,68 @@ class OperatorService:
                 if reliability
                 else 0,
                 "release_commit": reliability.release_commit if reliability else None,
+                "api_image_digest": reliability.api_image_digest if reliability else None,
+                "web_image_digest": reliability.web_image_digest if reliability else None,
+                "migration_head": reliability.migration_head if reliability else None,
                 "configuration_fingerprint": (
                     reliability.configuration_fingerprint if reliability else None
                 ),
             },
             pending=reliability is None,
         )
-        release_ready = bool(release and release.status in {"ready_invites", "released"})
+        expired_gate_items = [
+            item.check_key
+            for item in invite_gate_items
+            if item.mandatory and item.expires_at is not None and item.expires_at <= now
+        ]
+        failed_gate_items = [
+            item.check_key
+            for item in invite_gate_items
+            if item.mandatory and item.status != "passed"
+        ]
+        invite_gate_current = bool(
+            invite_gate
+            and invite_gate.status == "passed"
+            and invite_gate_items
+            and not expired_gate_items
+            and not failed_gate_items
+        )
+        release_ready = bool(
+            release
+            and release.status in {"ready_invites", "released"}
+            and invite_gate_current
+            and deployment
+        )
+        release_reason = "production_release_not_ready_for_invites"
+        if release is not None:
+            if invite_gate is None:
+                release_reason = "invite_activation_gate_missing"
+            elif invite_gate.status != "passed":
+                release_reason = "invite_activation_gate_blocked"
+            elif not invite_gate_items:
+                release_reason = "invite_activation_gate_items_missing"
+            elif expired_gate_items:
+                release_reason = "invite_activation_gate_evidence_expired"
+            elif failed_gate_items:
+                release_reason = "invite_activation_gate_blocked"
+            elif deployment is None:
+                release_reason = "production_deployment_event_missing"
         add_check(
             "release.invite_activation",
             "release",
             release_ready,
-            "production_release_not_ready_for_invites",
+            release_reason,
             observed_at=release.created_at if release else None,
             evidence={
                 "candidate_id": str(release.id) if release else None,
                 "candidate_status": release.status if release else None,
                 "commit_sha": release.commit_sha if release else None,
+                "gate_run_id": str(invite_gate.id) if invite_gate else None,
+                "gate_status": invite_gate.status if invite_gate else None,
+                "gate_item_count": len(invite_gate_items),
+                "expired_gate_item_count": len(expired_gate_items),
+                "failed_gate_item_count": len(failed_gate_items),
+                "deployment_ref": deployment.deployment_ref if deployment else None,
             },
             pending=release is None,
         )
@@ -654,6 +766,27 @@ class OperatorService:
             generated_at=now,
             environment=environment,
             status="blocked" if blocking_reasons else "ready",
+            candidate=(
+                BetaAdmissionCandidate(
+                    id=release.id,
+                    status=cast(BetaAdmissionCandidateStatus, release.status),
+                    target_environment=cast(Literal["production"], release.target_environment),
+                    commit_sha=release.commit_sha,
+                    migration_head=release.migration_head,
+                    api_image_digest=release.api_image_digest,
+                    web_image_digest=release.web_image_digest,
+                    configuration_fingerprint=release.configuration_fingerprint,
+                    created_at=release.created_at,
+                    invite_gate_run_id=invite_gate.id if invite_gate else None,
+                    invite_gate_result_fingerprint=(
+                        invite_gate.result_fingerprint if invite_gate else None
+                    ),
+                    invite_gate_finished_at=invite_gate.finished_at if invite_gate else None,
+                    deployment_ref=deployment.deployment_ref if deployment else None,
+                )
+                if release
+                else None
+            ),
             blocking_reasons=blocking_reasons,
             checks=checks,
         )

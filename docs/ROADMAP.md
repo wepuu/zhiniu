@@ -270,6 +270,19 @@ platform, invitation, automation, database reliability and production-release fa
 fail-closed operator view. It does not create a second state machine, mutate release status, or
 turn an AKShare/Sina technical pass into commercial-data approval.
 
+The Phase 25I candidate-admission increment binds that projection to one immutable production
+candidate. `candidate_id` is optional for the latest-candidate operator view and explicit for release
+review. A reliability observation is eligible only when its commit, API/Web image digests, migration
+head and configuration fingerprint all match the candidate; a passing invite gate and retained
+deployment event are also required. The projection remains read-only. Licensed Provider onboarding,
+the 48-hour natural observation window and independent approvals remain operational gates rather
+than values that application code may synthesize.
+
+The current product milestone is a private, non-commercial, small-cohort evaluation. Commercial
+Provider acceptance and public invitation activation are therefore deferred rather than simulated;
+AKShare/Sina lineage remains `development_evaluation`. The production and invite gates stay
+fail-closed so a later scope expansion requires an explicit policy and evidence decision.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

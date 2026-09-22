@@ -50,6 +50,12 @@ It writes a new `0600` JSON file for every invocation and never reads or emits d
 Archive the passing 24-hour and 48-hour host records next to the corresponding database observation
 and release candidate. A failed record remains evidence and must not be edited into a pass.
 
+For a candidate-specific application-side review, request
+`GET /api/v1/admin/beta-admission?candidate_id=CANDIDATE_UUID`. The response fails closed when the
+candidate environment differs from the runtime or when the reliability observation does not match
+the candidate commit, immutable image digests, migration head and configuration fingerprint. This
+read-only projection does not replace the Phase 22 gate command or the root-owned host evidence.
+
 The first release that introduces this collector may still be running the previous installed deploy
 wrapper. After that release is healthy, install the collector once as root from the checked-out
 repository; subsequent deployments refresh it automatically:

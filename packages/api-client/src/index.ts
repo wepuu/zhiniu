@@ -1014,8 +1014,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         "/api/v1/admin/automation/policies",
       );
     },
-    getBetaAdmission() {
-      return request<BetaAdmissionSnapshot>("/api/v1/admin/beta-admission");
+    getBetaAdmission(candidateId?: string) {
+      const query = candidateId
+        ? `?candidate_id=${encodeURIComponent(candidateId)}`
+        : "";
+      return request<BetaAdmissionSnapshot>(
+        `/api/v1/admin/beta-admission${query}`,
+      );
     },
     updateAutomationPolicy(
       policyKey: string,

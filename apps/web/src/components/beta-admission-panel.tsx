@@ -29,10 +29,14 @@ function dateTime(value?: string | null) {
     : "—";
 }
 
+function shortIdentity(value: string) {
+  return value.length > 16 ? `${value.slice(0, 12)}…` : value;
+}
+
 export function BetaAdmissionPanel() {
   const query = useQuery({
     queryKey: ["beta-admission"],
-    queryFn: api.getBetaAdmission,
+    queryFn: () => api.getBetaAdmission(),
     refetchInterval: 60_000,
   });
 
@@ -76,6 +80,41 @@ export function BetaAdmissionPanel() {
           {snapshot.environment} · {dateTime(snapshot.generated_at)}
         </p>
       </div>
+      {snapshot.candidate ? (
+        <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 text-xs text-slate-600 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <p className="text-slate-400">候选版本</p>
+            <p className="mt-1 font-mono" title={snapshot.candidate.commit_sha}>
+              {shortIdentity(snapshot.candidate.commit_sha)}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-400">迁移头 / 状态</p>
+            <p className="mt-1 font-mono">
+              {snapshot.candidate.migration_head} · {snapshot.candidate.status}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-400">配置指纹</p>
+            <p
+              className="mt-1 font-mono"
+              title={snapshot.candidate.configuration_fingerprint}
+            >
+              {shortIdentity(snapshot.candidate.configuration_fingerprint)}
+            </p>
+          </div>
+          <div>
+            <p className="text-slate-400">部署证据</p>
+            <p className="mt-1 break-all font-mono">
+              {snapshot.candidate.deployment_ref ?? "尚未记录"}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs text-amber-800">
+          尚未创建生产候选版本，所有候选绑定门禁保持阻塞。
+        </div>
+      )}
       <div className="grid gap-px bg-slate-100 md:grid-cols-2 xl:grid-cols-3">
         {snapshot.checks.map((check) => {
           const passed = check.status === "passed";

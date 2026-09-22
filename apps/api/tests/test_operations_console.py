@@ -55,25 +55,60 @@ def test_high_risk_action_requires_elevated_session() -> None:
 
 
 @pytest.mark.asyncio
+async def test_beta_admission_rejects_unknown_candidate() -> None:
+    session = SimpleNamespace(get=AsyncMock(return_value=None))
+
+    with pytest.raises(LookupError, match="production_release_candidate_not_found"):
+        await OperatorService(cast(AsyncSession, session), Settings()).beta_admission(uuid4())
+
+
+@pytest.mark.asyncio
 async def test_beta_admission_composes_existing_release_bound_facts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     now = datetime.now(UTC)
+    candidate_id = uuid4()
     reliability = SimpleNamespace(
+        id=uuid4(),
         status="passed",
         created_at=now,
         window_started_at=now - timedelta(hours=48),
         window_ended_at=now,
         release_commit="a" * 40,
+        api_image_digest=f"sha256:{'c' * 64}",
+        web_image_digest=f"sha256:{'d' * 64}",
+        migration_head="20260914_0030",
         configuration_fingerprint="b" * 64,
     )
     release = SimpleNamespace(
-        id=uuid4(),
+        id=candidate_id,
         status="ready_invites",
+        target_environment="production",
         created_at=now,
         commit_sha="a" * 40,
+        api_image_digest=f"sha256:{'c' * 64}",
+        web_image_digest=f"sha256:{'d' * 64}",
+        migration_head="20260914_0030",
+        configuration_fingerprint="b" * 64,
     )
-    session = SimpleNamespace(scalar=AsyncMock(side_effect=[reliability, release]))
+    invite_gate = SimpleNamespace(
+        id=uuid4(),
+        status="passed",
+        result_fingerprint="e" * 64,
+        finished_at=now,
+    )
+    deployment = SimpleNamespace(deployment_ref="pipeline/run/22")
+    gate_item = SimpleNamespace(
+        check_key="provider.acceptance",
+        mandatory=True,
+        status="passed",
+        expires_at=now + timedelta(hours=12),
+    )
+    session = SimpleNamespace(
+        get=AsyncMock(return_value=release),
+        scalar=AsyncMock(side_effect=[reliability, invite_gate, deployment]),
+        scalars=AsyncMock(return_value=[gate_item]),
+    )
     settings = Settings(
         app_env="production",
         automation_hard_disabled=False,
@@ -136,11 +171,18 @@ async def test_beta_admission_composes_existing_release_bound_facts(
         ),
     )
 
-    result = await OperatorService(cast(AsyncSession, session), settings).beta_admission()
+    result = await OperatorService(cast(AsyncSession, session), settings).beta_admission(
+        candidate_id
+    )
 
     assert result.status == "ready"
+    assert result.candidate is not None
+    assert result.candidate.id == candidate_id
+    assert result.candidate.invite_gate_run_id == invite_gate.id
+    assert result.candidate.deployment_ref == "pipeline/run/22"
     assert [item.key for item in result.checks] == [
         "platform.readiness",
+        "release.environment",
         "invitation.gates",
         "automation.beta_paths",
         "provider.deepseek",
@@ -148,6 +190,123 @@ async def test_beta_admission_composes_existing_release_bound_facts(
         "release.invite_activation",
     ]
     assert all(item.status == "passed" for item in result.checks)
+
+
+@pytest.mark.asyncio
+async def test_beta_admission_fails_closed_without_bound_reliability_or_current_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime.now(UTC)
+    candidate_id = uuid4()
+    release = SimpleNamespace(
+        id=candidate_id,
+        status="ready_invites",
+        target_environment="production",
+        created_at=now,
+        commit_sha="a" * 40,
+        api_image_digest=f"sha256:{'c' * 64}",
+        web_image_digest=f"sha256:{'d' * 64}",
+        migration_head="20260914_0030",
+        configuration_fingerprint="b" * 64,
+    )
+    session = SimpleNamespace(
+        get=AsyncMock(return_value=release),
+        scalar=AsyncMock(
+            side_effect=[
+                None,
+                SimpleNamespace(
+                    id=uuid4(),
+                    status="passed",
+                    result_fingerprint="e" * 64,
+                    finished_at=now,
+                ),
+                SimpleNamespace(deployment_ref="pipeline/run/22"),
+            ]
+        ),
+        scalars=AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    check_key="provider.acceptance",
+                    mandatory=True,
+                    status="passed",
+                    expires_at=now - timedelta(minutes=1),
+                )
+            ]
+        ),
+    )
+    settings = Settings(
+        app_env="production",
+        automation_hard_disabled=False,
+        automation_ai_enabled=True,
+        watchlist_preparation_enabled=True,
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.evaluate_beta_readiness",
+        AsyncMock(
+            return_value=BetaReadinessReport(
+                status="ready_for_invited_beta",
+                active_users=3,
+                capacity=500,
+                blocking_reasons=[],
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.InviteBetaService.gate_reasons",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.ProviderConfigurationService.runtime",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                configuration={
+                    "enabled": True,
+                    "daily_call_limit": 100,
+                    "max_concurrency": 2,
+                    "stock_health": {
+                        "enabled": True,
+                        "models": ["deepseek/deepseek-v4-flash"],
+                        "max_attempts": 1,
+                        "timeout_seconds": 60,
+                        "deadline_seconds": 90,
+                        "max_output_tokens": 1200,
+                    },
+                    "research_assistant": {
+                        "enabled": False,
+                        "models": ["deepseek/deepseek-v4-flash"],
+                        "max_attempts": 1,
+                        "timeout_seconds": 60,
+                        "deadline_seconds": 90,
+                        "max_output_tokens": 1200,
+                    },
+                },
+                credentials={"api_key": "configured"},
+                source="database",
+                revision=5,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.ProviderConfigurationService.get_configuration",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                diagnostic_status="healthy",
+                diagnostic_checked_at=now,
+            )
+        ),
+    )
+
+    result = await OperatorService(cast(AsyncSession, session), settings).beta_admission(
+        candidate_id
+    )
+
+    assert result.status == "blocked"
+    assert "beta_reliability_observation_missing" in result.blocking_reasons
+    assert "invite_activation_gate_evidence_expired" in result.blocking_reasons
+    reliability_check = next(
+        item for item in result.checks if item.key == "reliability.database_observation"
+    )
+    assert reliability_check.status == "pending"
 
 
 def test_resend_signature_and_event_allowlist() -> None:
