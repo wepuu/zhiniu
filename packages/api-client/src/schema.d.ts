@@ -1252,6 +1252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/beta-admission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Beta Admission */
+        get: operations["beta_admission_api_v1_admin_beta_admission_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -2800,6 +2817,47 @@ export interface components {
             total_equity: string | null;
             /** Goodwill */
             goodwill: string | null;
+        };
+        /** BetaAdmissionCheck */
+        BetaAdmissionCheck: {
+            /** Key */
+            key: string;
+            /** Category */
+            category: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "blocked" | "pending";
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Observed At */
+            observed_at?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Evidence */
+            evidence?: {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        /** BetaAdmissionSnapshot */
+        BetaAdmissionSnapshot: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Environment */
+            environment: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "blocked";
+            /** Blocking Reasons */
+            blocking_reasons: string[];
+            /** Checks */
+            checks: components["schemas"]["BetaAdmissionCheck"][];
         };
         /** BetaCohortCreate */
         BetaCohortCreate: {
@@ -9265,6 +9323,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatorDashboardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    beta_admission_api_v1_admin_beta_admission_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaAdmissionSnapshot"];
                 };
             };
             /** @description Validation Error */

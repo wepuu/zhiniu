@@ -34,12 +34,15 @@ window, an elevated operations user may freeze the database-backed SLO and calen
 and Web image digests and configuration fingerprint. This immutable application record supplements,
 but does not replace, host-level OOM, restart, broker-depth, backup and restore evidence.
 
-For Phase 25G, collect the complementary host record with the exact release-candidate configuration
-fingerprint:
+Phase 25H deployments compute the exact release-candidate configuration fingerprint from a fixed
+secret-free allowlist and automatically collect an immediate `window_hours=0` host snapshot after
+health checks. That snapshot is not a stability-window claim. After the exact release has run for
+the required period, collect the complementary 24- or 48-hour record manually:
 
 ```text
 sudo /usr/local/sbin/zhaoniu-phase25g-host-evidence \
-  --configuration-fingerprint RELEASE_CONFIGURATION_SHA256
+  --configuration-fingerprint "$(sudo /usr/local/sbin/zhaoniu-phase25h-configuration-fingerprint \
+    --env-file /etc/zhiniu/staging.env)"
 ```
 
 The collector is installed by `install-host-assets.sh` and refreshed after a healthy deployment.
@@ -55,6 +58,9 @@ repository; subsequent deployments refresh it automatically:
 install -m 0755 \
   /opt/zhiniu/repo/infrastructure/production/phase25g-host-evidence.py \
   /usr/local/sbin/zhaoniu-phase25g-host-evidence
+install -m 0755 \
+  /opt/zhiniu/repo/infrastructure/production/phase25h-configuration-fingerprint.py \
+  /usr/local/sbin/zhaoniu-phase25h-configuration-fingerprint
 ```
 
 `check-beta-readiness` remains a diagnostic, not deployment authorization. Production deployment

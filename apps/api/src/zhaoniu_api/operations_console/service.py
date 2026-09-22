@@ -16,10 +16,12 @@ from zhaoniu_api.db import (
     AIExplanationRequestRecord,
     AIResearchOutputRecord,
     BetaFeedbackItemRecord,
+    BetaReliabilityObservationRecord,
     CoverageBackfillRunRecord,
     LLMCallRecord,
     OperatorAuditEventRecord,
     OperatorMembershipRecord,
+    ProductionReleaseCandidateRecord,
     ProviderDiagnosticRunRecord,
     RegistrationInviteRecord,
     ResearchCoverageMemberRecord,
@@ -31,8 +33,11 @@ from zhaoniu_api.db import (
     UserSessionRecord,
     WatchlistRecord,
 )
+from zhaoniu_api.invite_beta.service import InviteBetaService
 from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.models import (
+    BetaAdmissionCheck,
+    BetaAdmissionSnapshot,
     OperatorAccessCodeResponse,
     OperatorAuditItem,
     OperatorContext,
@@ -46,6 +51,7 @@ from zhaoniu_api.operations_console.models import (
     ProviderStatusView,
 )
 from zhaoniu_api.ports.providers import LLMGatewayError
+from zhaoniu_api.production_release.service import reliability_observation_eligible
 from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
 from zhaoniu_api.provider_configuration.models import (
     ALLOWED_DEEPSEEK_MODELS,
@@ -467,6 +473,189 @@ class OperatorService:
                 "data_use_status": self._settings.data_use_status,
                 "legal_review_status": self._settings.legal_review_status,
             },
+        )
+
+    async def beta_admission(self) -> BetaAdmissionSnapshot:
+        """Project existing immutable facts into one read-only admission decision."""
+
+        now = datetime.now(UTC)
+        readiness = await evaluate_beta_readiness(self._session, self._settings)
+        invite_reasons = await InviteBetaService(self._session, self._settings).gate_reasons()
+        environment = "production" if self._settings.app_env == "production" else "staging"
+        provider_service = ProviderConfigurationService(self._session, self._settings)
+        deepseek_runtime = await provider_service.runtime("deepseek")
+        deepseek_view = await provider_service.get_configuration("deepseek")
+        deepseek_configuration = DeepSeekConfiguration.model_validate(
+            deepseek_runtime.configuration
+        )
+        deepseek_route_ok = deepseek_route_available(
+            deepseek_configuration,
+            deepseek_runtime.credentials,
+        )
+        deepseek_diagnostic_fresh = bool(
+            deepseek_view.diagnostic_checked_at
+            and deepseek_view.diagnostic_checked_at >= now - timedelta(hours=24)
+        )
+        deepseek_ok = bool(
+            deepseek_route_ok
+            and deepseek_view.diagnostic_status == "healthy"
+            and deepseek_diagnostic_fresh
+        )
+        reliability = await self._session.scalar(
+            select(BetaReliabilityObservationRecord)
+            .where(BetaReliabilityObservationRecord.environment == environment)
+            .order_by(BetaReliabilityObservationRecord.created_at.desc())
+            .limit(1)
+        )
+        reliability_ok, reliability_fresh, reliability_has_48h = (
+            reliability_observation_eligible(reliability, now=now)
+        )
+        release = await self._session.scalar(
+            select(ProductionReleaseCandidateRecord)
+            .order_by(ProductionReleaseCandidateRecord.created_at.desc())
+            .limit(1)
+        )
+
+        checks: list[BetaAdmissionCheck] = []
+
+        def add_check(
+            key: str,
+            category: str,
+            passed: bool,
+            reason_code: str,
+            *,
+            observed_at: datetime | None = None,
+            expires_at: datetime | None = None,
+            evidence: dict[str, str | int | bool | None] | None = None,
+            pending: bool = False,
+        ) -> None:
+            checks.append(
+                BetaAdmissionCheck(
+                    key=key,
+                    category=category,
+                    status="passed" if passed else ("pending" if pending else "blocked"),
+                    reason_code=None if passed else reason_code,
+                    observed_at=observed_at,
+                    expires_at=expires_at,
+                    evidence=evidence or {},
+                )
+            )
+
+        add_check(
+            "platform.readiness",
+            "platform",
+            not readiness.blocking_reasons,
+            readiness.blocking_reasons[0] if readiness.blocking_reasons else "platform_not_ready",
+            evidence={
+                "active_users": readiness.active_users,
+                "capacity": readiness.capacity,
+                "migration_head": MIGRATION_HEAD,
+            },
+        )
+        add_check(
+            "invitation.gates",
+            "access",
+            not invite_reasons,
+            invite_reasons[0] if invite_reasons else "invitation_gate_blocked",
+            evidence={"blocking_reason_count": len(invite_reasons)},
+        )
+        automation_ok = (
+            not self._settings.automation_hard_disabled
+            and self._settings.automation_ai_enabled
+            and self._settings.watchlist_preparation_enabled
+        )
+        add_check(
+            "automation.beta_paths",
+            "automation",
+            automation_ok,
+            "beta_automation_not_enabled",
+            evidence={
+                "hard_disabled": self._settings.automation_hard_disabled,
+                "ai_enabled": self._settings.automation_ai_enabled,
+                "watchlist_preparation_enabled": self._settings.watchlist_preparation_enabled,
+            },
+        )
+        add_check(
+            "provider.deepseek",
+            "provider",
+            deepseek_ok,
+            "deepseek_active_diagnostic_unhealthy",
+            observed_at=deepseek_view.diagnostic_checked_at,
+            expires_at=(
+                deepseek_view.diagnostic_checked_at + timedelta(hours=24)
+                if deepseek_view.diagnostic_checked_at
+                else None
+            ),
+            evidence={
+                "source": deepseek_runtime.source,
+                "revision": deepseek_runtime.revision,
+                "route_available": deepseek_route_ok,
+                "diagnostic_status": deepseek_view.diagnostic_status,
+            },
+            pending=deepseek_view.diagnostic_status == "not_run",
+        )
+        reliability_reason = "beta_reliability_observation_missing"
+        if reliability is not None:
+            if reliability.status != "passed":
+                reliability_reason = "beta_reliability_observation_failed"
+            elif not reliability_has_48h:
+                reliability_reason = "beta_reliability_window_too_short"
+            elif not reliability_fresh:
+                reliability_reason = "beta_reliability_observation_stale"
+        add_check(
+            "reliability.database_observation",
+            "reliability",
+            reliability_ok,
+            reliability_reason,
+            observed_at=reliability.created_at if reliability else None,
+            expires_at=(
+                reliability.window_ended_at + timedelta(hours=24) if reliability else None
+            ),
+            evidence={
+                "window_hours": int(
+                    (reliability.window_ended_at - reliability.window_started_at).total_seconds()
+                    // 3600
+                )
+                if reliability
+                else 0,
+                "release_commit": reliability.release_commit if reliability else None,
+                "configuration_fingerprint": (
+                    reliability.configuration_fingerprint if reliability else None
+                ),
+            },
+            pending=reliability is None,
+        )
+        release_ready = bool(release and release.status in {"ready_invites", "released"})
+        add_check(
+            "release.invite_activation",
+            "release",
+            release_ready,
+            "production_release_not_ready_for_invites",
+            observed_at=release.created_at if release else None,
+            evidence={
+                "candidate_id": str(release.id) if release else None,
+                "candidate_status": release.status if release else None,
+                "commit_sha": release.commit_sha if release else None,
+            },
+            pending=release is None,
+        )
+
+        blocking_reasons = list(
+            dict.fromkeys(
+                [*readiness.blocking_reasons, *invite_reasons]
+                + [
+                    item.reason_code
+                    for item in checks
+                    if item.status != "passed" and item.reason_code is not None
+                ]
+            )
+        )
+        return BetaAdmissionSnapshot(
+            generated_at=now,
+            environment=environment,
+            status="blocked" if blocking_reasons else "ready",
+            blocking_reasons=blocking_reasons,
+            checks=checks,
         )
 
     async def list_users(self, query: str, limit: int) -> list[OperatorUserSummary]:

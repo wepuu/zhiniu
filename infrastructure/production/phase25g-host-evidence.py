@@ -204,7 +204,7 @@ def collect_host_facts(args: argparse.Namespace, *, runner: Runner = run_command
             "journalctl",
             "--kernel",
             "--since",
-            f"{args.window_hours} hours ago",
+            "now" if args.window_hours == 0 else f"{args.window_hours} hours ago",
             "--no-pager",
             "--grep",
             "Out of memory|Killed process|oom-kill",
@@ -295,7 +295,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--backup-dir", type=Path, default=Path("/var/backups/zhiniu"))
     parser.add_argument("--docker-root", type=Path, default=Path("/var/lib/docker"))
     parser.add_argument("--meminfo-file", type=Path, default=Path("/proc/meminfo"))
-    parser.add_argument("--window-hours", type=int, choices=(24, 48), default=48)
+    parser.add_argument(
+        "--window-hours",
+        type=int,
+        choices=(0, 24, 48),
+        default=48,
+        help="Use 0 only for an immediate post-deployment snapshot.",
+    )
     parser.add_argument("--broker-queue-limit", type=int, default=10)
     parser.add_argument("--backup-max-age-hours", type=int, default=26)
     parser.add_argument("--docker-min-free-gib", type=int, default=15)

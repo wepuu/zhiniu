@@ -36,6 +36,27 @@ class OperatorDashboardResponse(BaseModel):
     system: dict[str, str | int | bool | list[str] | None]
 
 
+BetaAdmissionCheckStatus = Literal["passed", "blocked", "pending"]
+
+
+class BetaAdmissionCheck(BaseModel):
+    key: str
+    category: str
+    status: BetaAdmissionCheckStatus
+    reason_code: str | None = None
+    observed_at: datetime | None = None
+    expires_at: datetime | None = None
+    evidence: dict[str, str | int | bool | None] = Field(default_factory=dict)
+
+
+class BetaAdmissionSnapshot(BaseModel):
+    generated_at: datetime
+    environment: str
+    status: Literal["ready", "blocked"]
+    blocking_reasons: list[str]
+    checks: list[BetaAdmissionCheck]
+
+
 class OperatorUserSummary(BaseModel):
     id: UUID
     email: str
