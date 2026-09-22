@@ -4430,6 +4430,23 @@
         "operationId": "beta_admission_api_v1_admin_beta_admission_get",
         "parameters": [
           {
+            "name": "candidate_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidate Id"
+            }
+          },
+          {
             "name": "zhaoniu_session",
             "in": "cookie",
             "required": false,
@@ -9634,6 +9651,118 @@
         ],
         "title": "BalanceSheetResponse"
       },
+      "BetaAdmissionCandidate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "blocked",
+              "ready_closed",
+              "deployed_observing",
+              "ready_invites",
+              "released",
+              "rolled_back",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "target_environment": {
+            "type": "string",
+            "const": "production",
+            "title": "Target Environment"
+          },
+          "commit_sha": {
+            "type": "string",
+            "title": "Commit Sha"
+          },
+          "migration_head": {
+            "type": "string",
+            "title": "Migration Head"
+          },
+          "api_image_digest": {
+            "type": "string",
+            "title": "Api Image Digest"
+          },
+          "web_image_digest": {
+            "type": "string",
+            "title": "Web Image Digest"
+          },
+          "configuration_fingerprint": {
+            "type": "string",
+            "title": "Configuration Fingerprint"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "invite_gate_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Gate Run Id"
+          },
+          "invite_gate_result_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Gate Result Fingerprint"
+          },
+          "invite_gate_finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Gate Finished At"
+          },
+          "deployment_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "target_environment",
+          "commit_sha",
+          "migration_head",
+          "api_image_digest",
+          "web_image_digest",
+          "configuration_fingerprint",
+          "created_at"
+        ],
+        "title": "BetaAdmissionCandidate"
+      },
       "BetaAdmissionCheck": {
         "properties": {
           "key": {
@@ -9735,6 +9864,16 @@
               "blocked"
             ],
             "title": "Status"
+          },
+          "candidate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BetaAdmissionCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "blocking_reasons": {
             "items": {

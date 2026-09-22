@@ -2818,6 +2818,47 @@ export interface components {
             /** Goodwill */
             goodwill: string | null;
         };
+        /** BetaAdmissionCandidate */
+        BetaAdmissionCandidate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "blocked" | "ready_closed" | "deployed_observing" | "ready_invites" | "released" | "rolled_back" | "rejected";
+            /**
+             * Target Environment
+             * @constant
+             */
+            target_environment: "production";
+            /** Commit Sha */
+            commit_sha: string;
+            /** Migration Head */
+            migration_head: string;
+            /** Api Image Digest */
+            api_image_digest: string;
+            /** Web Image Digest */
+            web_image_digest: string;
+            /** Configuration Fingerprint */
+            configuration_fingerprint: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Invite Gate Run Id */
+            invite_gate_run_id?: string | null;
+            /** Invite Gate Result Fingerprint */
+            invite_gate_result_fingerprint?: string | null;
+            /** Invite Gate Finished At */
+            invite_gate_finished_at?: string | null;
+            /** Deployment Ref */
+            deployment_ref?: string | null;
+        };
         /** BetaAdmissionCheck */
         BetaAdmissionCheck: {
             /** Key */
@@ -2854,6 +2895,7 @@ export interface components {
              * @enum {string}
              */
             status: "ready" | "blocked";
+            candidate?: components["schemas"]["BetaAdmissionCandidate"] | null;
             /** Blocking Reasons */
             blocking_reasons: string[];
             /** Checks */
@@ -9338,7 +9380,9 @@ export interface operations {
     };
     beta_admission_api_v1_admin_beta_admission_get: {
         parameters: {
-            query?: never;
+            query?: {
+                candidate_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {

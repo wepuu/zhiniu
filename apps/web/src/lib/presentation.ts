@@ -261,6 +261,12 @@ const reasonCodeCopy: Record<string, string> = {
   beta_reliability_observation_failed: "最近的可靠性观察未通过",
   beta_reliability_window_too_short: "可靠性观察窗口不足四十八小时",
   beta_reliability_observation_stale: "可靠性观察证据已过期",
+  release_candidate_environment_mismatch: "候选版本环境与当前运行环境不一致",
+  invite_activation_gate_missing: "候选版本尚未执行邀请准入门禁",
+  invite_activation_gate_blocked: "候选版本的邀请准入门禁未通过",
+  invite_activation_gate_items_missing: "邀请准入门禁缺少可核验的明细",
+  invite_activation_gate_evidence_expired: "邀请准入门禁中的证据已经过期",
+  production_deployment_event_missing: "候选版本尚未留存部署事件",
   beta_automation_not_enabled: "Beta 所需的自动准备通道未完全开启",
   production_release_not_ready_for_invites:
     "生产发布候选版本尚未通过邀请激活门禁",

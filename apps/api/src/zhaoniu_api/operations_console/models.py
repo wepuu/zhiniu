@@ -37,6 +37,16 @@ class OperatorDashboardResponse(BaseModel):
 
 
 BetaAdmissionCheckStatus = Literal["passed", "blocked", "pending"]
+BetaAdmissionCandidateStatus = Literal[
+    "draft",
+    "blocked",
+    "ready_closed",
+    "deployed_observing",
+    "ready_invites",
+    "released",
+    "rolled_back",
+    "rejected",
+]
 
 
 class BetaAdmissionCheck(BaseModel):
@@ -49,10 +59,27 @@ class BetaAdmissionCheck(BaseModel):
     evidence: dict[str, str | int | bool | None] = Field(default_factory=dict)
 
 
+class BetaAdmissionCandidate(BaseModel):
+    id: UUID
+    status: BetaAdmissionCandidateStatus
+    target_environment: Literal["production"]
+    commit_sha: str
+    migration_head: str
+    api_image_digest: str
+    web_image_digest: str
+    configuration_fingerprint: str
+    created_at: datetime
+    invite_gate_run_id: UUID | None = None
+    invite_gate_result_fingerprint: str | None = None
+    invite_gate_finished_at: datetime | None = None
+    deployment_ref: str | None = None
+
+
 class BetaAdmissionSnapshot(BaseModel):
     generated_at: datetime
     environment: str
     status: Literal["ready", "blocked"]
+    candidate: BetaAdmissionCandidate | None = None
     blocking_reasons: list[str]
     checks: list[BetaAdmissionCheck]
 

@@ -138,9 +138,13 @@ async def dashboard(
 async def beta_admission(
     context: OperatorContextDependency,
     service: OperatorServiceDependency,
+    candidate_id: Annotated[UUID | None, Query()] = None,
 ) -> BetaAdmissionSnapshot:
     _require(context, service, "dashboard.read")
-    return await service.beta_admission()
+    try:
+        return await service.beta_admission(candidate_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.get("/users", response_model=OperatorUserListResponse)

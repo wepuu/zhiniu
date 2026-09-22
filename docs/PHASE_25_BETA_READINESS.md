@@ -4,6 +4,10 @@ Phase 25 converts the working Phase 24 watchlist loop into measurable, supportab
 operations. It does not approve a public launch, expand to full-market backfill, or relax financial
 data licensing requirements.
 
+The active milestone is limited to private, non-commercial, small-scale evaluation. Licensed data
+acceptance is not required to operate that closed evaluation, but evaluation-source evidence must
+remain labelled `development_evaluation` and cannot satisfy the retained production/invite gates.
+
 ## Product outcome
 
 An operator must be able to answer three questions from retained facts:
@@ -119,6 +123,21 @@ The projection is read-only and composes the existing readiness, invitation, aut
 48-hour reliability-observation and production-release-candidate facts. It never activates an
 invitation cohort or changes a release candidate. Host evidence remains a root-owned deployment
 artifact because the API container must not read the host filesystem.
+
+### Phase 25I candidate binding
+
+The same endpoint accepts an optional `candidate_id` query parameter. When omitted, it selects the
+latest production candidate for the operator overview. When supplied, a missing candidate returns
+404 and no other candidate's evidence is substituted. Candidate-bound admission requires an exact
+match across release commit, API/Web image digests, migration head and configuration fingerprint.
+It also exposes the retained invite-gate run identity and deployment reference. Every mandatory
+gate item must still be passing and any item-level `expires_at` must remain current. A staging
+runtime, an unmatched reliability record, expired gate evidence, a missing deployment event or a
+candidate that has not reached `ready_invites` remains blocked.
+
+The application response intentionally does not claim to verify root-owned host files. The Phase
+25G host record and its deployment-workflow reference remain a separate release artifact and must be
+reviewed with the candidate-bound application evidence.
 
 ## Controlled-Beta entry gates
 
