@@ -341,6 +341,6 @@ async def test_freeze_beta_observation_persists_release_bound_evidence() -> None
     )
 
     assert result.status == "passed"
-    assert result.migration_head == "20260914_0030"
+    assert result.migration_head == "20260923_0031"
     assert len(result.result_fingerprint) == 64
     assert len(session.records) == 1

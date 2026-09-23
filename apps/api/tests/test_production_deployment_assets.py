@@ -86,13 +86,15 @@ def test_deploy_is_fail_closed_around_backup_and_health() -> None:
     deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
 
     backup = deploy.index('"${backup_script}" --remote-required')
+    image_migration_contract = deploy.index("api_image_migration_head=")
     migration = deploy.index("compose run --rm migrate")
     service_update = deploy.index("compose up -d --remove-orphans api worker beat web")
     health = deploy.index("if ! wait_for_health")
-    assert backup < migration < service_update < health
+    assert image_migration_contract < backup < migration < service_update < health
     assert "invalid API image" in deploy
     assert "requested commit is no longer main" in deploy
     assert "image revision does not match commit" in deploy
+    assert "API image migration head does not match its Alembic head" in deploy
     assert "alembic downgrade" not in deploy
 
 

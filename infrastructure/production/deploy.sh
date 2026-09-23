@@ -95,6 +95,32 @@ if [[ -L ${releases_dir}/current ]]; then
   previous_dir=$(readlink -f "${releases_dir}/current")
 fi
 
+docker pull "${api_image}"
+docker pull "${web_image}"
+for image in "${api_image}" "${web_image}"; do
+  image_revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${image}")
+  image_architecture=$(docker image inspect --format '{{.Architecture}}' "${image}")
+  [[ ${image_revision} == "${commit_sha}" ]] || { echo "image revision does not match commit" >&2; exit 1; }
+  [[ ${image_architecture} == "amd64" ]] || { echo "image architecture is not amd64" >&2; exit 1; }
+done
+
+api_declared_migration_head=$(docker run --rm --entrypoint python "${api_image}" -c \
+  'from zhaoniu_api.system import MIGRATION_HEAD; print(MIGRATION_HEAD)')
+mapfile -t api_alembic_heads < <(
+  docker run --rm --entrypoint alembic "${api_image}" \
+    -c infrastructure/migrations/alembic.ini heads \
+    | awk '$2 == "(head)" { print $1 }'
+)
+[[ ${#api_alembic_heads[@]} -eq 1 ]] || {
+  echo "API image must expose exactly one Alembic head" >&2
+  exit 1
+}
+[[ ${api_declared_migration_head} == "${api_alembic_heads[0]}" ]] || {
+  echo "API image migration head does not match its Alembic head" >&2
+  exit 1
+}
+echo "api_image_migration_head=${api_declared_migration_head}"
+
 postgres_id=$(compose ps -q postgres 2>/dev/null || true)
 if [[ -n ${postgres_id} ]] && [[ $(docker inspect -f '{{.State.Running}}' "${postgres_id}") == true ]]; then
   [[ -x ${backup_script} ]] || { echo "missing backup script: ${backup_script}" >&2; exit 1; }
@@ -105,14 +131,6 @@ if [[ -n ${postgres_id} ]] && [[ $(docker inspect -f '{{.State.Running}}' "${pos
     "${backup_script}" --remote-required
 fi
 
-docker pull "${api_image}"
-docker pull "${web_image}"
-for image in "${api_image}" "${web_image}"; do
-  image_revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${image}")
-  image_architecture=$(docker image inspect --format '{{.Architecture}}' "${image}")
-  [[ ${image_revision} == "${commit_sha}" ]] || { echo "image revision does not match commit" >&2; exit 1; }
-  [[ ${image_architecture} == "amd64" ]] || { echo "image architecture is not amd64" >&2; exit 1; }
-done
 compose up -d postgres redis
 compose run --rm migrate
 compose up -d --remove-orphans api worker beat web
