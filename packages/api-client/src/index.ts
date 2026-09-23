@@ -53,6 +53,8 @@ export type ExplanationRequestCreate =
   components["schemas"]["ExplanationRequestCreate"];
 export type ExplanationEvidence = components["schemas"]["ExplanationEvidence"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
+export type RegistrationStatusResponse =
+  components["schemas"]["RegistrationStatusResponse"];
 export type MeResponse = components["schemas"]["MeResponse"];
 export type AccessEnvelope = components["schemas"]["AccessEnvelope"];
 export type AccessActivationResponse =
@@ -280,6 +282,9 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
   }
 
   return {
+    getRegistrationStatus() {
+      return request<RegistrationStatusResponse>("/api/v1/auth/registration");
+    },
     register(
       email: string,
       password: string,

@@ -171,6 +171,21 @@ def test_auth_routes_issue_cookie_and_read_current_user() -> None:
     assert fake.logged_out is True
 
 
+def test_registration_status_exposes_safe_public_requirements() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/api/v1/auth/registration")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "status": "open",
+        "invitation_required": True,
+        "email_verification_required": True,
+        "password_min_length": 15,
+    }
+
+
 def test_login_rejects_invalid_credentials() -> None:
     app = create_app()
     app.dependency_overrides[get_auth_service] = lambda: FakeAuthService()

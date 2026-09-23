@@ -27,6 +27,27 @@
         }
       }
     },
+    "/api/v1/auth/registration": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Registration Status",
+        "operationId": "registration_status_api_v1_auth_registration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "tags": [
@@ -17249,6 +17270,40 @@
           "legal_acceptances"
         ],
         "title": "RegistrationRequest"
+      },
+      "RegistrationStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "invitation_required": {
+            "type": "boolean",
+            "title": "Invitation Required",
+            "default": true
+          },
+          "email_verification_required": {
+            "type": "boolean",
+            "title": "Email Verification Required",
+            "default": true
+          },
+          "password_min_length": {
+            "type": "integer",
+            "maximum": 128.0,
+            "minimum": 1.0,
+            "title": "Password Min Length"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "password_min_length"
+        ],
+        "title": "RegistrationStatusResponse"
       },
       "ResearchCoverage": {
         "properties": {

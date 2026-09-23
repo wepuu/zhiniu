@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Registration Status */
+        get: operations["registration_status_api_v1_auth_registration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/register": {
         parameters: {
             query?: never;
@@ -5700,6 +5717,26 @@ export interface components {
             /** Legal Acceptances */
             legal_acceptances: components["schemas"]["LegalAcceptanceRequest"][];
         };
+        /** RegistrationStatusResponse */
+        RegistrationStatusResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /**
+             * Invitation Required
+             * @default true
+             */
+            invitation_required: boolean;
+            /**
+             * Email Verification Required
+             * @default true
+             */
+            email_verification_required: boolean;
+            /** Password Min Length */
+            password_min_length: number;
+        };
         /** ResearchCoverage */
         ResearchCoverage: {
             dimension: components["schemas"]["ObservationDimension"];
@@ -6811,6 +6848,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    registration_status_api_v1_auth_registration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationStatusResponse"];
                 };
             };
         };

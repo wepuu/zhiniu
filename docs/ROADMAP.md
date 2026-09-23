@@ -278,6 +278,12 @@ deployment event are also required. The projection remains read-only. Licensed P
 the 48-hour natural observation window and independent approvals remain operational gates rather
 than values that application code may synthesize.
 
+The Phase 25J registration-experience increment keeps those admission gates intact while removing
+an avoidable user dead end. A public, secret-free registration preflight lets the Web client hide an
+unusable form while registration is closed, load legal versions only when registration is open and
+present stable recovery guidance for invitation, capacity, rate-limit and validation failures. It
+does not open registration, consume invitations during preflight or bypass candidate approval.
+
 The current product milestone is a private, non-commercial, small-cohort evaluation. Commercial
 Provider acceptance and public invitation activation are therefore deferred rather than simulated;
 AKShare/Sina lineage remains `development_evaluation`. The production and invite gates stay

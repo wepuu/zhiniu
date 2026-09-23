@@ -342,6 +342,13 @@ class RegistrationRequest(AuthRequest):
     legal_acceptances: list[LegalAcceptanceRequest] = Field(min_length=2, max_length=4)
 
 
+class RegistrationStatusResponse(BaseModel):
+    status: Literal["open", "closed"]
+    invitation_required: bool = True
+    email_verification_required: bool = True
+    password_min_length: int = Field(ge=1, le=128)
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: str
