@@ -10,12 +10,12 @@ import { translateReasonCode } from "@/lib/presentation";
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
 const categoryLabels: Record<string, string> = {
-  platform: "平台基础",
-  access: "邀请准入",
+  platform: "准入基础",
+  access: "测试邀请注册",
   automation: "自动准备",
   provider: "AI 服务",
-  reliability: "可靠性证据",
-  release: "发布门禁",
+  reliability: "商业发布证据",
+  release: "商业发布门禁",
 };
 
 function dateTime(value?: string | null) {
@@ -57,6 +57,13 @@ export function BetaAdmissionPanel() {
 
   const snapshot = query.data;
   const ready = snapshot.status === "ready";
+  const invitationCheck = snapshot.checks.find(
+    (check) => check.key === "invitation.gates",
+  );
+  const privateEvaluation =
+    invitationCheck?.evidence?.program_kind === "private_evaluation";
+  const evaluationRegistrationReady =
+    privateEvaluation && invitationCheck?.status === "passed";
   return (
     <Card className="mb-5 overflow-hidden">
       <div className="border-b border-slate-100 p-5 md:flex md:items-start md:justify-between">
@@ -67,12 +74,14 @@ export function BetaAdmissionPanel() {
             <ShieldCheck className="size-5" />
           </span>
           <div>
-            <p className="text-xs font-medium text-blue-700">受控 Beta 准入</p>
+            <p className="text-xs font-medium text-blue-700">
+              {privateEvaluation ? "非商用测试与商业发布" : "受控 Beta 准入"}
+            </p>
             <h2 className="mt-1 text-lg font-semibold">
-              {ready ? "准入证据已满足" : "仍有阻塞项"}
+              {ready ? "准入证据已满足" : "商业发布仍有阻塞项"}
             </h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              这里只汇总已留存事实；不会自动放开注册、邀请或生产权限。
+              测试邀请注册与商业发布分别判断；这里不会自动修改任何权限。
             </p>
           </div>
         </div>
@@ -80,6 +89,25 @@ export function BetaAdmissionPanel() {
           {snapshot.environment} · {dateTime(snapshot.generated_at)}
         </p>
       </div>
+      {privateEvaluation && (
+        <div
+          className={`border-b px-5 py-4 text-sm ${
+            evaluationRegistrationReady
+              ? "border-emerald-100 bg-emerald-50 text-emerald-900"
+              : "border-amber-100 bg-amber-50 text-amber-900"
+          }`}
+        >
+          <p className="font-medium">
+            {evaluationRegistrationReady
+              ? "非商用测试邀请注册已就绪"
+              : "非商用测试邀请注册仍有阻塞项"}
+          </p>
+          <p className="mt-1 text-xs leading-5 opacity-80">
+            当前使用 development_evaluation
+            免费评估数据；商业数据权利只影响未来商业发布，不阻止本测试注册。
+          </p>
+        </div>
+      )}
       {snapshot.candidate ? (
         <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 text-xs text-slate-600 md:grid-cols-2 xl:grid-cols-4">
           <div>
@@ -112,7 +140,7 @@ export function BetaAdmissionPanel() {
         </div>
       ) : (
         <div className="border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs text-amber-800">
-          尚未创建生产候选版本，所有候选绑定门禁保持阻塞。
+          尚未创建生产候选版本；这不会阻止非商用测试邀请注册。
         </div>
       )}
       <div className="grid gap-px bg-slate-100 md:grid-cols-2 xl:grid-cols-3">
@@ -138,7 +166,7 @@ export function BetaAdmissionPanel() {
               </p>
               {check.reason_code && (
                 <p className="mt-2 text-xs leading-5 text-slate-600">
-                  {translateReasonCode(check.reason_code)}
+                  {translateReasonCode(check.reason_code, "admin")}
                   <span className="ml-1 font-mono text-[10px] text-slate-400">
                     {check.reason_code}
                   </span>

@@ -5,7 +5,10 @@ from pydantic import ValidationError
 from zhaoniu_api.config import Settings
 from zhaoniu_api.invite_beta.models import BetaCohortCreate, BetaRecipientsAdd
 from zhaoniu_api.invite_beta.security import recipient_email_hmac, validate_recipient_email
-from zhaoniu_api.invite_beta.service import program_gate_reasons
+from zhaoniu_api.invite_beta.service import (
+    invitation_program_for_settings,
+    program_gate_reasons,
+)
 from zhaoniu_api.operations_console.models import OperatorContext
 from zhaoniu_api.operations_console.service import CAPABILITIES, OperatorService
 
@@ -68,6 +71,18 @@ def test_private_evaluation_gate_does_not_require_provider_acceptance() -> None:
         == []
     )
 
+
+def test_invitation_program_follows_configured_usage_scope() -> None:
+    assert (
+        invitation_program_for_settings(
+            Settings(coverage_usage_scope="development_evaluation")
+        )
+        == "private_evaluation"
+    )
+    assert (
+        invitation_program_for_settings(Settings(coverage_usage_scope="production"))
+        == "controlled_beta"
+    )
 
 def test_controlled_beta_gate_remains_fail_closed_without_acceptance() -> None:
     settings = Settings(coverage_usage_scope="production")

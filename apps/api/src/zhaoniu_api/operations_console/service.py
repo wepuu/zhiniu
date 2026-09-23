@@ -36,7 +36,10 @@ from zhaoniu_api.db import (
     UserSessionRecord,
     WatchlistRecord,
 )
-from zhaoniu_api.invite_beta.service import InviteBetaService
+from zhaoniu_api.invite_beta.service import (
+    InviteBetaService,
+    invitation_program_for_settings,
+)
 from zhaoniu_api.operations import evaluate_beta_readiness
 from zhaoniu_api.operations_console.models import (
     BetaAdmissionCandidate,
@@ -66,6 +69,14 @@ from zhaoniu_api.provider_configuration.models import (
 )
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
 from zhaoniu_api.system import MIGRATION_HEAD
+
+COMMERCIAL_ONLY_READINESS_REASONS = {
+    "provider_acceptance_missing",
+    "provider_acceptance_failed",
+    "provider_acceptance_stale",
+    "provider_data_policy_not_beta_eligible",
+    "commercial_activation_not_approved",
+}
 
 CAPABILITIES: dict[str, frozenset[str]] = {
     "viewer": frozenset(
@@ -498,7 +509,17 @@ class OperatorService:
             "production" if self._settings.app_env == "production" else "staging"
         )
         readiness = await evaluate_beta_readiness(self._session, self._settings)
-        invite_reasons = await InviteBetaService(self._session, self._settings).gate_reasons()
+        invitation_program = invitation_program_for_settings(self._settings)
+        invite_reasons = await InviteBetaService(self._session, self._settings).gate_reasons(
+            invitation_program
+        )
+        platform_reasons = list(readiness.blocking_reasons)
+        if invitation_program == "private_evaluation":
+            platform_reasons = [
+                reason
+                for reason in platform_reasons
+                if reason not in COMMERCIAL_ONLY_READINESS_REASONS
+            ]
         provider_service = ProviderConfigurationService(self._session, self._settings)
         deepseek_runtime = await provider_service.runtime("deepseek")
         deepseek_view = await provider_service.get_configuration("deepseek")
@@ -595,12 +616,14 @@ class OperatorService:
         add_check(
             "platform.readiness",
             "platform",
-            not readiness.blocking_reasons,
-            readiness.blocking_reasons[0] if readiness.blocking_reasons else "platform_not_ready",
+            not platform_reasons,
+            platform_reasons[0] if platform_reasons else "platform_not_ready",
             evidence={
                 "active_users": readiness.active_users,
                 "capacity": readiness.capacity,
                 "migration_head": MIGRATION_HEAD,
+                "program_kind": invitation_program,
+                "usage_scope": self._settings.coverage_usage_scope,
             },
         )
         release_environment_ok = bool(
@@ -623,7 +646,12 @@ class OperatorService:
             "access",
             not invite_reasons,
             invite_reasons[0] if invite_reasons else "invitation_gate_blocked",
-            evidence={"blocking_reason_count": len(invite_reasons)},
+            evidence={
+                "blocking_reason_count": len(invite_reasons),
+                "program_kind": invitation_program,
+                "usage_scope": self._settings.coverage_usage_scope,
+                "commercial_provider_gate_required": invitation_program == "controlled_beta",
+            },
         )
         automation_ok = (
             not self._settings.automation_hard_disabled
@@ -754,7 +782,7 @@ class OperatorService:
 
         blocking_reasons = list(
             dict.fromkeys(
-                [*readiness.blocking_reasons, *invite_reasons]
+                [*platform_reasons, *invite_reasons]
                 + [
                     item.reason_code
                     for item in checks

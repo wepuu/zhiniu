@@ -18,6 +18,18 @@ HMAC digest, code prefix, batch, expiry, revocation state and atomic consumption
 retains the complete code. A code is single-use and registration consumes it in the same database
 transaction that creates the user.
 
+On the application host, an operator can inspect, open or close invitation registration without
+changing Provider rights or creating a cohort:
+
+```text
+sudo /usr/local/sbin/zhaoniu-registration status
+sudo /usr/local/sbin/zhaoniu-registration open
+sudo /usr/local/sbin/zhaoniu-registration close
+```
+
+The command backs up the environment, validates Compose, recreates only API/Worker, verifies their
+effective state and rolls back on failure. Closing registration does not revoke unused invitations.
+
 `GET /api/v1/auth/registration` is an unauthenticated, secret-free preflight for the registration
 screen. It reports whether invitation registration is currently open, whether an invitation and
 email verification are required, and the active minimum password length. The Web client fails
@@ -35,6 +47,11 @@ commercial Provider rights, but still requires approved legal/data-use policy, h
 enabled watchlist preparation and an open invitation-only registration gate. `controlled_beta`
 retains the production usage scope and current Beta-eligible Provider acceptance requirement.
 Participants see the applicable versioned notice and data-coverage limitations after sign-in.
+
+Direct invitation batches do not require a cohort. When `COVERAGE_USAGE_SCOPE` is
+`development_evaluation`, the operations projection evaluates their admission using the same
+non-commercial private-evaluation safety boundary and does not treat commercial Provider acceptance
+as a registration blocker. The stricter commercial gate remains mandatory for `production` scope.
 
 New invitation registrations receive the versioned `basic` access baseline. Accounts created
 before the Phase 11 migration retain the versioned `legacy_beta` baseline so deployment does not

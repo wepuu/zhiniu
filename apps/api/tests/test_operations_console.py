@@ -309,6 +309,93 @@ async def test_beta_admission_fails_closed_without_bound_reliability_or_current_
     assert reliability_check.status == "pending"
 
 
+@pytest.mark.asyncio
+async def test_private_evaluation_admission_excludes_commercial_provider_blockers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        scalar=AsyncMock(side_effect=[None, None]),
+    )
+    settings = Settings(
+        app_env="production",
+        coverage_usage_scope="development_evaluation",
+        automation_hard_disabled=False,
+        automation_ai_enabled=True,
+        watchlist_preparation_enabled=True,
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.evaluate_beta_readiness",
+        AsyncMock(
+            return_value=BetaReadinessReport(
+                status="blocked",
+                active_users=1,
+                capacity=20,
+                blocking_reasons=["provider_data_policy_not_beta_eligible"],
+            )
+        ),
+    )
+    gate_reasons = AsyncMock(return_value=[])
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.InviteBetaService.gate_reasons",
+        gate_reasons,
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.ProviderConfigurationService.runtime",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                configuration={
+                    "enabled": False,
+                    "daily_call_limit": 100,
+                    "max_concurrency": 1,
+                    "stock_health": {
+                        "enabled": False,
+                        "models": ["deepseek/deepseek-v4-flash"],
+                        "max_attempts": 1,
+                        "timeout_seconds": 60,
+                        "deadline_seconds": 90,
+                        "max_output_tokens": 1200,
+                    },
+                    "research_assistant": {
+                        "enabled": False,
+                        "models": ["deepseek/deepseek-v4-flash"],
+                        "max_attempts": 1,
+                        "timeout_seconds": 60,
+                        "deadline_seconds": 90,
+                        "max_output_tokens": 1200,
+                    },
+                },
+                credentials={},
+                source="database",
+                revision=1,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "zhaoniu_api.operations_console.service.ProviderConfigurationService.get_configuration",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                diagnostic_status="not_run",
+                diagnostic_checked_at=None,
+            )
+        ),
+    )
+
+    result = await OperatorService(cast(AsyncSession, session), settings).beta_admission()
+
+    gate_reasons.assert_awaited_once_with("private_evaluation")
+    assert "provider_data_policy_not_beta_eligible" not in result.blocking_reasons
+    platform = next(item for item in result.checks if item.key == "platform.readiness")
+    invitation = next(item for item in result.checks if item.key == "invitation.gates")
+    assert platform.status == "passed"
+    assert invitation.status == "passed"
+    assert invitation.evidence == {
+        "blocking_reason_count": 0,
+        "program_kind": "private_evaluation",
+        "usage_scope": "development_evaluation",
+        "commercial_provider_gate_required": False,
+    }
+
+
 def test_resend_signature_and_event_allowlist() -> None:
     payload = json.dumps(
         {"type": "email.delivered", "created_at": "2026-08-21T10:00:00Z", "data": {}}

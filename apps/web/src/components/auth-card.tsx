@@ -20,6 +20,12 @@ const api = createZhaoniuClient();
 
 type RegistrationState = "loading" | "open" | "closed" | "error";
 
+type RegistrationRequirement = {
+  id: string;
+  label: string;
+  complete: boolean;
+};
+
 const registrationSteps = [
   {
     label: "确认邀请",
@@ -107,15 +113,58 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
     setRegistrationReload((value) => value + 1);
   }
 
+  function updateField(update: () => void) {
+    update();
+    if (error) setError(null);
+  }
+
+  const registrationRequirements: RegistrationRequirement[] = isRegister
+    ? [
+        {
+          id: "registration-invitation-code",
+          label: "填写邀请码",
+          complete: Boolean(invitationCode.trim()),
+        },
+        {
+          id: "auth-email",
+          label: "填写有效邮箱",
+          complete: isValidEmail(email),
+        },
+        {
+          id: "registration-password",
+          label: `设置至少 ${passwordMinLength} 位密码`,
+          complete: password.length >= passwordMinLength,
+        },
+        {
+          id: "registration-password-confirmation",
+          label: "两次密码保持一致",
+          complete: Boolean(confirmation) && password === confirmation,
+        },
+        {
+          id: "registration-terms",
+          label: "同意用户协议",
+          complete: termsAccepted,
+        },
+        {
+          id: "registration-privacy",
+          label: "同意隐私政策",
+          complete: privacyAccepted,
+        },
+      ]
+    : [];
+  const incompleteRegistrationRequirements = registrationRequirements.filter(
+    (requirement) => !requirement.complete,
+  );
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (isRegister && password.length < passwordMinLength) {
-      setError(`密码至少需要 ${passwordMinLength} 位。`);
-      return;
-    }
-    if (isRegister && password !== confirmation) {
-      setError("两次输入的密码不一致。");
+    if (isRegister && incompleteRegistrationRequirements.length > 0) {
+      const first = incompleteRegistrationRequirements[0];
+      setError(`请先完成：${first.label}。`);
+      window.requestAnimationFrame(() => {
+        document.getElementById(first.id)?.focus();
+      });
       return;
     }
     if (isRegister && (!termsAccepted || !privacyAccepted || !legalVersions)) {
@@ -312,7 +361,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           )}
 
           {registrationState === "open" && (
-            <form className="mt-7 space-y-5" onSubmit={submit}>
+            <form className="mt-7 space-y-5" onSubmit={submit} noValidate>
               <label className="block text-sm font-medium">
                 邀请码
                 <input
@@ -322,7 +371,9 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                   placeholder="INV-XXXX-XXXX-…"
                   value={invitationCode}
                   onChange={(event) =>
-                    setInvitationCode(event.target.value.toUpperCase())
+                    updateField(() =>
+                      setInvitationCode(event.target.value.toUpperCase()),
+                    )
                   }
                   autoComplete="one-time-code"
                   aria-label="邀请码"
@@ -340,7 +391,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
 
               <EmailField
                 value={email}
-                onChange={setEmail}
+                onChange={(value) => updateField(() => setEmail(value))}
                 readOnly={Boolean(invitedEmail)}
                 helper={
                   invitedEmail
@@ -353,7 +404,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 <PasswordField
                   id="registration-password"
                   value={password}
-                  onChange={setPassword}
+                  onChange={(value) => updateField(() => setPassword(value))}
                   autoComplete="new-password"
                   label="设置密码"
                   helper={`至少 ${passwordMinLength} 位字符`}
@@ -362,7 +413,9 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 <PasswordField
                   id="registration-password-confirmation"
                   value={confirmation}
-                  onChange={setConfirmation}
+                  onChange={(value) =>
+                    updateField(() => setConfirmation(value))
+                  }
                   autoComplete="new-password"
                   label="确认密码"
                   helper={
@@ -379,32 +432,68 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
 
               <div className="border-ink/8 bg-mist space-y-3 rounded-2xl border p-4 text-sm">
                 <LegalAcceptance
+                  id="registration-terms"
                   checked={termsAccepted}
-                  onChange={setTermsAccepted}
+                  onChange={(checked) =>
+                    updateField(() => setTermsAccepted(checked))
+                  }
                   href="/legal/terms"
                   label="用户协议"
                 />
                 <LegalAcceptance
+                  id="registration-privacy"
                   checked={privacyAccepted}
-                  onChange={setPrivacyAccepted}
+                  onChange={(checked) =>
+                    updateField(() => setPrivacyAccepted(checked))
+                  }
                   href="/legal/privacy"
                   label="隐私政策"
                 />
               </div>
 
+              <div
+                className="border-ink/8 rounded-2xl border bg-white p-4"
+                aria-live="polite"
+              >
+                <p className="text-sm font-medium">
+                  {incompleteRegistrationRequirements.length === 0
+                    ? "注册信息已完整，可以创建账户"
+                    : `还需完成 ${incompleteRegistrationRequirements.length} 项`}
+                </p>
+                <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  {registrationRequirements.map((requirement) => (
+                    <li
+                      key={requirement.id}
+                      className={
+                        requirement.complete ? "text-emerald-700" : "text-slate"
+                      }
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className={`grid size-4 place-items-center rounded-full border ${
+                            requirement.complete
+                              ? "border-emerald-600 bg-emerald-50"
+                              : "border-ink/20"
+                          }`}
+                        >
+                          {requirement.complete && <Check className="size-3" />}
+                        </span>
+                        {requirement.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {incompleteRegistrationRequirements.length > 0 && (
+                  <p className="text-slate mt-3 text-xs leading-5">
+                    点击下方按钮会提示并定位到第一项未完成内容。
+                  </p>
+                )}
+              </div>
+
               {error && <ErrorNotice message={error} />}
 
-              <PrimaryButton
-                submitting={submitting}
-                disabled={
-                  !invitationCode.trim() ||
-                  !email.trim() ||
-                  password.length < passwordMinLength ||
-                  password !== confirmation ||
-                  !termsAccepted ||
-                  !privacyAccepted
-                }
-              >
+              <PrimaryButton submitting={submitting}>
                 创建账户并发送验证邮件
               </PrimaryButton>
               <p className="text-slate text-center text-xs leading-5">
@@ -573,11 +662,13 @@ function PasswordField({
 }
 
 function LegalAcceptance({
+  id,
   checked,
   onChange,
   href,
   label,
 }: {
+  id: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   href: string;
@@ -586,6 +677,7 @@ function LegalAcceptance({
   return (
     <label className="flex items-start gap-3">
       <input
+        id={id}
         type="checkbox"
         className="accent-blue mt-0.5 size-4"
         checked={checked}
@@ -606,6 +698,10 @@ function LegalAcceptance({
       </span>
     </label>
   );
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function RegistrationStateNotice({
