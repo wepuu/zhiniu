@@ -2085,11 +2085,27 @@ class BetaInviteCohortRecord(Base):
             "'paused', 'closed', 'cancelled')",
             name="ck_beta_cohort_status",
         ),
+        CheckConstraint(
+            "program_kind IN ('private_evaluation', 'controlled_beta')",
+            name="ck_beta_cohort_program_kind",
+        ),
+        CheckConstraint(
+            "usage_scope IN ('development_evaluation', 'production')",
+            name="ck_beta_cohort_usage_scope",
+        ),
+        CheckConstraint(
+            "(program_kind = 'private_evaluation' AND usage_scope = 'development_evaluation') "
+            "OR (program_kind = 'controlled_beta' AND usage_scope = 'production')",
+            name="ck_beta_cohort_program_scope",
+        ),
         Index("ix_beta_cohort_status_created", "status", "created_at"),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    program_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    usage_scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    notice_version: Mapped[str] = mapped_column(String(40), nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     target_size: Mapped[int] = mapped_column(nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

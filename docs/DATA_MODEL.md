@@ -310,11 +310,15 @@ displayed as unavailable or not comparable and is never normalized by the fronte
 ## Phase 21 Invite Beta operations
 
 - `beta_invite_cohorts` owns the bounded batch, frozen acceptance-run reference, lifecycle,
-  creator/approver and safe reason code.
+  creator/approver and safe reason code. Migration `20260923_0031` adds an explicit
+  `program_kind`, paired `usage_scope` and versioned participant notice. Existing rows remain
+  `controlled_beta`/`production`; new small-cohort evaluations use
+  `private_evaluation`/`development_evaluation`.
 - `beta_invite_recipients` binds one normalized email to one cohort, invitation, delivery and
   eventual user. Unique constraints prevent duplicate cohort addresses and invite/delivery links.
 - `beta_onboarding_states` stores only explicit acknowledgement/dismissal. Email verification,
-  first watchlist item and feedback completion derive from existing user-owned records.
+  first watchlist item, market readiness, deterministic readiness, AI terminal state and feedback
+  completion derive from existing user-owned and shared research records.
 - Invitation codes remain one-time digests in `registration_invites`; email bodies and plaintext
   codes are never retained in the Phase 21 tables.
 
@@ -359,3 +363,6 @@ commit, immutable image digests, migration head and configuration fingerprint. `
 `calendar_health` and `blocking_reasons` are retained as bounded JSON contracts; the deterministic
 `result_fingerprint` makes later evidence substitution detectable. Records are append-only and
 retain the operator identity that froze the observation.
+
+Migration `20260923_0031` is the current head. It does not add behavioral-event storage or duplicate
+canonical stock/research rows per evaluation participant.

@@ -16,11 +16,29 @@ import { translateReasonCode } from "@/lib/presentation";
 
 const api = createZhaoniuClient({ baseUrl: process.env.NEXT_PUBLIC_API_URL });
 
+const funnelLabels: Record<string, string> = {
+  staged: "计划人数",
+  submitted: "已提交邮件",
+  delivered: "邮件已送达",
+  bounced: "邮件退回",
+  complained: "邮件投诉",
+  registered: "已注册",
+  verified: "已验证邮箱",
+  watchlist_started: "已添加自选",
+  market_ready: "行情已就绪",
+  deterministic_ready: "研究已就绪",
+  ai_terminal: "AI 已终态",
+  feedback_submitted: "已提交反馈",
+};
+
 export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
   const client = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>();
   const [name, setName] = useState("");
-  const [targetSize, setTargetSize] = useState(10);
+  const [programKind, setProgramKind] = useState<
+    "private_evaluation" | "controlled_beta"
+  >("private_evaluation");
+  const [targetSize, setTargetSize] = useState(5);
   const [emails, setEmails] = useState("");
   const [error, setError] = useState<string>();
   const cohorts = useQuery({
@@ -54,6 +72,7 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
     mutate.mutate(async () => {
       const created = await api.createBetaCohort({
         name,
+        program_kind: programKind,
         target_size: targetSize,
         expires_in_days: 7,
       });
@@ -82,12 +101,13 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-blue text-xs font-medium">INVITE BETA</p>
+        <p className="text-blue text-xs font-medium">EVALUATION COHORTS</p>
         <h2 className="font-display mt-1 text-xl font-semibold">
-          邀请批次与准入门禁
+          私有评估与受控 Beta
         </h2>
         <p className="text-slate mt-2 text-sm">
-          创建和预检不会发信；只有所有门禁通过、批次批准后才能投递。
+          私有评估使用免费公开数据源，不要求商业数据合同；受控 Beta 仍保留完整
+          Provider 验收门禁。创建和预检均不会发信。
         </p>
       </div>
       <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -102,11 +122,24 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
                 minLength={2}
                 required
               />
+              <select
+                aria-label="评估计划类型"
+                className="border-ink/15 w-full rounded-xl border bg-white px-3 py-2.5 text-sm"
+                value={programKind}
+                onChange={(event) => {
+                  const value = event.target.value as typeof programKind;
+                  setProgramKind(value);
+                  setTargetSize(value === "private_evaluation" ? 5 : 10);
+                }}
+              >
+                <option value="private_evaluation">私有非商用评估</option>
+                <option value="controlled_beta">商业受控 Beta</option>
+              </select>
               <input
                 className="border-ink/15 w-full rounded-xl border px-3 py-2.5 text-sm"
                 type="number"
                 min={1}
-                max={100}
+                max={programKind === "private_evaluation" ? 10 : 100}
                 value={targetSize}
                 onChange={(event) => setTargetSize(Number(event.target.value))}
               />
@@ -128,7 +161,10 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
               >
                 <span className="font-medium">{item.name}</span>
                 <span className="font-data text-slate ml-2 text-[10px]">
-                  {item.status}
+                  {item.program_kind === "private_evaluation"
+                    ? "私有评估"
+                    : "受控 Beta"}{" "}
+                  · {item.status}
                 </span>
               </button>
             ))}
@@ -147,6 +183,21 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
                 <span className="font-data bg-mist rounded-full px-2 py-1 text-[10px]">
                   {detail.status}
                 </span>
+                <span className="font-data bg-blue/8 text-blue rounded-full px-2 py-1 text-[10px]">
+                  {detail.program_kind === "private_evaluation"
+                    ? "私有非商用评估"
+                    : "商业受控 Beta"}
+                </span>
+              </div>
+              <div className="border-blue/15 bg-blue/[0.04] rounded-xl border p-4 text-xs leading-5">
+                <p className="font-medium">
+                  数据范围：{detail.usage_scope} · {detail.notice_version}
+                </p>
+                <p className="text-slate mt-1">
+                  {detail.program_kind === "private_evaluation"
+                    ? "免费公开数据可能延迟、缺失或部分覆盖；本计划仅用于研究产品的小范围验证，不提供投资建议。"
+                    : "受控 Beta 仍需通过商业数据准入与候选版本门禁；不会用私有评估结果替代生产证据。"}
+                </p>
               </div>
               {gateReasons.length > 0 && (
                 <div className="border-risk/20 bg-risk/5 rounded-xl border p-4">
@@ -166,7 +217,9 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
                 {Object.entries(funnel).map(([key, value]) => (
                   <div className="bg-mist rounded-xl p-3" key={key}>
                     <p className="font-data text-xl font-semibold">{value}</p>
-                    <p className="text-slate mt-1 text-[11px]">{key}</p>
+                    <p className="text-slate mt-1 text-[11px]">
+                      {funnelLabels[key] ?? key}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -250,6 +303,9 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
                       <th>投递</th>
                       <th>验证</th>
                       <th>自选</th>
+                      <th>行情</th>
+                      <th>研究</th>
+                      <th>AI 终态</th>
                       <th>反馈</th>
                     </tr>
                   </thead>
@@ -261,6 +317,11 @@ export function BetaCohortPanel({ elevated }: { elevated: boolean }) {
                         <td>{recipient.delivery_status ?? "—"}</td>
                         <td>{recipient.email_verified ? "是" : "否"}</td>
                         <td>{recipient.first_watchlist_item ? "是" : "否"}</td>
+                        <td>{recipient.market_ready ? "就绪" : "未就绪"}</td>
+                        <td>
+                          {recipient.deterministic_ready ? "就绪" : "未就绪"}
+                        </td>
+                        <td>{recipient.ai_terminal ? "已到达" : "未到达"}</td>
                         <td>{recipient.feedback_submitted ? "是" : "否"}</td>
                       </tr>
                     ))}

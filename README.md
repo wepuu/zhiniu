@@ -199,5 +199,6 @@ Read [Architecture](docs/ARCHITECTURE.md), [Data model](docs/DATA_MODEL.md),
 [production release gate](docs/PHASE_22_PRODUCTION_RELEASE_GATE.md),
 [staging deployment](docs/PHASE_23_STAGING_DEPLOYMENT.md),
 [controlled Beta readiness](docs/PHASE_25_BETA_READINESS.md),
+[private evaluation cohort](docs/PHASE_25K_PRIVATE_EVALUATION.md),
 [screen query DSL](docs/SCREEN_QUERY_DSL.md), and [Engineering rules](AGENTS.md) before extending
 the system.

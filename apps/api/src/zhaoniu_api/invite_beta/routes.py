@@ -68,6 +68,7 @@ async def create_cohort(
     _require(context, operators, "beta.cohorts.manage", elevated=True)
     result = await service.create_cohort(
         name=payload.name,
+        program_kind=payload.program_kind,
         target_size=payload.target_size,
         expires_in_days=payload.expires_in_days,
         actor_user_id=user.id,
@@ -79,7 +80,11 @@ async def create_cohort(
         "beta_invite_cohort",
         str(result.id),
         request_id=request.headers.get("x-request-id"),
-        metadata={"target_size": result.target_size},
+        metadata={
+            "target_size": result.target_size,
+            "program_kind": result.program_kind,
+            "usage_scope": result.usage_scope,
+        },
     )
     return result
 

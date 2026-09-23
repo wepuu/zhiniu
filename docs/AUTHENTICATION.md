@@ -29,6 +29,13 @@ gate, an unavailable/expired/consumed or email-mismatched invitation, an existin
 controlled-Beta cohort, rate limiting, password validation and stale legal acceptance. It never
 claims that an invitation was consumed unless account creation committed successfully.
 
+Invitation cohorts have two explicit program types. `private_evaluation` is a small, non-commercial
+evaluation over `development_evaluation` sources and is capped at ten recipients. It does not claim
+commercial Provider rights, but still requires approved legal/data-use policy, healthy email,
+enabled watchlist preparation and an open invitation-only registration gate. `controlled_beta`
+retains the production usage scope and current Beta-eligible Provider acceptance requirement.
+Participants see the applicable versioned notice and data-coverage limitations after sign-in.
+
 New invitation registrations receive the versioned `basic` access baseline. Accounts created
 before the Phase 11 migration retain the versioned `legacy_beta` baseline so deployment does not
 silently remove existing capabilities.
