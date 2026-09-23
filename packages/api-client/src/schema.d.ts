@@ -2922,7 +2922,16 @@ export interface components {
         BetaCohortCreate: {
             /** Name */
             name: string;
-            /** Target Size */
+            /**
+             * Program Kind
+             * @default private_evaluation
+             * @enum {string}
+             */
+            program_kind: "private_evaluation" | "controlled_beta";
+            /**
+             * Target Size
+             * @default 5
+             */
             target_size: number;
             /**
              * Expires In Days
@@ -2949,6 +2958,18 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Program Kind
+             * @enum {string}
+             */
+            program_kind: "private_evaluation" | "controlled_beta";
+            /**
+             * Usage Scope
+             * @enum {string}
+             */
+            usage_scope: "development_evaluation" | "production";
+            /** Notice Version */
+            notice_version: string;
             /**
              * Status
              * @enum {string}
@@ -3040,9 +3061,15 @@ export interface components {
             enrolled: boolean;
             /**
              * Schema Version
-             * @default invite-beta-onboarding-v1
+             * @default private-evaluation-onboarding-v2
              */
             schema_version: string;
+            /** Program Kind */
+            program_kind?: ("private_evaluation" | "controlled_beta") | null;
+            /** Usage Scope */
+            usage_scope?: ("development_evaluation" | "production") | null;
+            /** Notice Version */
+            notice_version?: string | null;
             /**
              * Email Verified
              * @default false
@@ -3053,6 +3080,23 @@ export interface components {
              * @default false
              */
             watchlist_started: boolean;
+            /** First Value Symbol */
+            first_value_symbol?: string | null;
+            /**
+             * Market Ready
+             * @default false
+             */
+            market_ready: boolean;
+            /**
+             * Deterministic Ready
+             * @default false
+             */
+            deterministic_ready: boolean;
+            /**
+             * Ai Terminal
+             * @default false
+             */
+            ai_terminal: boolean;
             /**
              * Feedback Submitted
              * @default false
@@ -3095,6 +3139,23 @@ export interface components {
              * @default false
              */
             first_watchlist_item: boolean;
+            /** First Value Symbol */
+            first_value_symbol?: string | null;
+            /**
+             * Market Ready
+             * @default false
+             */
+            market_ready: boolean;
+            /**
+             * Deterministic Ready
+             * @default false
+             */
+            deterministic_ready: boolean;
+            /**
+             * Ai Terminal
+             * @default false
+             */
+            ai_terminal: boolean;
             /**
              * Feedback Submitted
              * @default false

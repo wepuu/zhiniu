@@ -9929,11 +9929,21 @@
             "minLength": 2,
             "title": "Name"
           },
+          "program_kind": {
+            "type": "string",
+            "enum": [
+              "private_evaluation",
+              "controlled_beta"
+            ],
+            "title": "Program Kind",
+            "default": "private_evaluation"
+          },
           "target_size": {
             "type": "integer",
             "maximum": 100.0,
             "minimum": 1.0,
-            "title": "Target Size"
+            "title": "Target Size",
+            "default": 5
           },
           "expires_in_days": {
             "type": "integer",
@@ -9946,8 +9956,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "name",
-          "target_size"
+          "name"
         ],
         "title": "BetaCohortCreate"
       },
@@ -9993,6 +10002,26 @@
           "name": {
             "type": "string",
             "title": "Name"
+          },
+          "program_kind": {
+            "type": "string",
+            "enum": [
+              "private_evaluation",
+              "controlled_beta"
+            ],
+            "title": "Program Kind"
+          },
+          "usage_scope": {
+            "type": "string",
+            "enum": [
+              "development_evaluation",
+              "production"
+            ],
+            "title": "Usage Scope"
+          },
+          "notice_version": {
+            "type": "string",
+            "title": "Notice Version"
           },
           "status": {
             "type": "string",
@@ -10094,6 +10123,9 @@
         "required": [
           "id",
           "name",
+          "program_kind",
+          "usage_scope",
+          "notice_version",
           "status",
           "target_size",
           "expires_at",
@@ -10226,7 +10258,48 @@
           "schema_version": {
             "type": "string",
             "title": "Schema Version",
-            "default": "invite-beta-onboarding-v1"
+            "default": "private-evaluation-onboarding-v2"
+          },
+          "program_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "private_evaluation",
+                  "controlled_beta"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Kind"
+          },
+          "usage_scope": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "development_evaluation",
+                  "production"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Scope"
+          },
+          "notice_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Version"
           },
           "email_verified": {
             "type": "boolean",
@@ -10236,6 +10309,32 @@
           "watchlist_started": {
             "type": "boolean",
             "title": "Watchlist Started",
+            "default": false
+          },
+          "first_value_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Value Symbol"
+          },
+          "market_ready": {
+            "type": "boolean",
+            "title": "Market Ready",
+            "default": false
+          },
+          "deterministic_ready": {
+            "type": "boolean",
+            "title": "Deterministic Ready",
+            "default": false
+          },
+          "ai_terminal": {
+            "type": "boolean",
+            "title": "Ai Terminal",
             "default": false
           },
           "feedback_submitted": {
@@ -10302,6 +10401,32 @@
           "first_watchlist_item": {
             "type": "boolean",
             "title": "First Watchlist Item",
+            "default": false
+          },
+          "first_value_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Value Symbol"
+          },
+          "market_ready": {
+            "type": "boolean",
+            "title": "Market Ready",
+            "default": false
+          },
+          "deterministic_ready": {
+            "type": "boolean",
+            "title": "Deterministic Ready",
+            "default": false
+          },
+          "ai_terminal": {
+            "type": "boolean",
+            "title": "Ai Terminal",
             "default": false
           },
           "feedback_submitted": {

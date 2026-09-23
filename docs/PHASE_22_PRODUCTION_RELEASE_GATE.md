@@ -50,7 +50,7 @@ uv run python -m zhaoniu_api.cli run-production-release-gate CANDIDATE_ID --gate
 
 ## 验收
 
-- 当前迁移头：`20260914_0030`，`alembic check` 无 ORM 漂移。
+- 当前迁移头：`20260923_0031`，`alembic check` 无 ORM 漂移。
 - 新增公开面仅为受保护的 `/api/v1/admin/releases` 管理路由，不改变研究 API 合同。
 - 所有失败使用稳定 reason code；证据仅含有界、非敏感摘要及 SHA-256 指纹。
 - 同一失败不能通过覆盖旧记录消失：每次 gate run 和 item 都是新行。

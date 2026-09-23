@@ -289,6 +289,21 @@ Provider acceptance and public invitation activation are therefore deferred rath
 AKShare/Sina lineage remains `development_evaluation`. The production and invite gates stay
 fail-closed so a later scope expansion requires an explicit policy and evidence decision.
 
+The Phase 25K private-evaluation increment makes that product boundary executable. Migration
+`20260923_0031` classifies each invitation cohort as either `private_evaluation` with
+`development_evaluation` data or `controlled_beta` with `production` data. Private cohorts are
+limited to ten recipients, default to five, retain the seven-day one-time invitation lifecycle and
+do not depend on commercial Provider acceptance. They still fail closed on invitation mode,
+approved legal/data-use policy, healthy transactional email, automation availability and capacity.
+Controlled Beta cohorts preserve the existing current, Beta-eligible Provider acceptance gate.
+
+The same increment extends the retained cohort funnel through email verification, first watchlist,
+market readiness, deterministic-research readiness, an honest AI terminal state and feedback. These
+facts are projected from existing user-owned watchlists and shared research artifacts; no tracking
+event stream and no per-user copy of stock data is introduced. The Web onboarding card labels the
+non-commercial evaluation, free-source limitations and the first company research path on desktop
+and mobile.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

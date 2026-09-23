@@ -387,6 +387,7 @@ async def _run(args: argparse.Namespace) -> None:
                     raise ValueError("operator_not_found")
                 result = await InviteBetaService(session, get_settings()).create_cohort(
                     name=args.name,
+                    program_kind="controlled_beta",
                     target_size=args.target_size,
                     expires_in_days=args.expires_in_days,
                     actor_user_id=actor_id,

@@ -28,7 +28,7 @@ one-shot `migrate` service, updates long-running services, and only records succ
 health checks. Image rollback never runs an Alembic downgrade, so schema changes must remain
 compatible with the previous application version.
 
-Phase 25D expects migration head `20260914_0030`. After calendar ingestion and a complete 24/48-hour
+Phase 25K expects migration head `20260923_0031`. After calendar ingestion and a complete 24/48-hour
 window, an elevated operations user may freeze the database-backed SLO and calendar result through
 `POST /api/v1/admin/automation/observations`. The request must bind the exact release commit, API
 and Web image digests and configuration fingerprint. This immutable application record supplements,

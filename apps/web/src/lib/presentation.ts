@@ -279,7 +279,12 @@ const reasonCodeCopy: Record<string, string> = {
   resend_active_diagnostic_unhealthy: "Resend 生效配置诊断未通过",
   deepseek_active_diagnostic_unhealthy: "DeepSeek 生效配置诊断未通过或已过期",
   automation_still_hard_disabled: "自动化紧急停止开关仍开启",
+  automation_hard_disabled: "自动化紧急停止开关仍开启",
   watchlist_preparation_disabled: "自选研究准备功能尚未开启",
+  private_evaluation_usage_scope_mismatch:
+    "私有评估必须使用 development_evaluation 数据范围",
+  controlled_beta_usage_scope_mismatch:
+    "受控 Beta 必须使用 production 数据范围",
 };
 
 export function translateReasonCode(

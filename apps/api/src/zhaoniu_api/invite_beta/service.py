@@ -31,17 +31,54 @@ from zhaoniu_api.invite_beta.models import (
     BetaCohortView,
     BetaOnboardingView,
     BetaRecipientView,
+    ProgramKind,
+    UsageScope,
 )
 from zhaoniu_api.invite_beta.security import recipient_email_hmac, validate_recipient_email
 from zhaoniu_api.provider_configuration.models import ResendConfiguration
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
+from zhaoniu_api.stock_readiness import StockReadinessService
 
-ONBOARDING_SCHEMA_VERSION = "invite-beta-onboarding-v1"
+ONBOARDING_SCHEMA_VERSION = "private-evaluation-onboarding-v2"
 ACTIVE_RECIPIENT_STATUSES = {"staged", "queued", "registered"}
+PRIVATE_EVALUATION_NOTICE_VERSION = "private-evaluation-v1"
+CONTROLLED_BETA_NOTICE_VERSION = "controlled-beta-v1"
 
 
 class InviteBetaError(ValueError):
     pass
+
+
+def program_gate_reasons(
+    settings: Settings,
+    program_kind: ProgramKind,
+    acceptance: ProviderAcceptanceRunRecord | None,
+    *,
+    now: datetime,
+) -> list[str]:
+    reasons: list[str] = []
+    if program_kind == "controlled_beta":
+        if acceptance is None:
+            reasons.append("provider_acceptance_missing")
+        else:
+            if acceptance.status != "passed":
+                reasons.append("provider_acceptance_failed")
+            if not acceptance.beta_eligible:
+                reasons.append("provider_data_policy_not_beta_eligible")
+            if acceptance.finished_at < now - timedelta(
+                hours=settings.provider_acceptance_max_age_hours
+            ):
+                reasons.append("provider_acceptance_stale")
+        if settings.coverage_usage_scope != "production":
+            reasons.append("controlled_beta_usage_scope_mismatch")
+    else:
+        if settings.coverage_usage_scope != "development_evaluation":
+            reasons.append("private_evaluation_usage_scope_mismatch")
+        if settings.automation_hard_disabled:
+            reasons.append("automation_hard_disabled")
+        if not settings.watchlist_preparation_enabled:
+            reasons.append("watchlist_preparation_disabled")
+    return reasons
 
 
 class InviteBetaService:
@@ -53,15 +90,27 @@ class InviteBetaService:
         self,
         *,
         name: str,
+        program_kind: ProgramKind,
         target_size: int,
         expires_in_days: int,
         actor_user_id: UUID,
     ) -> BetaCohortView:
         now = datetime.now(UTC)
-        acceptance = await self._latest_acceptance()
+        if program_kind == "private_evaluation" and target_size > 10:
+            raise InviteBetaError("private_evaluation_target_exceeded")
+        acceptance = await self._latest_acceptance() if program_kind == "controlled_beta" else None
         record = BetaInviteCohortRecord(
             id=uuid4(),
             name=name.strip(),
+            program_kind=program_kind,
+            usage_scope=(
+                "development_evaluation" if program_kind == "private_evaluation" else "production"
+            ),
+            notice_version=(
+                PRIVATE_EVALUATION_NOTICE_VERSION
+                if program_kind == "private_evaluation"
+                else CONTROLLED_BETA_NOTICE_VERSION
+            ),
             status="draft",
             target_size=target_size,
             expires_at=now + timedelta(days=expires_in_days),
@@ -130,14 +179,15 @@ class InviteBetaService:
         )
         if recipient_count == 0:
             raise InviteBetaError("beta_cohort_has_no_recipients")
-        reasons = await self.gate_reasons()
+        reasons = await self.gate_reasons(cast(ProgramKind, cohort.program_kind))
         if reasons:
             cohort.reason_code = reasons[0]
             await self._session.commit()
             raise InviteBetaError(reasons[0])
-        acceptance = await self._latest_acceptance()
-        assert acceptance is not None
-        cohort.acceptance_run_id = acceptance.id
+        if cohort.program_kind == "controlled_beta":
+            acceptance = await self._latest_acceptance()
+            assert acceptance is not None
+            cohort.acceptance_run_id = acceptance.id
         cohort.status = "approved"
         cohort.reason_code = None
         cohort.approved_by_user_id = actor_user_id
@@ -149,7 +199,7 @@ class InviteBetaService:
         cohort = await self._locked_cohort(cohort_id)
         if cohort.status != "approved":
             raise InviteBetaError("beta_cohort_not_approved")
-        reasons = await self.gate_reasons()
+        reasons = await self.gate_reasons(cast(ProgramKind, cohort.program_kind))
         if reasons:
             cohort.reason_code = reasons[0]
             await self._session.commit()
@@ -167,7 +217,7 @@ class InviteBetaService:
         now = datetime.now(UTC)
         batch = RegistrationInviteBatchRecord(
             id=uuid4(),
-            name=f"Beta cohort {cohort.name}",
+            name=f"{cohort.program_kind} cohort {cohort.name}",
             quantity=len(recipients),
             expires_at=cohort.expires_at,
             created_by_operator=str(cohort.created_by_user_id),
@@ -204,20 +254,42 @@ class InviteBetaService:
                 f"{self._settings.public_base_url.rstrip('/')}/register"
                 f"?invite={quote(code)}&email={quote(recipient.normalized_email)}"
             )
+            private_evaluation = cohort.program_kind == "private_evaluation"
+            invitation_intro = (
+                "你受邀参加知牛研究的小范围、非商用私有评估。\n\n"
+                if private_evaluation
+                else "你受邀参加知牛研究受控 Beta。\n\n"
+            )
+            registration_line = (
+                f"请在 {cohort.expires_at:%Y-%m-%d} 前使用一次性链接注册：\n{link}\n\n"
+            )
+            scope_notice = (
+                "评估环境继续使用公开免费数据源，数据可能延迟、不完整，"
+                if private_evaluation
+                else "受控 Beta 仅使用已通过准入门禁的生产数据范围，"
+            )
+            email_body = (
+                invitation_intro
+                + registration_line
+                + ("知牛是证据驱动的 A 股研究工具，不提供买卖建议、目标价或收益预测。")
+                + scope_notice
+                + (
+                    "部分研究会显示为 partial 或 unsupported，"
+                    "请以页面证据与限制说明为准。\n\n"
+                    "如果你没有申请体验，请忽略本邮件。"
+                )
+            )
             messages.append(
                 (
                     delivery,
                     TransactionalEmail(
                         recipient=recipient.normalized_email,
-                        subject="知牛研究 Invite Beta 邀请",
-                        text_body=(
-                            "你受邀参加知牛研究 Invite Beta。\n\n"
-                            f"请在 {cohort.expires_at:%Y-%m-%d} 前使用一次性链接注册：\n{link}\n\n"
-                            "知牛是证据驱动的 A 股研究工具，不提供买卖建议、目标价或收益预测。"
-                            "部分数据可能显示为 partial 或 unsupported，"
-                            "请以页面证据与限制说明为准。\n\n"
-                            "如果你没有申请体验，请忽略本邮件。"
+                        subject=(
+                            "知牛研究私有评估邀请"
+                            if private_evaluation
+                            else "知牛研究受控 Beta 邀请"
                         ),
+                        text_body=email_body,
                         template_key="beta_invitation",
                         idempotency_key=delivery.logical_delivery_key,
                     ),
@@ -288,21 +360,15 @@ class InviteBetaService:
         await self._session.commit()
         return await self.get_cohort(cohort.id)
 
-    async def gate_reasons(self) -> list[str]:
+    async def gate_reasons(self, program_kind: ProgramKind = "controlled_beta") -> list[str]:
         now = datetime.now(UTC)
-        reasons: list[str] = []
-        acceptance = await self._latest_acceptance()
-        if acceptance is None:
-            reasons.append("provider_acceptance_missing")
-        else:
-            if acceptance.status != "passed":
-                reasons.append("provider_acceptance_failed")
-            if not acceptance.beta_eligible:
-                reasons.append("provider_data_policy_not_beta_eligible")
-            if acceptance.finished_at < now - timedelta(
-                hours=self._settings.provider_acceptance_max_age_hours
-            ):
-                reasons.append("provider_acceptance_stale")
+        acceptance = await self._latest_acceptance() if program_kind == "controlled_beta" else None
+        reasons = program_gate_reasons(
+            self._settings,
+            program_kind,
+            acceptance,
+            now=now,
+        )
         if self._settings.registration_mode != "invite_only":
             reasons.append("registration_not_invite_only")
         if self._settings.legal_review_status != "approved":
@@ -358,15 +424,10 @@ class InviteBetaService:
         )
         if recipient is None:
             return BetaOnboardingView(enrolled=False)
+        cohort = await self._session.get(BetaInviteCohortRecord, recipient.cohort_id)
         user = await self._session.get(User, user_id)
         state = await self._session.get(BetaOnboardingStateRecord, user_id)
-        watchlist_started = bool(
-            await self._session.scalar(
-                select(func.count(WatchlistItemRecord.id))
-                .join(WatchlistRecord, WatchlistRecord.id == WatchlistItemRecord.watchlist_id)
-                .where(WatchlistRecord.user_id == user_id)
-            )
-        )
+        readiness = await self._user_research_progress(user_id)
         feedback_submitted = bool(
             await self._session.scalar(
                 select(func.count(BetaFeedbackItemRecord.id)).where(
@@ -376,8 +437,15 @@ class InviteBetaService:
         )
         return BetaOnboardingView(
             enrolled=True,
+            program_kind=cast(ProgramKind, cohort.program_kind) if cohort else None,
+            usage_scope=cast(UsageScope, cohort.usage_scope) if cohort else None,
+            notice_version=cohort.notice_version if cohort else None,
             email_verified=bool(user and user.email_verified_at),
-            watchlist_started=watchlist_started,
+            watchlist_started=readiness[0],
+            first_value_symbol=readiness[1],
+            market_ready=readiness[2],
+            deterministic_ready=readiness[3],
+            ai_terminal=readiness[4],
             feedback_submitted=feedback_submitted,
             acknowledged=bool(state and state.acknowledged_at),
             dismissed=bool(state and state.dismissed_at),
@@ -427,6 +495,9 @@ class InviteBetaService:
             "registered": 0,
             "verified": 0,
             "watchlist_started": 0,
+            "market_ready": 0,
+            "deterministic_ready": 0,
+            "ai_terminal": 0,
             "feedback_submitted": 0,
         }
         for recipient in recipients:
@@ -437,18 +508,19 @@ class InviteBetaService:
             )
             user = await self._session.get(User, recipient.user_id) if recipient.user_id else None
             watchlist_started = False
+            first_value_symbol: str | None = None
+            market_ready = False
+            deterministic_ready = False
+            ai_terminal = False
             feedback_submitted = False
             if user:
-                watchlist_started = bool(
-                    await self._session.scalar(
-                        select(func.count(WatchlistItemRecord.id))
-                        .join(
-                            WatchlistRecord,
-                            WatchlistRecord.id == WatchlistItemRecord.watchlist_id,
-                        )
-                        .where(WatchlistRecord.user_id == user.id)
-                    )
-                )
+                (
+                    watchlist_started,
+                    first_value_symbol,
+                    market_ready,
+                    deterministic_ready,
+                    ai_terminal,
+                ) = await self._user_research_progress(user.id)
                 feedback_submitted = bool(
                     await self._session.scalar(
                         select(func.count(BetaFeedbackItemRecord.id)).where(
@@ -464,6 +536,12 @@ class InviteBetaService:
                 funnel["verified"] += 1
             if watchlist_started:
                 funnel["watchlist_started"] += 1
+            if market_ready:
+                funnel["market_ready"] += 1
+            if deterministic_ready:
+                funnel["deterministic_ready"] += 1
+            if ai_terminal:
+                funnel["ai_terminal"] += 1
             if feedback_submitted:
                 funnel["feedback_submitted"] += 1
             if include_recipients:
@@ -485,6 +563,10 @@ class InviteBetaService:
                         delivery_status=delivery.status if delivery else None,
                         email_verified=bool(user and user.email_verified_at),
                         first_watchlist_item=watchlist_started,
+                        first_value_symbol=first_value_symbol,
+                        market_ready=market_ready,
+                        deterministic_ready=deterministic_ready,
+                        ai_terminal=ai_terminal,
                         feedback_submitted=feedback_submitted,
                         last_error_code=recipient.last_error_code
                         or (delivery.error_code if delivery else None),
@@ -494,6 +576,9 @@ class InviteBetaService:
         return BetaCohortView(
             id=record.id,
             name=record.name,
+            program_kind=cast(ProgramKind, record.program_kind),
+            usage_scope=cast(UsageScope, record.usage_scope),
+            notice_version=record.notice_version,
             status=cast(
                 Literal[
                     "draft",
@@ -513,10 +598,56 @@ class InviteBetaService:
             approved_at=record.approved_at,
             dispatched_at=record.dispatched_at,
             created_at=record.created_at,
-            gate_reasons=await self.gate_reasons(),
+            gate_reasons=await self.gate_reasons(cast(ProgramKind, record.program_kind)),
             funnel=funnel,
             recipients=views,
         )
+
+    async def _user_research_progress(
+        self, user_id: UUID
+    ) -> tuple[bool, str | None, bool, bool, bool]:
+        symbols = list(
+            await self._session.scalars(
+                select(WatchlistItemRecord.symbol)
+                .join(WatchlistRecord, WatchlistRecord.id == WatchlistItemRecord.watchlist_id)
+                .where(WatchlistRecord.user_id == user_id)
+                .order_by(WatchlistItemRecord.created_at)
+            )
+        )
+        if not symbols:
+            return False, None, False, False, False
+        readiness = await StockReadinessService(self._session, self._settings).get_many(symbols)
+        market_ready = any(
+            any(stage.key == "market" and stage.status == "ready" for stage in item.stages)
+            for item in readiness
+        )
+        deterministic_ready = any(
+            any(
+                stage.key == "deterministic_research" and stage.status == "ready"
+                for stage in item.stages
+            )
+            for item in readiness
+        )
+        ai_terminal_statuses = {"ready", "failed", "paused", "unsupported"}
+        ai_terminal = any(
+            any(
+                stage.key == "ai_research" and stage.status in ai_terminal_statuses
+                for stage in item.stages
+            )
+            for item in readiness
+        )
+        first_ready = next(
+            (
+                item.canonical_symbol
+                for item in readiness
+                if any(
+                    stage.key == "deterministic_research" and stage.status == "ready"
+                    for stage in item.stages
+                )
+            ),
+            readiness[0].canonical_symbol,
+        )
+        return True, first_ready, market_ready, deterministic_ready, ai_terminal
 
     async def _latest_acceptance(self) -> ProviderAcceptanceRunRecord | None:
         result = await self._session.scalar(

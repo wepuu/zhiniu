@@ -8,6 +8,23 @@ The active milestone is limited to private, non-commercial, small-scale evaluati
 acceptance is not required to operate that closed evaluation, but evaluation-source evidence must
 remain labelled `development_evaluation` and cannot satisfy the retained production/invite gates.
 
+### Phase 25K private-evaluation cohort
+
+Migration `20260923_0031` separates the active evaluation program from the future commercial
+controlled-Beta path. A private cohort defaults to five participants, is capped at ten and carries
+the `private-evaluation-v1` notice. Approval requires invite-only registration, approved legal and
+data-use policy, healthy Resend delivery, available capacity, `development_evaluation` coverage,
+automation enabled and watchlist preparation enabled. It intentionally does not require a
+commercial Provider acceptance run. A `controlled_beta` cohort retains the production usage scope
+and all current Provider acceptance checks.
+
+The cohort and participant projections now expose the first-value chain from delivery through
+verification, first watchlist, market readiness, deterministic readiness, AI terminal state and
+feedback. Readiness is derived through the shared `StockReadinessService`; it does not create a
+second task system or private copies of market and research artifacts. AI terminal includes ready,
+failed, paused and unsupported so operations can distinguish an honest outcome from a permanent
+spinner.
+
 ## Product outcome
 
 An operator must be able to answer three questions from retained facts:
