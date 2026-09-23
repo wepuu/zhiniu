@@ -45,6 +45,14 @@ PRIVATE_EVALUATION_NOTICE_VERSION = "private-evaluation-v1"
 CONTROLLED_BETA_NOTICE_VERSION = "controlled-beta-v1"
 
 
+def invitation_program_for_settings(settings: Settings) -> ProgramKind:
+    """Select the invitation contract that matches the configured data-use scope."""
+
+    if settings.coverage_usage_scope == "development_evaluation":
+        return "private_evaluation"
+    return "controlled_beta"
+
+
 class InviteBetaError(ValueError):
     pass
 

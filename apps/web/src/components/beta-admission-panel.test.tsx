@@ -57,12 +57,62 @@ describe("BetaAdmissionPanel", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("仍有阻塞项")).toBeInTheDocument();
+    expect(await screen.findByText("商业发布仍有阻塞项")).toBeInTheDocument();
     expect(
       screen.getByText("reliability.database_observation"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/不会自动放开注册/)).toBeInTheDocument();
+    expect(screen.getByText(/不会自动修改任何权限/)).toBeInTheDocument();
     expect(screen.getByText(/20260914_0030/)).toBeInTheDocument();
     expect(screen.getByText("pipeline/run/22")).toBeInTheDocument();
+  });
+
+  it("separates private evaluation registration from commercial release gates", async () => {
+    getBetaAdmission.mockResolvedValue({
+      generated_at: "2026-09-23T14:00:00Z",
+      environment: "production",
+      status: "blocked",
+      candidate: null,
+      blocking_reasons: ["production_release_not_ready_for_invites"],
+      checks: [
+        {
+          key: "invitation.gates",
+          category: "access",
+          status: "passed",
+          reason_code: null,
+          observed_at: null,
+          expires_at: null,
+          evidence: {
+            program_kind: "private_evaluation",
+            usage_scope: "development_evaluation",
+            commercial_provider_gate_required: false,
+          },
+        },
+        {
+          key: "release.invite_activation",
+          category: "release",
+          status: "pending",
+          reason_code: "production_release_not_ready_for_invites",
+          observed_at: null,
+          expires_at: null,
+          evidence: {},
+        },
+      ],
+    });
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <BetaAdmissionPanel />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText("非商用测试邀请注册已就绪"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/商业数据权利只影响未来商业发布/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("当前数据权利不满足邀请 Beta 使用"),
+    ).not.toBeInTheDocument();
   });
 });

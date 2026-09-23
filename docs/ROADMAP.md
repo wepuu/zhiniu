@@ -304,6 +304,15 @@ event stream and no per-user copy of stock data is introduced. The Web onboardin
 non-commercial evaluation, free-source limitations and the first company research path on desktop
 and mobile.
 
+The Phase 25L evaluation-registration increment separates direct non-commercial invitation access
+from future commercial-release admission. In `development_evaluation`, the operator projection uses
+the private-evaluation gate and reports commercial Provider rights only as a deferred production
+concern; `production` keeps the controlled-Beta gate fail-closed. The registration form no longer
+leaves an inert disabled action: it shows every remaining requirement and focuses the first missing
+field without sending an incomplete request. A root-owned host command provides auditable,
+rollback-safe `status`, `open` and `close` controls without creating a cohort or revoking unused
+invites.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

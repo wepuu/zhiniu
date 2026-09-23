@@ -160,6 +160,34 @@ describe("AuthCard registration", () => {
     );
   });
 
+  it("explains and focuses the first incomplete registration requirement", async () => {
+    render(<AuthCard mode="register" />);
+
+    await screen.findByLabelText("邀请码");
+    fireEvent.change(screen.getByLabelText("邀请码"), {
+      target: { value: "INV-ABCD-EFGH" },
+    });
+    fireEvent.change(screen.getByLabelText("邮箱"), {
+      target: { value: "invited@example.com" },
+    });
+
+    const submit = screen.getByRole("button", {
+      name: "创建账户并发送验证邮件",
+    });
+    expect(submit).toBeEnabled();
+    expect(screen.getByText("还需完成 4 项")).toBeInTheDocument();
+
+    fireEvent.click(submit);
+
+    expect(
+      await screen.findByText("请先完成：设置至少 15 位密码。"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByLabelText("设置密码")).toHaveFocus(),
+    );
+    expect(api.register).not.toHaveBeenCalled();
+  });
+
   it("explains how to recover from an unavailable invitation", async () => {
     api.register.mockRejectedValue(
       new ApiError(422, "invalid_or_unavailable_invitation"),

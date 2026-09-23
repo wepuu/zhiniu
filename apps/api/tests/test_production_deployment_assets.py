@@ -138,7 +138,27 @@ def test_nginx_keeps_dependencies_private_and_marks_staging_noindex() -> None:
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash is not installed")
 @pytest.mark.parametrize(
     "script",
-    ["deploy.sh", "backup.sh", "restore-drill.sh", "install-host-assets.sh"],
+    [
+        "deploy.sh",
+        "backup.sh",
+        "restore-drill.sh",
+        "registration-mode.sh",
+        "install-host-assets.sh",
+    ],
 )
 def test_production_shell_syntax(script: str) -> None:
     subprocess.run(["bash", "-n", str(PRODUCTION / script)], check=True)
+
+
+def test_registration_mode_operator_is_bounded_and_recoverable() -> None:
+    script = (PRODUCTION / "registration-mode.sh").read_text(encoding="utf-8")
+    deploy = (PRODUCTION / "deploy.sh").read_text(encoding="utf-8")
+    installer = (PRODUCTION / "install-host-assets.sh").read_text(encoding="utf-8")
+
+    assert "status | open | close" in script
+    assert "REGISTRATION_MODE=invite_only" not in script
+    assert "expected exactly one REGISTRATION_MODE entry" in script
+    assert "registration_mode_rollback=yes" in script
+    assert "up -d --no-deps --force-recreate api worker" in script
+    assert "zhaoniu-registration" in deploy
+    assert "zhaoniu-registration" in installer
