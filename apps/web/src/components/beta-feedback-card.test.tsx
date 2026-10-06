@@ -11,17 +11,26 @@ afterEach(() => {
 describe("BetaFeedbackCard", () => {
   it("submits bounded structured beta feedback", async () => {
     const fetcher = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            id: "00000000-0000-4000-8000-000000000099",
-            feature_key: "stock_research",
-            category: "data_missing",
-            status: "new",
-            created_at: "2026-08-21T00:00:00Z",
-          }),
-          { status: 201, headers: { "Content-Type": "application/json" } },
-        ),
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          return new Response(
+            JSON.stringify({
+              id: "00000000-0000-4000-8000-000000000099",
+              feature_key: "stock_research",
+              category: "data_missing",
+              status: "new",
+              context: { surface: "settings" },
+              resolution_code: null,
+              created_at: "2026-08-21T00:00:00Z",
+            }),
+            { status: 201, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ items: [], total: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
     );
     vi.stubGlobal("fetch", fetcher);
     render(<BetaFeedbackCard />);
@@ -37,7 +46,9 @@ describe("BetaFeedbackCard", () => {
     expect(
       await screen.findByText("反馈已记录，感谢你帮助完善内测体验。"),
     ).toBeInTheDocument();
-    const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const [, init] = fetcher.mock.calls.find(
+      ([, requestInit]) => requestInit?.method === "POST",
+    ) as unknown as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({
       feature_key: "stock_research",
       category: "data_missing",

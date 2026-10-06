@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from zhaoniu_api.config import Settings
 from zhaoniu_api.db import (
     AIResearchOutputRecord,
+    AutomationPolicyRecord,
     AutomationRunRecord,
     AutomationRunStepRecord,
     DataSyncRunRecord,
@@ -21,6 +22,9 @@ from zhaoniu_api.db import (
     StockDailyBarRecord,
     StockRecord,
     TradingSessionRecord,
+    User,
+    WatchlistItemRecord,
+    WatchlistRecord,
 )
 from zhaoniu_api.domain.models import AdjustType, resolve_symbol
 from zhaoniu_api.market_data.trading_calendar import (
@@ -31,6 +35,7 @@ from zhaoniu_api.market_data.trading_calendar import (
 )
 from zhaoniu_api.schemas import (
     MarketFreshness,
+    StockReadinessAction,
     StockReadinessResponse,
     StockReadinessStage,
     StockReadinessStatus,
@@ -39,6 +44,7 @@ from zhaoniu_api.schemas import (
 StageKey = Literal["market", "deterministic_research", "extended_research", "ai_research"]
 MARKET_PUBLICATION_GRACE = timedelta(minutes=30)
 PREPARATION_STALE_AFTER = timedelta(minutes=10)
+DAILY_REFRESH_POLICY_KEY = "priority_daily_refresh"
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +150,19 @@ class StockReadinessService:
         calendar_context = await self._calendar_context(
             {stock.exchange for stock in stocks.values()}
         )
+        refresh_policy = await self._session.scalar(
+            select(AutomationPolicyRecord).where(
+                AutomationPolicyRecord.policy_key == DAILY_REFRESH_POLICY_KEY
+            )
+        )
+        next_scheduled_refresh_at = (
+            refresh_policy.next_due_at
+            if refresh_policy is not None
+            and refresh_policy.enabled
+            and not self._settings.automation_hard_disabled
+            else None
+        )
+        scheduled_symbols = await self._scheduled_symbols(canonical)
         step_rows = (
             await self._session.execute(
                 select(AutomationRunStepRecord, AutomationRunRecord)
@@ -168,9 +187,40 @@ class StockReadinessService:
                 ai_outputs.get(symbol),
                 steps.get(symbol, {}),
                 calendar=calendar_context.get(stocks[symbol].exchange),
+                next_scheduled_refresh_at=(
+                    next_scheduled_refresh_at if symbol in scheduled_symbols else None
+                ),
             )
             for symbol in canonical
         ]
+
+    async def _scheduled_symbols(self, symbols: list[str]) -> set[str]:
+        configured: set[str] = set()
+        for raw in (
+            *self._settings.coverage_pinned_symbols,
+            *self._settings.coverage_reference_symbols,
+        ):
+            try:
+                configured.add(resolve_symbol(raw).canonical)
+            except ValueError:
+                continue
+        watchlist_symbols = set(
+            (
+                await self._session.scalars(
+                    select(distinct(WatchlistItemRecord.symbol))
+                    .join(
+                        WatchlistRecord,
+                        WatchlistRecord.id == WatchlistItemRecord.watchlist_id,
+                    )
+                    .join(User, User.id == WatchlistRecord.user_id)
+                    .where(
+                        User.status == "active",
+                        WatchlistItemRecord.symbol.in_(symbols),
+                    )
+                )
+            ).all()
+        )
+        return configured.union(watchlist_symbols).intersection(symbols)
 
     async def _latest_by_symbol(
         self,
@@ -248,9 +298,7 @@ class StockReadinessService:
             )
             status = calendar_health_status(normalized_check, now=now)
             result[exchange] = CalendarContext(
-                expected_trade_date=(
-                    latest_row.trade_date if status == "healthy" else None
-                ),
+                expected_trade_date=(latest_row.trade_date if status == "healthy" else None),
                 status=status,
                 checked_at=normalized_check,
                 source=latest_row.source,
@@ -316,6 +364,7 @@ class StockReadinessService:
         *,
         expected_trade_date: date | None = None,
         calendar: CalendarContext | None = None,
+        next_scheduled_refresh_at: datetime | None = None,
     ) -> StockReadinessResponse:
         if calendar is None:
             calendar = CalendarContext(expected_trade_date=expected_trade_date)
@@ -410,15 +459,30 @@ class StockReadinessService:
             overall = "failed"
         else:
             overall = "paused"
+        next_action, blocking_reason_code = self._action_for(
+            overall,
+            stages,
+        )
         completed = sum(item.progress for item in stages) // len(stages)
         updated_values = [item.updated_at for item in stages if item.updated_at is not None]
+        successful_refreshes = [
+            step.finished_at or step.created_at
+            for step_keys in _STAGE_STEPS.values()
+            for step_key in step_keys
+            for step in step_groups.get(step_key, [])
+            if step.status == "succeeded"
+        ]
         return StockReadinessResponse(
             symbol=stock.ticker,
             canonical_symbol=stock.symbol,
             name=stock.name,
             overall_status=overall,
+            next_action=next_action,
+            blocking_reason_code=blocking_reason_code,
             progress=completed,
             updated_at=max(updated_values, default=None),
+            last_successful_refresh_at=max(successful_refreshes, default=None),
+            next_scheduled_refresh_at=next_scheduled_refresh_at,
             latest_price=getattr(bar, "close", None),
             latest_trade_date=getattr(bar, "trade_date", None),
             market_freshness=market_data_freshness(bar, effective_expected_date),
@@ -427,3 +491,77 @@ class StockReadinessService:
             calendar_checked_at=calendar.checked_at,
             stages=stages,
         )
+
+    @staticmethod
+    def _action_for(
+        overall: StockReadinessStatus,
+        stages: list[StockReadinessStage],
+    ) -> tuple[StockReadinessAction, str | None]:
+        """Project a stable user action without exposing provider exceptions."""
+
+        if overall == "partial" and any(stage.status == "failed" for stage in stages):
+            failed = next(
+                (
+                    stage.reason_code
+                    for stage in stages
+                    if stage.status == "failed" and stage.reason_code
+                ),
+                "preparation_failed",
+            )
+            return "retry", failed
+
+        if overall in {"ready", "partial"}:
+            informational = next(
+                (
+                    stage.reason_code
+                    for stage in stages
+                    if stage.status in {"partial", "unsupported"} and stage.reason_code
+                ),
+                None,
+            )
+            return "view", informational
+
+        if overall in {"queued", "preparing"}:
+            pending = next(
+                (
+                    stage.reason_code
+                    for stage in stages
+                    if stage.status in {"queued", "preparing"} and stage.reason_code
+                ),
+                "preparation_pending",
+            )
+            return "wait", pending
+
+        if overall == "failed":
+            failed = next(
+                (
+                    stage.reason_code
+                    for stage in stages
+                    if stage.status == "failed" and stage.reason_code
+                ),
+                "preparation_failed",
+            )
+            return "retry", failed
+
+        if overall == "paused":
+            paused = next(
+                (
+                    stage.reason_code
+                    for stage in stages
+                    if stage.status == "paused" and stage.reason_code
+                ),
+                "preparation_disabled",
+            )
+            if paused == "preparation_disabled":
+                return "enable_preparation", paused
+            return "wait", paused
+
+        unsupported = next(
+            (
+                stage.reason_code
+                for stage in stages
+                if stage.status == "unsupported" and stage.reason_code
+            ),
+            "issuer_template_unsupported",
+        )
+        return "unsupported", unsupported

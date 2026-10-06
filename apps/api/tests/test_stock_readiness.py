@@ -38,6 +38,8 @@ def test_readiness_is_paused_when_preparation_switch_is_closed() -> None:
     result = service._build(_stock(), None, None, None, None, None, {})
 
     assert result.overall_status == "paused"
+    assert result.next_action == "enable_preparation"
+    assert result.blocking_reason_code == "preparation_disabled"
     assert {stage.status for stage in result.stages} == {"paused"}
 
 
@@ -176,6 +178,66 @@ def test_stalled_preparation_is_not_reported_as_78_percent_queued() -> None:
     assert result.stages[3].status == "failed"
     assert result.stages[3].reason_code == "preparation_stalled"
     assert result.progress == 75
+    assert result.next_action == "retry"
+    assert result.blocking_reason_code == "preparation_stalled"
+
+
+def test_readiness_exposes_successful_and_next_scheduled_refresh_times() -> None:
+    service = StockReadinessService(  # type: ignore[arg-type]
+        None,
+        Settings(automation_hard_disabled=False, watchlist_preparation_enabled=True),
+    )
+    finished_at = datetime(2026, 9, 25, 11, 35, tzinfo=UTC)
+    next_due_at = datetime(2026, 9, 26, 11, 30, tzinfo=UTC)
+    succeeded = SimpleNamespace(
+        status="succeeded",
+        created_at=datetime(2026, 9, 25, 11, 30, tzinfo=UTC),
+        started_at=datetime(2026, 9, 25, 11, 30, tzinfo=UTC),
+        finished_at=finished_at,
+        error_code=None,
+    )
+
+    result = service._build(
+        _stock(),
+        SimpleNamespace(
+            close=Decimal("1292.30"),
+            trade_date=date(2026, 9, 25),
+            collected_at=finished_at,
+        ),
+        None,
+        None,
+        None,
+        None,
+        {"market_sync": [succeeded]},
+        next_scheduled_refresh_at=next_due_at,
+    )
+
+    assert result.last_successful_refresh_at == finished_at
+    assert result.next_scheduled_refresh_at == next_due_at
+
+
+class _ScheduledSymbolSession:
+    async def scalars(self, _statement: object) -> "_ScheduledSymbolSession":
+        return self
+
+    def all(self) -> list[str]:
+        return ["300750.SZ"]
+
+
+async def test_next_scheduled_refresh_is_limited_to_the_daily_universe() -> None:
+    service = StockReadinessService(
+        _ScheduledSymbolSession(),  # type: ignore[arg-type]
+        Settings(
+            coverage_operator_pinned_symbols="600519.SH",
+            coverage_acceptance_symbols="",
+        ),
+    )
+
+    scheduled = await service._scheduled_symbols(  # noqa: SLF001
+        ["600519.SH", "300750.SZ", "300376.SZ"]
+    )
+
+    assert scheduled == {"600519.SH", "300750.SZ"}
 
 
 async def test_watchlist_preparation_switch_fails_closed_without_database_work() -> None:

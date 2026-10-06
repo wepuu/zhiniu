@@ -103,6 +103,7 @@ class SQLAlchemyPeerResearchRepository:
                     "source_reference": taxonomy.source_reference,
                     "commercial_use_status": taxonomy.commercial_use_status,
                     "redistribution_status": taxonomy.redistribution_status,
+                    "updated_at": now,
                 },
             )
         )

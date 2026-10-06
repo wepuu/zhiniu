@@ -9,7 +9,12 @@ import { CheckCircle2, Clock3, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/ui/card";
-import { canRetryStockPreparation } from "@/lib/stock-readiness";
+import {
+  canRetryStockPreparation,
+  formatReadinessTimestamp,
+  readinessActionLabel,
+  readinessReasonLabel,
+} from "@/lib/stock-readiness";
 
 const api = createZhaoniuClient();
 
@@ -82,8 +87,15 @@ export function StockReadinessCard({ symbol }: { symbol: string }) {
             已完成 {state.progress}% · 可用数据会立即展示
           </p>
           <p className="text-slate mt-1 text-xs">
+            {readinessActionLabel(state)}
+            {readinessReasonLabel(state.blocking_reason_code)
+              ? ` · ${readinessReasonLabel(state.blocking_reason_code)}`
+              : ""}
+          </p>
+          <p className="text-slate mt-1 text-xs">
             {marketFreshnessLabel(state)}
           </p>
+          <ReadinessTiming state={state} />
         </div>
         {canRetryStockPreparation(state) && (
           <button
@@ -110,6 +122,25 @@ export function StockReadinessCard({ symbol }: { symbol: string }) {
         ))}
       </div>
     </Card>
+  );
+}
+
+function ReadinessTiming({ state }: { state: StockReadinessResponse }) {
+  const lastSuccess = formatReadinessTimestamp(
+    state.last_successful_refresh_at,
+  );
+  const nextRefresh = formatReadinessTimestamp(state.next_scheduled_refresh_at);
+  return (
+    <div className="text-slate mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      <span>
+        {lastSuccess ? `最近准备成功 ${lastSuccess}` : "尚无成功准备记录"}
+      </span>
+      <span>
+        {nextRefresh
+          ? `下一次自动检查 ${nextRefresh}`
+          : "暂无下一次自动检查时间"}
+      </span>
+    </div>
   );
 }
 

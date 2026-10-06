@@ -12,8 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const push = vi.fn();
 const api = vi.hoisted(() => ({
   getComparisonCatalog: vi.fn(),
+  getStockReadiness: vi.fn(),
   createComparison: vi.fn(),
   getComparison: vi.fn(),
+  retryComparison: vi.fn(),
   saveComparison: vi.fn(),
   listComparisons: vi.fn(),
   listSavedComparisons: vi.fn(),
@@ -51,6 +53,46 @@ beforeEach(() => {
   });
   api.listComparisons.mockResolvedValue({ items: [] });
   api.listSavedComparisons.mockResolvedValue({ items: [], limit: 10 });
+  api.getStockReadiness.mockResolvedValue({
+    items: [
+      {
+        symbol: "600519",
+        canonical_symbol: "600519.SH",
+        name: "贵州茅台",
+        overall_status: "partial",
+        next_action: "view",
+        progress: 75,
+        stages: [
+          { key: "market", status: "ready", progress: 100 },
+          {
+            key: "deterministic_research",
+            status: "ready",
+            progress: 100,
+          },
+          { key: "extended_research", status: "partial", progress: 50 },
+          { key: "ai_research", status: "queued", progress: 0 },
+        ],
+      },
+      {
+        symbol: "300750",
+        canonical_symbol: "300750.SZ",
+        name: "宁德时代",
+        overall_status: "partial",
+        next_action: "view",
+        progress: 75,
+        stages: [
+          { key: "market", status: "ready", progress: 100 },
+          {
+            key: "deterministic_research",
+            status: "ready",
+            progress: 100,
+          },
+          { key: "extended_research", status: "partial", progress: 50 },
+          { key: "ai_research", status: "queued", progress: 0 },
+        ],
+      },
+    ],
+  });
 });
 afterEach(() => {
   cleanup();
@@ -68,6 +110,9 @@ describe("ComparisonWorkspace", () => {
     fireEvent.change(screen.getByLabelText("公司 B"), {
       target: { value: "300750" },
     });
+    await screen.findByText(
+      "两侧核心数据已就绪，可以生成确定性对比。扩展研究或 AI 状态不会阻塞核心结果。",
+    );
     fireEvent.click(screen.getByRole("button", { name: "生成对比研究" }));
     await waitFor(() => expect(api.createComparison).toHaveBeenCalled());
     expect(api.createComparison.mock.calls[0][0]).toMatchObject({
@@ -182,5 +227,34 @@ describe("ComparisonWorkspace", () => {
     expect(screen.getAllByText("706.91 亿元").length).toBeGreaterThan(0);
     expect(screen.getAllByText("19.54 倍").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/年初至报告期末累计/).length).toBeGreaterThan(0);
+  });
+
+  it("renders a failed terminal state and creates a controlled retry", async () => {
+    api.getComparison.mockResolvedValue({
+      id: "request-failed",
+      left_symbol: "300489.SZ",
+      right_symbol: "600519.SH",
+      status: "failed",
+      include_ai: true,
+      ai_status: "failed",
+      error_code: "comparison_build_stalled",
+      requested_cutoff: "2026-08-23T00:00:00Z",
+      created_at: "2026-08-23T00:00:00Z",
+      evidence: [],
+      snapshot: null,
+    });
+    api.retryComparison.mockResolvedValue({
+      id: "request-retry",
+      status: "pending",
+    });
+    renderWithQuery(<ComparisonResult requestId="request-failed" />);
+    expect(
+      await screen.findByText("准备任务超过允许时间，未生成不完整结果。"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重新准备" }));
+    await waitFor(() =>
+      expect(api.retryComparison).toHaveBeenCalledWith("request-failed"),
+    );
+    expect(push).toHaveBeenCalledWith("/comparisons/request-retry");
   });
 });

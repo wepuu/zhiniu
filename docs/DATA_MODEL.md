@@ -364,5 +364,6 @@ commit, immutable image digests, migration head and configuration fingerprint. `
 `result_fingerprint` makes later evidence substitution detectable. Records are append-only and
 retain the operator identity that froze the observation.
 
-Migration `20260923_0031` is the current head. It does not add behavioral-event storage or duplicate
-canonical stock/research rows per evaluation participant.
+Migration `20261006_0032` is the current head. It adds bounded JSON context to evaluation feedback
+so users can see their own support status without exposing operator notes; it does not add
+behavioral-event storage or duplicate canonical stock/research rows per evaluation participant.

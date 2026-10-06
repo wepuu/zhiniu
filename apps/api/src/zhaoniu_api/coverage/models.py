@@ -112,6 +112,33 @@ FeedbackFeature = Literal[
     "other",
 ]
 FeedbackCategory = Literal["bug", "data_missing", "hard_to_understand", "feature_request", "other"]
+FeedbackSurface = Literal[
+    "settings",
+    "watchlist",
+    "stock",
+    "comparison",
+    "research_feed",
+    "other",
+]
+
+
+class BetaFeedbackContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    surface: FeedbackSurface = "settings"
+    canonical_symbol: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=16,
+        pattern=r"^\d{6}\.(?:SH|SZ|BJ)$",
+    )
+    request_id: UUID | None = None
+    reason_code: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=80,
+        pattern=r"^[a-z0-9][a-z0-9_.:-]{0,79}$",
+    )
 
 
 class BetaFeedbackCreate(BaseModel):
@@ -120,6 +147,7 @@ class BetaFeedbackCreate(BaseModel):
     feature_key: FeedbackFeature
     category: FeedbackCategory
     message: str = Field(min_length=20, max_length=2000)
+    context: BetaFeedbackContext = Field(default_factory=BetaFeedbackContext)
 
 
 class BetaFeedbackResponse(BaseModel):
@@ -127,12 +155,20 @@ class BetaFeedbackResponse(BaseModel):
     feature_key: FeedbackFeature
     category: FeedbackCategory
     status: Literal["new", "triaged", "resolved"]
+    context: BetaFeedbackContext = Field(default_factory=BetaFeedbackContext)
+    resolution_code: str | None = None
     created_at: datetime
+
+
+class BetaFeedbackListResponse(BaseModel):
+    items: list[BetaFeedbackResponse]
+    total: int
 
 
 class BetaFeedbackOperatorView(BetaFeedbackResponse):
     user_id: UUID
     message: str
+    severity: Literal["P0", "P1", "P2", "P3"] = "P2"
     updated_at: datetime
 
 

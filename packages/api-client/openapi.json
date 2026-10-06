@@ -3765,6 +3765,65 @@
         }
       }
     },
+    "/api/v1/comparisons/{request_id}/retry": {
+      "post": {
+        "tags": [
+          "company comparisons"
+        ],
+        "summary": "Retry Comparison",
+        "operationId": "retry_comparison_api_v1_comparisons__request_id__retry_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/access": {
       "get": {
         "tags": [
@@ -4268,6 +4327,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BetaFeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "beta"
+        ],
+        "summary": "List My Beta Feedback",
+        "operationId": "list_my_beta_feedback_api_v1_me_beta_feedback_get",
+        "parameters": [
+          {
+            "name": "zhaoniu_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Zhaoniu Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaFeedbackListResponse"
                 }
               }
             }
@@ -4984,6 +5090,46 @@
                 }
               ],
               "title": "Feedback Status"
+            }
+          },
+          {
+            "name": "feedback_feature",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 48
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feedback Feature"
+            }
+          },
+          {
+            "name": "feedback_severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "P0",
+                    "P1",
+                    "P2",
+                    "P3"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feedback Severity"
             }
           },
           {
@@ -8552,6 +8698,13 @@
             "title": "Financial Normal Interval Hours",
             "default": 168
           },
+          "industry_refresh_interval_hours": {
+            "type": "integer",
+            "maximum": 720.0,
+            "minimum": 24.0,
+            "title": "Industry Refresh Interval Hours",
+            "default": 168
+          },
           "event_pipeline_enabled": {
             "type": "boolean",
             "title": "Event Pipeline Enabled",
@@ -10133,6 +10286,66 @@
         ],
         "title": "BetaCohortView"
       },
+      "BetaFeedbackContext": {
+        "properties": {
+          "surface": {
+            "type": "string",
+            "enum": [
+              "settings",
+              "watchlist",
+              "stock",
+              "comparison",
+              "research_feed",
+              "other"
+            ],
+            "title": "Surface",
+            "default": "settings"
+          },
+          "canonical_symbol": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 8,
+                "pattern": "^\\d{6}\\.(?:SH|SZ|BJ)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Symbol"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1,
+                "pattern": "^[a-z0-9][a-z0-9_.:-]{0,79}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BetaFeedbackContext"
+      },
       "BetaFeedbackCreate": {
         "properties": {
           "feature_key": {
@@ -10164,6 +10377,9 @@
             "maxLength": 2000,
             "minLength": 20,
             "title": "Message"
+          },
+          "context": {
+            "$ref": "#/components/schemas/BetaFeedbackContext"
           }
         },
         "additionalProperties": false,
@@ -10174,6 +10390,27 @@
           "message"
         ],
         "title": "BetaFeedbackCreate"
+      },
+      "BetaFeedbackListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BetaFeedbackResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "BetaFeedbackListResponse"
       },
       "BetaFeedbackResponse": {
         "properties": {
@@ -10214,6 +10451,20 @@
               "resolved"
             ],
             "title": "Status"
+          },
+          "context": {
+            "$ref": "#/components/schemas/BetaFeedbackContext"
+          },
+          "resolution_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Code"
           },
           "created_at": {
             "type": "string",
@@ -19567,6 +19818,28 @@
             ],
             "title": "Overall Status"
           },
+          "next_action": {
+            "type": "string",
+            "enum": [
+              "view",
+              "wait",
+              "retry",
+              "enable_preparation",
+              "unsupported"
+            ],
+            "title": "Next Action"
+          },
+          "blocking_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocking Reason Code"
+          },
           "progress": {
             "type": "integer",
             "maximum": 100.0,
@@ -19584,6 +19857,30 @@
               }
             ],
             "title": "Updated At"
+          },
+          "last_successful_refresh_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Refresh At"
+          },
+          "next_scheduled_refresh_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Scheduled Refresh At"
           },
           "latest_price": {
             "anyOf": [
@@ -19667,6 +19964,7 @@
           "canonical_symbol",
           "name",
           "overall_status",
+          "next_action",
           "progress",
           "stages"
         ],

@@ -2858,6 +2858,9 @@ class BetaFeedbackItemRecord(Base):
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolution_code: Mapped[str | None] = mapped_column(String(64))
     internal_note: Mapped[str | None] = mapped_column(Text)
+    context_json: Mapped[dict[str, Any]] = mapped_column(
+        "context", JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

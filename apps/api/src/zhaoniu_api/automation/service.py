@@ -49,6 +49,7 @@ from zhaoniu_api.db import (
     FinancialReportRevisionRecord,
     FundamentalSnapshotRecord,
     IndustryMembershipRecord,
+    IndustryTaxonomyRecord,
     ResearchSignalRecord,
     ResearchSnapshotRecord,
     StockDailyBarRecord,
@@ -72,7 +73,7 @@ from zhaoniu_api.system import MIGRATION_HEAD
 
 POLICY_KEY = "priority_daily_refresh"
 POLICY_DISPLAY_NAME = "优先股票池每日研究刷新"
-POLICY_SCHEMA_VERSION = "automation-policy-v1"
+POLICY_SCHEMA_VERSION = "automation-policy-v2"
 PIPELINE_VERSION = "priority-research-pipeline-v1"
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 SLO_TARGETS_MS: dict[AutomationSLOMetricKey, int] = {
@@ -175,26 +176,19 @@ def build_automation_slo_snapshot(
     acceptable_runs = sum(run.status in acceptable_statuses for run in runs)
     active_runs = [run for run in runs if run.status in {"pending", "running"}]
     stale_active_runs = sum(
-        (_latency_ms(run.created_at, generated) or 0) > SLO_STALE_ACTIVE_MS
-        for run in active_runs
+        (_latency_ms(run.created_at, generated) or 0) > SLO_STALE_ACTIVE_MS for run in active_runs
     )
     failure_reasons = Counter(
         reason
         for reason in (
             [run.error_code for run in runs if run.status in {"failed", "blocked"}]
-            + [
-                step.error_code
-                for step in steps
-                if step.status in {"failed", "blocked"}
-            ]
+            + [step.error_code for step in steps if step.status in {"failed", "blocked"}]
         )
         if reason
     )
     unclassified_failure_count = sum(
         run.status in {"failed", "blocked"} and not run.error_code for run in runs
-    ) + sum(
-        step.status in {"failed", "blocked"} and not step.error_code for step in steps
-    )
+    ) + sum(step.status in {"failed", "blocked"} and not step.error_code for step in steps)
     metrics = []
     blocking_reasons: list[str] = []
     for key, target_ms in SLO_TARGETS_MS.items():
@@ -337,6 +331,9 @@ class ProductionAutomationExecutor:
         if step_key == "trading_calendar_sync":
             result = await build_trading_calendar_service(self._session).sync()
             return _service_result(result, provider_calls=1)
+        if step_key == "industry_sync":
+            result = await build_peer_research_service(self._session).sync_industries()
+            return _service_result(result)
         if step_key == "coverage_finalize":
             if universe_snapshot_id is None:
                 universe = await build_coverage_service(self._session).build_universe(
@@ -625,10 +622,7 @@ class AutomationService:
                 <= now - timedelta(minutes=self._settings.automation_lease_minutes)
             ) or (
                 existing.status == "running"
-                and (
-                    existing.lease_expires_at is None
-                    or existing.lease_expires_at <= now
-                )
+                and (existing.lease_expires_at is None or existing.lease_expires_at <= now)
             )
             if not stale:
                 return (
@@ -771,6 +765,7 @@ class AutomationService:
         if run.trigger_kind == "scheduled":
             self._add_step(run, "run", str(run.id), "trading_calendar_sync", 4, None)
             self._add_step(run, "run", str(run.id), "stock_master_sync", 5, None)
+            self._add_step(run, "run", str(run.id), "industry_sync", 6, None)
         symbol_steps = [
             (10, "market_sync"),
             (20, "financial_sync"),
@@ -1013,6 +1008,20 @@ class AutomationService:
             )
             if latest is not None and latest > datetime.now(UTC) - timedelta(hours=24):
                 return "stock_master_check_not_due"
+        if step.step_key == "industry_sync":
+            latest = await self._session.scalar(select(func.max(IndustryTaxonomyRecord.updated_at)))
+            run = await self._session.get(AutomationRunRecord, run_id)
+            assert run is not None
+            revision = await self._session.get(
+                AutomationPolicyRevisionRecord,
+                run.policy_revision_id,
+            )
+            assert revision is not None
+            config = AutomationPolicyConfiguration.model_validate(revision.configuration)
+            if latest is not None and latest > datetime.now(UTC) - timedelta(
+                hours=config.industry_refresh_interval_hours
+            ):
+                return "industry_taxonomy_check_not_due"
         if step.step_key == "financial_sync" and step.symbol:
             latest = await self._session.scalar(
                 select(func.max(DataSyncRunRecord.finished_at)).where(
@@ -1160,6 +1169,16 @@ class AutomationService:
                 )
             ).one()
             return stable_hash([("stocks", int(count or 0), latest)])
+        if step_key == "industry_sync":
+            count, latest = (
+                await self._session.execute(
+                    select(
+                        func.count(IndustryMembershipRecord.id),
+                        func.max(IndustryMembershipRecord.known_at),
+                    )
+                )
+            ).one()
+            return stable_hash([("industry_memberships", int(count or 0), latest)])
         if symbol is None:
             return stable_hash([])
         model_and_time: dict[str, tuple[type[Any], Any]] = {
@@ -1422,9 +1441,7 @@ class AutomationService:
             window_started_at=snapshot.window_started_at,
             window_ended_at=window_ended_at,
             slo_snapshot=snapshot.model_dump(mode="json"),
-            calendar_health={
-                "items": [item.model_dump(mode="json") for item in calendar_health]
-            },
+            calendar_health={"items": [item.model_dump(mode="json") for item in calendar_health]},
             blocking_reasons={"items": blocking_reasons},
             result_fingerprint=stable_hash(evidence),
             created_by_user_id=actor_user_id,

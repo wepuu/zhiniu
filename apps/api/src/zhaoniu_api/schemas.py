@@ -54,6 +54,13 @@ class StockSearchResponse(BaseModel):
 StockReadinessStatus = Literal[
     "queued", "preparing", "ready", "partial", "failed", "paused", "unsupported"
 ]
+StockReadinessAction = Literal[
+    "view",
+    "wait",
+    "retry",
+    "enable_preparation",
+    "unsupported",
+]
 MarketFreshness = Literal["current", "stale", "unknown"]
 CalendarHealthStatus = Literal["healthy", "stale", "unknown"]
 
@@ -71,8 +78,12 @@ class StockReadinessResponse(BaseModel):
     canonical_symbol: str
     name: str
     overall_status: StockReadinessStatus
+    next_action: StockReadinessAction
+    blocking_reason_code: str | None = None
     progress: int = Field(ge=0, le=100)
     updated_at: datetime | None = None
+    last_successful_refresh_at: datetime | None = None
+    next_scheduled_refresh_at: datetime | None = None
     latest_price: DecimalString | None = None
     latest_trade_date: date | None = None
     market_freshness: MarketFreshness = "unknown"

@@ -12,6 +12,7 @@ from zhaoniu_api.automation.models import (
 )
 from zhaoniu_api.automation.service import (
     AutomationService,
+    ProductionAutomationExecutor,
     ai_step_result,
     attempted_step_status,
     build_automation_slo_snapshot,
@@ -44,10 +45,72 @@ def test_due_slot_uses_fixed_shanghai_timezone() -> None:
 
 def test_policy_configuration_rejects_free_form_time_and_caps() -> None:
     assert AutomationPolicyConfiguration(daily_time="9:05").daily_time == "09:05"
+    assert AutomationPolicyConfiguration().industry_refresh_interval_hours == 168
     with pytest.raises(ValidationError):
         AutomationPolicyConfiguration(daily_time="25:00")
     with pytest.raises(ValidationError):
         AutomationPolicyConfiguration(max_universe_size=501)
+    with pytest.raises(ValidationError):
+        AutomationPolicyConfiguration(industry_refresh_interval_hours=23)
+
+
+async def test_industry_refresh_reuses_peer_research_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sync_industries = AsyncMock(
+        return_value=type(
+            "IndustrySyncResult",
+            (),
+            {"status": "succeeded", "written_count": 19},
+        )()
+    )
+    peer_service = type("PeerService", (), {"sync_industries": sync_industries})()
+    monkeypatch.setattr(
+        "zhaoniu_api.composition.build_peer_research_service",
+        lambda _session: peer_service,
+    )
+    executor = ProductionAutomationExecutor(object(), Settings())  # type: ignore[arg-type]
+
+    result = await executor.execute(
+        "industry_sync",
+        symbol=None,
+        universe_snapshot_id=None,
+        scope_key="scheduled-industry-refresh",
+    )
+
+    assert result.status == "succeeded"
+    assert result.rows_written == 19
+    sync_industries.assert_awaited_once_with()
+
+
+class _PlanningSession:
+    def __init__(self) -> None:
+        self.records: list[object] = []
+
+    def add(self, record: object) -> None:
+        self.records.append(record)
+
+
+async def test_scheduled_run_plans_low_frequency_industry_refresh() -> None:
+    session = _PlanningSession()
+    service = AutomationService(session, Settings())  # type: ignore[arg-type]
+    run = AutomationRunRecord(id=uuid4(), trigger_kind="scheduled", total_steps=0)
+
+    await service._plan_steps(  # noqa: SLF001 - verifies the retained step contract
+        run,
+        AutomationPolicyConfiguration(),
+        [],
+    )
+
+    step_keys = [
+        record.step_key for record in session.records if isinstance(record, AutomationRunStepRecord)
+    ]
+    assert step_keys == [
+        "trading_calendar_sync",
+        "stock_master_sync",
+        "industry_sync",
+        "coverage_finalize",
+    ]
 
 
 def test_reporting_window_and_hash_are_deterministic() -> None:
@@ -308,9 +371,7 @@ class _ObservationSession:
 async def test_freeze_beta_observation_persists_release_bound_evidence() -> None:
     now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
     snapshot = build_automation_slo_snapshot([], [], generated_at=now, window_hours=48)
-    snapshot = snapshot.model_copy(
-        update={"release_gate_met": True, "blocking_reasons": []}
-    )
+    snapshot = snapshot.model_copy(update={"release_gate_met": True, "blocking_reasons": []})
     calendar = [
         TradingCalendarHealth(
             exchange=exchange,
@@ -341,6 +402,6 @@ async def test_freeze_beta_observation_persists_release_bound_evidence() -> None
     )
 
     assert result.status == "passed"
-    assert result.migration_head == "20260923_0031"
+    assert result.migration_head == "20261006_0032"
     assert len(result.result_fingerprint) == 64
     assert len(session.records) == 1

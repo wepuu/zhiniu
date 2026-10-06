@@ -1384,9 +1384,26 @@ function UsersPanel({ capabilities }: { capabilities: string[] }) {
 
 function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
   const client = useQueryClient();
+  const [feedbackStatus, setFeedbackStatus] = useState<
+    "" | "new" | "triaged" | "resolved"
+  >("");
+  const [feedbackFeature, setFeedbackFeature] = useState("");
+  const [feedbackSeverity, setFeedbackSeverity] = useState<
+    "" | "P0" | "P1" | "P2" | "P3"
+  >("");
   const query = useQuery({
-    queryKey: ["operator-feedback"],
-    queryFn: () => api.getOperatorFeedback(),
+    queryKey: [
+      "operator-feedback",
+      feedbackStatus,
+      feedbackFeature,
+      feedbackSeverity,
+    ],
+    queryFn: () =>
+      api.getOperatorFeedback(
+        feedbackStatus || undefined,
+        feedbackFeature || undefined,
+        feedbackSeverity || undefined,
+      ),
   });
   const update = useMutation({
     mutationFn: ({
@@ -1413,6 +1430,62 @@ function FeedbackPanel({ capabilities }: { capabilities: string[] }) {
         title="反馈队列"
         detail="保留用户原始表述和处理轨迹"
       />
+      <div className="bg-mist mb-4 grid gap-3 rounded-xl p-3 sm:grid-cols-3">
+        <label className="text-xs font-medium">
+          状态
+          <select
+            aria-label="反馈状态筛选"
+            value={feedbackStatus}
+            onChange={(event) =>
+              setFeedbackStatus(
+                event.target.value as "" | "new" | "triaged" | "resolved",
+              )
+            }
+            className="border-ink/10 bg-paper mt-1.5 w-full rounded-lg border px-2.5 py-2 text-xs"
+          >
+            <option value="">全部状态</option>
+            <option value="new">新反馈</option>
+            <option value="triaged">处理中</option>
+            <option value="resolved">已处理</option>
+          </select>
+        </label>
+        <label className="text-xs font-medium">
+          功能
+          <select
+            aria-label="反馈功能筛选"
+            value={feedbackFeature}
+            onChange={(event) => setFeedbackFeature(event.target.value)}
+            className="border-ink/10 bg-paper mt-1.5 w-full rounded-lg border px-2.5 py-2 text-xs"
+          >
+            <option value="">全部功能</option>
+            {Object.entries(feedbackFeatureLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-medium">
+          严重级别
+          <select
+            aria-label="反馈严重级别筛选"
+            value={feedbackSeverity}
+            onChange={(event) =>
+              setFeedbackSeverity(
+                event.target.value as "" | "P0" | "P1" | "P2" | "P3",
+              )
+            }
+            className="border-ink/10 bg-paper mt-1.5 w-full rounded-lg border px-2.5 py-2 text-xs"
+          >
+            <option value="">全部级别</option>
+            {(["P0", "P1", "P2", "P3"] as const).map((severity) => (
+              <option key={severity} value={severity}>
+                {severity}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="space-y-3">
         {query.data?.items.map((item) => (
           <Card key={item.id} className="p-5">
