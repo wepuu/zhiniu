@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/email-verification/code/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Email Code */
+        post: operations["verify_email_code_api_v1_auth_email_verification_code_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/email-verification/resend": {
         parameters: {
             query?: never;
@@ -3951,6 +3968,11 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** EmailVerificationCodeRequest */
+        EmailVerificationCodeRequest: {
+            /** Code */
+            code: string;
+        };
         /** EmailVerificationRequest */
         EmailVerificationRequest: {
             /** Token */
@@ -7129,6 +7151,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailVerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_email_code_api_v1_auth_email_verification_code_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationCodeRequest"];
             };
         };
         responses: {

@@ -46,6 +46,7 @@ from zhaoniu_api.schemas import (
     CreateWatchlistRequest,
     DailyBarListResponse,
     DailyBarResponse,
+    EmailVerificationCodeRequest,
     EmailVerificationRequest,
     EmailVerificationResponse,
     EntitlementsResponse,
@@ -246,6 +247,36 @@ async def verify_email(
     try:
         result = await auth.verify_email(payload.token)
         return EmailVerificationResponse(status=result)  # type: ignore[arg-type]
+    except AuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
+
+
+@router.post(
+    "/auth/email-verification/code/verify",
+    response_model=EmailVerificationResponse,
+    tags=["auth"],
+)
+async def verify_email_code(
+    payload: EmailVerificationCodeRequest,
+    request: Request,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    auth: AuthServiceDependency,
+) -> EmailVerificationResponse:
+    try:
+        await enforce_access_rate_limit(
+            get_settings(),
+            scope="email_verification_code",
+            identity=f"{user_id}:{request.client.host if request.client else 'unknown'}",
+            limit=8,
+            window_seconds=900,
+        )
+        result = await auth.verify_email_code(user_id, payload.code)
+        return EmailVerificationResponse(status=result)  # type: ignore[arg-type]
+    except AccessRateLimitExceeded as error:
+        raise HTTPException(status_code=429, detail="email_verification_rate_limited") from error
     except AuthenticationError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)

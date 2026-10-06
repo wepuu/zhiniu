@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass, field
 from urllib.parse import parse_qs, urlparse
 
@@ -26,6 +27,12 @@ class CapturingEmailGateway:
 def token_from_message(message: TransactionalEmail) -> str:
     link = next(line for line in message.text_body.splitlines() if "?token=" in line)
     return parse_qs(urlparse(link).query)["token"][0]
+
+
+def verification_code_from_message(message: TransactionalEmail) -> str:
+    match = re.search(r"\b(\d{4})-(\d{4})\b", message.text_body)
+    assert match is not None
+    return "".join(match.groups())
 
 
 @pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL is not configured")
@@ -56,8 +63,10 @@ async def test_invited_user_can_verify_and_recover_account() -> None:
             user_agent="pytest",
             ip_address="127.0.0.1",
         )
-        verification_token = token_from_message(gateway.messages[-1])
-        assert await auth.verify_email(verification_token) == "verified"
+        verification_code = verification_code_from_message(gateway.messages[-1])
+        assert (
+            await auth.verify_email_code(created.user.id, verification_code) == "verified"
+        )
 
         await auth.request_password_reset(created.user.email)
         reset_token = token_from_message(gateway.messages[-1])

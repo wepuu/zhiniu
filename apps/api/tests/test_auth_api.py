@@ -92,6 +92,11 @@ class FakeAuthService:
             return self.verification_status
         raise AuthenticationError("email_verification_invalid")
 
+    async def verify_email_code(self, user_id: UUID, code: str) -> str:
+        if user_id == self.user.id and code == "12345678":
+            return self.verification_status
+        raise AuthenticationError("email_verification_invalid")
+
     async def resend_verification(self, user_id: UUID) -> str:
         return "sent"
 
@@ -182,7 +187,7 @@ def test_registration_status_exposes_safe_public_requirements() -> None:
         "status": "open",
         "invitation_required": True,
         "email_verification_required": True,
-        "password_min_length": 15,
+        "password_min_length": 8,
     }
 
 
@@ -214,6 +219,29 @@ def test_account_recovery_routes_use_generic_request_and_single_use_contract() -
     verified = client.post("/api/v1/auth/email-verification/verify", json={"token": "x" * 48})
     assert verified.status_code == 200
     assert verified.json() == {"status": "verified"}
+
+    verified_by_code = client.post(
+        "/api/v1/auth/email-verification/code/verify",
+        json={"code": "12345678"},
+        cookies={
+            "zhaoniu_session": "valid-token",
+            "zhaoniu_csrf": "valid-csrf-token",
+        },
+        headers={"X-CSRF-Token": "valid-csrf-token"},
+    )
+    assert verified_by_code.status_code == 200
+    assert verified_by_code.json() == {"status": "verified"}
+
+    invalid_code = client.post(
+        "/api/v1/auth/email-verification/code/verify",
+        json={"code": "1234-5678"},
+        cookies={
+            "zhaoniu_session": "valid-token",
+            "zhaoniu_csrf": "valid-csrf-token",
+        },
+        headers={"X-CSRF-Token": "valid-csrf-token"},
+    )
+    assert invalid_code.status_code == 422
 
     reset = client.post(
         "/api/v1/auth/password-reset/confirm",

@@ -82,7 +82,7 @@ beforeEach(() => {
     status: "open",
     invitation_required: true,
     email_verification_required: true,
-    password_min_length: 15,
+    password_min_length: 8,
   });
   api.getCurrentLegalDocuments.mockResolvedValue(legalDocuments);
   api.register.mockResolvedValue({});
@@ -99,7 +99,7 @@ describe("AuthCard registration", () => {
       status: "closed",
       invitation_required: true,
       email_verification_required: true,
-      password_min_length: 15,
+      password_min_length: 8,
     });
 
     render(<AuthCard mode="register" />);
@@ -107,7 +107,7 @@ describe("AuthCard registration", () => {
     expect(await screen.findByText("邀请注册当前未开放")).toBeInTheDocument();
     expect(api.getCurrentLegalDocuments).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("button", { name: "创建账户并发送验证邮件" }),
+      screen.queryByRole("button", { name: "发送邮箱验证码" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /前往登录/ })).toHaveAttribute(
       "href",
@@ -131,14 +131,9 @@ describe("AuthCard registration", () => {
     fireEvent.change(screen.getByLabelText("设置密码"), {
       target: { value: "long-password-value" },
     });
-    fireEvent.change(screen.getByLabelText("确认密码"), {
-      target: { value: "long-password-value" },
-    });
     fireEvent.click(screen.getByRole("checkbox", { name: /用户协议/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: /隐私政策/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "创建账户并发送验证邮件" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "发送邮箱验证码" }));
 
     expect(api.register).toHaveBeenCalledWith(
       "invited@example.com",
@@ -156,11 +151,13 @@ describe("AuthCard registration", () => {
       ],
     );
     await waitFor(() =>
-      expect(navigation.push).toHaveBeenCalledWith("/verify-email"),
+      expect(navigation.push).toHaveBeenCalledWith(
+        "/verify-email?registration=1",
+      ),
     );
   });
 
-  it("explains and focuses the first incomplete registration requirement", async () => {
+  it("shows a direct field error without an incomplete-item summary", async () => {
     render(<AuthCard mode="register" />);
 
     await screen.findByLabelText("邀请码");
@@ -172,16 +169,14 @@ describe("AuthCard registration", () => {
     });
 
     const submit = screen.getByRole("button", {
-      name: "创建账户并发送验证邮件",
+      name: "发送邮箱验证码",
     });
     expect(submit).toBeEnabled();
-    expect(screen.getByText("还需完成 4 项")).toBeInTheDocument();
+    expect(screen.queryByText(/还需完成/)).not.toBeInTheDocument();
 
     fireEvent.click(submit);
 
-    expect(
-      await screen.findByText("请先完成：设置至少 15 位密码。"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("密码至少需要 8 位。")).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByLabelText("设置密码")).toHaveFocus(),
     );
@@ -205,14 +200,9 @@ describe("AuthCard registration", () => {
     fireEvent.change(screen.getByLabelText("设置密码"), {
       target: { value: "long-password-value" },
     });
-    fireEvent.change(screen.getByLabelText("确认密码"), {
-      target: { value: "long-password-value" },
-    });
     fireEvent.click(screen.getByRole("checkbox", { name: /用户协议/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: /隐私政策/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "创建账户并发送验证邮件" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "发送邮箱验证码" }));
 
     expect(
       await screen.findByText(
@@ -228,7 +218,7 @@ describe("AuthCard registration", () => {
 
     expect(await screen.findByText("暂时无法确认注册状态")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "创建账户并发送验证邮件" }),
+      screen.queryByRole("button", { name: "发送邮箱验证码" }),
     ).not.toBeInTheDocument();
   });
 });

@@ -207,8 +207,9 @@ historical rows, and the frontend is never the authorization boundary.
 
 - `users.email_verified_at` and `users.password_changed_at` expose account-security state without
   storing transient secrets.
-- `email_verification_tokens` and `password_reset_tokens` retain one-time SHA-256 token digests,
-  expiry, use and revocation timestamps. Plaintext tokens exist only in outbound links.
+- `email_verification_tokens` retains one-time, user-scoped SHA-256 email-code digests while
+  `password_reset_tokens` retains one-time SHA-256 link-token digests. Both tables retain expiry,
+  use and revocation timestamps. Plaintext codes and tokens exist only in outbound messages.
 - `transactional_email_deliveries` records delivery purpose, provider state and redacted failure
   categories; message bodies and tokens are never persisted.
 - `user_legal_acceptances` records user, document key, immutable document version/hash, timestamp
