@@ -32,8 +32,8 @@ for submitted, delivered, delayed, bounced, failed, complained and suppressed st
 
 Phase 19 non-production acceptance must use a verified test domain and mailbox. Run the desktop
 Playwright account lane with one-time environment values `E2E_INVITE_CODE`, `E2E_ACCOUNT_EMAIL`
-and `E2E_ACCOUNT_PASSWORD`; then supply the received links as `E2E_VERIFICATION_URL` and
-`E2E_RESET_URL` with `E2E_REPLACEMENT_PASSWORD`. These values must never be written to the
+and `E2E_ACCOUNT_PASSWORD`; then supply the received code as `E2E_VERIFICATION_CODE` and the
+password-reset link as `E2E_RESET_URL` with `E2E_REPLACEMENT_PASSWORD`. These values must never be written to the
 repository or baseline report. A skipped account lane is not evidence of email readiness.
 
 ## DeepSeek through LiteLLM

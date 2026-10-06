@@ -134,6 +134,7 @@ POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
 POST /api/v1/auth/email-verification/verify
+POST /api/v1/auth/email-verification/code/verify
 POST /api/v1/auth/email-verification/resend
 POST /api/v1/auth/password-reset/request
 POST /api/v1/auth/password-reset/confirm

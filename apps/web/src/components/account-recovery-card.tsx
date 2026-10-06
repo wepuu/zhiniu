@@ -21,9 +21,12 @@ export function AccountRecoveryCard({
 }) {
   const search = useSearchParams();
   const token = search.get("token") ?? "";
+  const isRegistration = search.get("registration") === "1";
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [verified, setVerified] = useState(false);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">(
     mode === "verify" && token ? "loading" : "idle",
   );
@@ -34,6 +37,7 @@ export function AccountRecoveryCard({
     void api
       .verifyEmail(token)
       .then((result) => {
+        setVerified(true);
         setState("success");
         setMessage(
           result.status === "already_verified"
@@ -57,31 +61,54 @@ export function AccountRecoveryCard({
         setMessage("如果该邮箱对应账户存在，我们将发送密码重置邮件。");
       } else if (mode === "reset") {
         if (!token) throw new Error("missing token");
-        if (password.length < 15 || password !== confirmation) {
+        if (password.length < 8 || password !== confirmation) {
           setState("error");
-          setMessage("密码至少 15 位，且两次输入必须一致。");
+          setMessage("密码至少 8 位，且两次输入必须一致。");
           return;
         }
         await api.confirmPasswordReset(token, password);
         setMessage("密码已重置，所有旧登录会话均已退出。请重新登录。");
       } else {
-        const result = await api.resendEmailVerification();
+        if (verificationCode.length !== 8) {
+          setState("error");
+          setMessage("请输入邮件中的八位验证码。");
+          return;
+        }
+        const result = await api.verifyEmailCode(verificationCode);
+        setVerified(true);
         setMessage(
-          result.status === "delivery_unavailable"
-            ? "邮件服务暂时不可用，请稍后重试。"
-            : result.status === "already_verified"
-              ? "邮箱已经完成验证。"
-              : "新的验证邮件已发送。",
+          result.status === "already_verified"
+            ? "这个邮箱已经完成验证。"
+            : "注册完成，邮箱验证成功。",
         );
       }
       setState("success");
     } catch (error) {
       setState("error");
+      setMessage(emailVerificationErrorMessage(error, mode));
+    }
+  }
+
+  async function resendVerification() {
+    setState("loading");
+    setMessage(null);
+    try {
+      const result = await api.resendEmailVerification();
+      setState("idle");
       setMessage(
-        error instanceof ApiError && error.status === 401
-          ? "请先登录，再重新发送验证邮件。"
-          : "本次操作没有完成，请检查链接或稍后重试。",
+        result.status === "delivery_unavailable"
+          ? "邮件服务暂时不可用，请稍后重试。"
+          : result.status === "already_verified"
+            ? "邮箱已经完成验证。"
+            : "新的八位验证码已发送，请查看注册邮箱。",
       );
+      if (result.status === "already_verified") {
+        setVerified(true);
+        setState("success");
+      }
+    } catch (error) {
+      setState("error");
+      setMessage(emailVerificationErrorMessage(error, "verify"));
     }
   }
 
@@ -93,7 +120,9 @@ export function AccountRecoveryCard({
         : "设置新密码";
   const description =
     mode === "verify"
-      ? "完成验证后可以使用密码找回，并继续开通高级研究功能。"
+      ? isRegistration
+        ? "验证码已发送到注册邮箱。输入八位数字即可完成注册。"
+        : "输入邮件中的八位验证码，完成邮箱验证。"
       : mode === "forgot"
         ? "输入注册邮箱。为保护账户，无论邮箱是否存在都会显示相同结果。"
         : "新密码生效后，其他设备上的登录会话会全部退出。";
@@ -150,19 +179,57 @@ export function AccountRecoveryCard({
                 />
               </>
             )}
-            {(mode !== "verify" || !token) && state !== "success" && (
+            {mode === "verify" && !token && !verified && (
+              <label className="block text-sm font-medium">
+                邮箱验证码
+                <input
+                  type="text"
+                  className="border-ink/15 focus:border-blue font-data mt-2 w-full rounded-xl border bg-white px-4 py-3 text-center text-xl tracking-[0.22em] outline-none"
+                  value={formatVerificationCode(verificationCode)}
+                  onChange={(event) =>
+                    setVerificationCode(
+                      event.target.value.replace(/\D/g, "").slice(0, 8),
+                    )
+                  }
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={9}
+                  placeholder="XXXX-XXXX"
+                  aria-label="邮箱验证码"
+                  required
+                />
+                <span className="text-slate mt-1.5 block text-xs leading-5">
+                  输入数字时会自动显示为 XXXX-XXXX，无需手动输入连字符。
+                </span>
+              </label>
+            )}
+            {((mode !== "verify" && state !== "success") ||
+              (mode === "verify" && !token && !verified)) && (
               <button
                 className="bg-blue flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
-                disabled={state === "loading"}
+                disabled={
+                  state === "loading" ||
+                  (mode === "verify" && verificationCode.length !== 8)
+                }
               >
                 {state === "loading" && (
                   <LoaderCircle className="size-4 animate-spin" />
                 )}
                 {mode === "verify"
-                  ? "重新发送验证邮件"
+                  ? "验证并完成注册"
                   : mode === "forgot"
                     ? "发送重置邮件"
                     : "确认重置密码"}
+              </button>
+            )}
+            {mode === "verify" && !token && !verified && (
+              <button
+                type="button"
+                className="border-ink/10 flex min-h-11 w-full items-center justify-center rounded-xl border bg-white px-4 text-sm font-medium disabled:opacity-60"
+                disabled={state === "loading"}
+                onClick={() => void resendVerification()}
+              >
+                重新发送验证码
               </button>
             )}
           </form>
@@ -181,10 +248,10 @@ export function AccountRecoveryCard({
         )}
         {state === "success" && (
           <Link
-            href="/login"
+            href={mode === "verify" && verified ? "/watchlist" : "/login"}
             className="border-ink/10 mt-5 flex min-h-11 items-center justify-center rounded-xl border text-sm font-medium"
           >
-            返回登录
+            {mode === "verify" && verified ? "进入研究工作台" : "返回登录"}
           </Link>
         )}
       </section>
@@ -210,9 +277,32 @@ function PasswordField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete="new-password"
-        minLength={15}
+        minLength={8}
         required
       />
     </label>
   );
+}
+
+function formatVerificationCode(value: string) {
+  return value.length > 4 ? `${value.slice(0, 4)}-${value.slice(4)}` : value;
+}
+
+function emailVerificationErrorMessage(
+  error: unknown,
+  mode: "verify" | "forgot" | "reset",
+) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "当前注册会话已失效，请返回登录后重试。";
+    if (error.status === 429) return "尝试次数较多，请稍后再试。";
+    if (error.message === "email_verification_expired") {
+      return "验证码已过期，请重新发送后再试。";
+    }
+    if (error.message === "email_verification_invalid") {
+      return "验证码不正确，请核对邮件后重新输入。";
+    }
+  }
+  return mode === "verify"
+    ? "邮箱验证没有完成，请检查验证码或稍后重试。"
+    : "本次操作没有完成，请检查链接或稍后重试。";
 }

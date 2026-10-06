@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from secrets import token_urlsafe
+from secrets import randbelow, token_urlsafe
 from uuid import UUID, uuid4
 
 from pwdlib import PasswordHash
@@ -177,7 +177,7 @@ class AuthService:
             )
         try:
             auth = await self._create_session_record(user, user_agent, ip_address, now)
-            verification_token, delivery = await self._create_email_verification(user, now)
+            verification_code, delivery = await self._create_email_verification(user, now)
             await self._session.commit()
             await self._deliver_email(
                 delivery,
@@ -185,8 +185,10 @@ class AuthService:
                     recipient=user.email,
                     subject="验证你的知牛研究邮箱",
                     text_body=(
-                        "请使用以下链接验证邮箱：\n"
-                        f"{self._settings.public_base_url.rstrip('/')}/verify-email?token={verification_token}\n"
+                        "你的邮箱验证码是：\n\n"
+                        f"{format_email_verification_code(verification_code)}\n\n"
+                        "验证码在 "
+                        f"{self._settings.email_verification_code_ttl_minutes} 分钟内有效。"
                         "如果不是你发起的注册，请忽略此邮件。"
                     ),
                     template_key="verify_email",
@@ -360,6 +362,28 @@ class AuthService:
             .where(EmailVerificationTokenRecord.token_hash == hash_token(token))
             .with_for_update()
         )
+        return await self._consume_email_verification(row, now)
+
+    async def verify_email_code(self, user_id: UUID, code: str) -> str:
+        if len(code) != 8 or not code.isascii() or not code.isdigit():
+            raise AuthenticationError("email_verification_invalid")
+        now = datetime.now(UTC)
+        row = await self._session.scalar(
+            select(EmailVerificationTokenRecord)
+            .where(
+                EmailVerificationTokenRecord.user_id == user_id,
+                EmailVerificationTokenRecord.token_hash
+                == hash_email_verification_code(user_id, code),
+            )
+            .with_for_update()
+        )
+        return await self._consume_email_verification(row, now)
+
+    async def _consume_email_verification(
+        self,
+        row: EmailVerificationTokenRecord | None,
+        now: datetime,
+    ) -> str:
         if row is None or row.revoked_at is not None:
             raise AuthenticationError("email_verification_invalid")
         user = await self._session.get(User, row.user_id)
@@ -400,7 +424,7 @@ class AuthService:
             )
             .values(revoked_at=now)
         )
-        token, delivery = await self._create_email_verification(user, now)
+        code, delivery = await self._create_email_verification(user, now)
         await self._session.commit()
         delivered = await self._deliver_email(
             delivery,
@@ -408,8 +432,11 @@ class AuthService:
                 recipient=user.email,
                 subject="验证你的知牛研究邮箱",
                 text_body=(
-                    "请使用以下链接验证邮箱：\n"
-                    f"{self._settings.public_base_url.rstrip('/')}/verify-email?token={token}"
+                    "你的邮箱验证码是：\n\n"
+                    f"{format_email_verification_code(code)}\n\n"
+                    "验证码在 "
+                    f"{self._settings.email_verification_code_ttl_minutes} 分钟内有效。"
+                    "如果不是你发起的操作，请忽略此邮件。"
                 ),
                 template_key="verify_email",
             ),
@@ -547,26 +574,40 @@ class AuthService:
     async def _create_email_verification(
         self, user: User, now: datetime
     ) -> tuple[str, TransactionalEmailDeliveryRecord]:
-        token = token_urlsafe(48)
+        code = ""
+        token_hash = ""
+        for _ in range(10):
+            code = f"{randbelow(100_000_000):08d}"
+            token_hash = hash_email_verification_code(user.id, code)
+            existing = await self._session.scalar(
+                select(EmailVerificationTokenRecord.id).where(
+                    EmailVerificationTokenRecord.token_hash == token_hash
+                )
+            )
+            if existing is None:
+                break
+        else:
+            raise AuthenticationError("email_verification_unavailable")
         token_record = EmailVerificationTokenRecord(
             id=uuid4(),
             user_id=user.id,
-            token_hash=hash_token(token),
+            token_hash=token_hash,
             email_snapshot=user.email,
-            expires_at=now + timedelta(hours=self._settings.email_verification_ttl_hours),
+            expires_at=now
+            + timedelta(minutes=self._settings.email_verification_code_ttl_minutes),
         )
         self._session.add(token_record)
         delivery = TransactionalEmailDeliveryRecord(
             id=uuid4(),
             user_id=user.id,
             template_key="verify_email",
-            template_version="v1",
+            template_version="v2",
             provider=self._email.provider_name,
             logical_delivery_key=f"verify_email/{token_record.id}",
             status="pending",
         )
         self._session.add(delivery)
-        return token, delivery
+        return code, delivery
 
     async def _deliver_email(
         self, delivery: TransactionalEmailDeliveryRecord, message: TransactionalEmail
@@ -656,6 +697,14 @@ def validate_password(value: str, *, min_length: int) -> None:
 
 def hash_token(token: str) -> str:
     return sha256(token.encode("utf-8")).hexdigest()
+
+
+def hash_email_verification_code(user_id: UUID, code: str) -> str:
+    return hash_token(f"{user_id}:{code}")
+
+
+def format_email_verification_code(code: str) -> str:
+    return f"{code[:4]}-{code[4:]}"
 
 
 def user_to_domain(user: User) -> UserAccount:

@@ -18,8 +18,7 @@ test("registers an invited account and submits real verification and recovery em
   await page.goto("/register");
   await page.getByLabel("邀请码").fill(inviteCode!);
   await page.getByLabel("邮箱", { exact: true }).fill(accountEmail!);
-  await page.getByLabel("密码", { exact: true }).fill(accountPassword!);
-  await page.getByLabel("确认密码").fill(accountPassword!);
+  await page.getByLabel("设置密码").fill(accountPassword!);
   await page
     .getByLabel(/我已阅读并同意/)
     .nth(0)
@@ -28,11 +27,11 @@ test("registers an invited account and submits real verification and recovery em
     .getByLabel(/我已阅读并同意/)
     .nth(1)
     .check();
-  await page.getByRole("button", { name: "创建账户" }).click();
+  await page.getByRole("button", { name: "发送邮箱验证码" }).click();
 
   await expect(page).toHaveURL(/\/verify-email/);
-  await page.getByRole("button", { name: "重新发送验证邮件" }).click();
-  await expect(page.getByRole("status")).toContainText("新的验证邮件已发送");
+  await page.getByRole("button", { name: "重新发送验证码" }).click();
+  await expect(page.getByRole("status")).toContainText("新的八位验证码已发送");
 
   await page.goto("/forgot-password");
   await page.getByLabel("注册邮箱").fill(accountEmail!);
@@ -45,19 +44,27 @@ test("registers an invited account and submits real verification and recovery em
 test("consumes real verification and password-reset links", async ({
   page,
 }, testInfo) => {
-  const verificationUrl = process.env.E2E_VERIFICATION_URL;
+  const verificationCode = process.env.E2E_VERIFICATION_CODE;
   const resetUrl = process.env.E2E_RESET_URL;
   const replacementPassword = process.env.E2E_REPLACEMENT_PASSWORD;
   test.skip(
     testInfo.project.name !== "desktop-chromium" ||
-      !verificationUrl ||
+      !verificationCode ||
+      !accountEmail ||
+      !accountPassword ||
       !resetUrl ||
       !replacementPassword,
-    "Provide the one-time links received in the test mailbox.",
+    "Provide the one-time verification code and reset link received in the test mailbox.",
   );
 
-  await page.goto(verificationUrl!);
-  await expect(page.getByRole("status")).toContainText("邮箱验证完成");
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill(accountEmail!);
+  await page.getByLabel("密码").fill(accountPassword!);
+  await page.getByRole("button", { name: "安全登录" }).click();
+  await page.goto("/verify-email");
+  await page.getByLabel("邮箱验证码").fill(verificationCode!);
+  await page.getByRole("button", { name: "验证并完成注册" }).click();
+  await expect(page.getByRole("status")).toContainText("邮箱验证成功");
 
   await page.goto(resetUrl!);
   await page.getByLabel("新密码").fill(replacementPassword!);

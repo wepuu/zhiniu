@@ -316,6 +316,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         { token },
       );
     },
+    verifyEmailCode(code: string) {
+      return jsonRequest<EmailVerificationResponse>(
+        "/api/v1/auth/email-verification/code/verify",
+        "POST",
+        { code },
+      );
+    },
     resendEmailVerification() {
       return request<EmailVerificationResponse>(
         "/api/v1/auth/email-verification/resend",

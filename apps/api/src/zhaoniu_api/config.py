@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool = False
     allowed_origins: str = "http://localhost:3000"
     auth_session_days: int = Field(default=30, ge=1, le=90)
-    auth_password_min_length: int = Field(default=15, ge=15, le=128)
+    auth_password_min_length: int = Field(default=8, ge=8, le=128)
     public_base_url: str = "http://localhost:3000"
     trusted_hosts: str = "localhost,127.0.0.1,testserver"
     registration_mode: Literal["invite_only", "closed"] = "invite_only"
@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     resend_webhook_secret: str = ""
     email_diagnostic_recipient: str = ""
     email_verification_ttl_hours: int = Field(default=24, ge=1, le=168)
+    email_verification_code_ttl_minutes: int = Field(default=15, ge=5, le=60)
     password_reset_ttl_minutes: int = Field(default=30, ge=10, le=120)
     market_data_provider: Literal["akshare"] = "akshare"
     disclosure_provider: Literal["akshare"] = "akshare"

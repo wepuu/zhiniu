@@ -20,27 +20,21 @@ const api = createZhaoniuClient();
 
 type RegistrationState = "loading" | "open" | "closed" | "error";
 
-type RegistrationRequirement = {
-  id: string;
-  label: string;
-  complete: boolean;
-};
-
 const registrationSteps = [
   {
-    label: "确认邀请",
-    detail: "邀请码和受邀邮箱需保持一致",
+    label: "填写邀请信息",
+    detail: "输入邀请码、邮箱和账户密码",
     icon: KeyRound,
   },
   {
-    label: "创建账户",
-    detail: "设置独立密码并确认协议",
-    icon: ShieldCheck,
+    label: "验证邮箱",
+    detail: "输入邮件中的八位验证码",
+    icon: MailCheck,
   },
   {
-    label: "验证邮箱",
-    detail: "通过邮件链接完成账户验证",
-    icon: MailCheck,
+    label: "进入研究工作台",
+    detail: "验证完成后开始使用研究功能",
+    icon: ShieldCheck,
   },
 ];
 
@@ -51,7 +45,6 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
   const invitedEmail = isRegister ? (search.get("email") ?? "").trim() : "";
   const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [invitationCode, setInvitationCode] = useState(
     isRegister ? (search.get("invite") ?? "").trim().toUpperCase() : "",
   );
@@ -63,7 +56,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
     isRegister ? "loading" : "open",
   );
   const [registrationReload, setRegistrationReload] = useState(0);
-  const [passwordMinLength, setPasswordMinLength] = useState(15);
+  const [passwordMinLength, setPasswordMinLength] = useState(8);
   const [legalVersions, setLegalVersions] = useState<{
     terms_of_service: string;
     privacy_policy: string;
@@ -118,57 +111,37 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
     if (error) setError(null);
   }
 
-  const registrationRequirements: RegistrationRequirement[] = isRegister
-    ? [
-        {
-          id: "registration-invitation-code",
-          label: "填写邀请码",
-          complete: Boolean(invitationCode.trim()),
-        },
-        {
-          id: "auth-email",
-          label: "填写有效邮箱",
-          complete: isValidEmail(email),
-        },
-        {
-          id: "registration-password",
-          label: `设置至少 ${passwordMinLength} 位密码`,
-          complete: password.length >= passwordMinLength,
-        },
-        {
-          id: "registration-password-confirmation",
-          label: "两次密码保持一致",
-          complete: Boolean(confirmation) && password === confirmation,
-        },
-        {
-          id: "registration-terms",
-          label: "同意用户协议",
-          complete: termsAccepted,
-        },
-        {
-          id: "registration-privacy",
-          label: "同意隐私政策",
-          complete: privacyAccepted,
-        },
-      ]
-    : [];
-  const incompleteRegistrationRequirements = registrationRequirements.filter(
-    (requirement) => !requirement.complete,
-  );
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (isRegister && incompleteRegistrationRequirements.length > 0) {
-      const first = incompleteRegistrationRequirements[0];
-      setError(`请先完成：${first.label}。`);
-      window.requestAnimationFrame(() => {
-        document.getElementById(first.id)?.focus();
-      });
-      return;
+    if (isRegister) {
+      const invalidField = !invitationCode.trim()
+        ? ["registration-invitation-code", "请输入邀请码。"]
+        : !isValidEmail(email)
+          ? ["auth-email", "请输入有效的邮箱地址。"]
+          : password.length < passwordMinLength
+            ? [
+                "registration-password",
+                `密码至少需要 ${passwordMinLength} 位。`,
+              ]
+            : !termsAccepted
+              ? ["registration-terms", "请阅读并同意用户协议。"]
+              : !privacyAccepted
+                ? ["registration-privacy", "请阅读并同意隐私政策。"]
+                : null;
+      if (invalidField) {
+        setError(invalidField[1]);
+        window.requestAnimationFrame(() => {
+          document.getElementById(invalidField[0])?.focus();
+        });
+        return;
+      }
     }
-    if (isRegister && (!termsAccepted || !privacyAccepted || !legalVersions)) {
-      setError("请阅读并同意当前版本的用户协议和隐私政策。");
+    if (isRegister && !legalVersions) {
+      setError("当前协议尚未加载完成，请稍后重试。");
+      window.requestAnimationFrame(() => {
+        document.getElementById("registration-invitation-code")?.focus();
+      });
       return;
     }
     setSubmitting(true);
@@ -192,7 +165,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
         next && next.startsWith("/")
           ? next
           : isRegister
-            ? "/verify-email"
+            ? "/verify-email?registration=1"
             : "/watchlist",
       );
       router.refresh();
@@ -292,7 +265,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
               })}
             </ol>
             <p className="mt-10 border-t border-white/10 pt-5 text-xs leading-5 text-white/45">
-              邀请码为一次性凭证。账户创建后仍需完成邮箱验证。
+              验证码只发送到注册邮箱。完成验证后即可进入研究工作台。
             </p>
           </div>
         </aside>
@@ -305,7 +278,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
             创建研究账户
           </h2>
           <p className="text-slate mt-2 text-sm leading-6">
-            使用邀请邮件中的信息注册。我们会在提交前检查必要条件。
+            输入邀请码、邮箱和密码，我们会向该邮箱发送验证码。
           </p>
 
           {registrationState === "loading" && (
@@ -400,35 +373,15 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 }
               />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <PasswordField
-                  id="registration-password"
-                  value={password}
-                  onChange={(value) => updateField(() => setPassword(value))}
-                  autoComplete="new-password"
-                  label="设置密码"
-                  helper={`至少 ${passwordMinLength} 位字符`}
-                  minLength={passwordMinLength}
-                />
-                <PasswordField
-                  id="registration-password-confirmation"
-                  value={confirmation}
-                  onChange={(value) =>
-                    updateField(() => setConfirmation(value))
-                  }
-                  autoComplete="new-password"
-                  label="确认密码"
-                  helper={
-                    confirmation && password !== confirmation
-                      ? "两次输入不一致"
-                      : confirmation
-                        ? "两次输入一致"
-                        : "再次输入密码"
-                  }
-                  invalid={Boolean(confirmation && password !== confirmation)}
-                  minLength={passwordMinLength}
-                />
-              </div>
+              <PasswordField
+                id="registration-password"
+                value={password}
+                onChange={(value) => updateField(() => setPassword(value))}
+                autoComplete="new-password"
+                label="设置密码"
+                helper={`至少 ${passwordMinLength} 位，可使用特殊字符、大小写字母和数字`}
+                minLength={passwordMinLength}
+              />
 
               <div className="border-ink/8 bg-mist space-y-3 rounded-2xl border p-4 text-sm">
                 <LegalAcceptance
@@ -451,50 +404,10 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 />
               </div>
 
-              <div
-                className="border-ink/8 rounded-2xl border bg-white p-4"
-                aria-live="polite"
-              >
-                <p className="text-sm font-medium">
-                  {incompleteRegistrationRequirements.length === 0
-                    ? "注册信息已完整，可以创建账户"
-                    : `还需完成 ${incompleteRegistrationRequirements.length} 项`}
-                </p>
-                <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                  {registrationRequirements.map((requirement) => (
-                    <li
-                      key={requirement.id}
-                      className={
-                        requirement.complete ? "text-emerald-700" : "text-slate"
-                      }
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          aria-hidden="true"
-                          className={`grid size-4 place-items-center rounded-full border ${
-                            requirement.complete
-                              ? "border-emerald-600 bg-emerald-50"
-                              : "border-ink/20"
-                          }`}
-                        >
-                          {requirement.complete && <Check className="size-3" />}
-                        </span>
-                        {requirement.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {incompleteRegistrationRequirements.length > 0 && (
-                  <p className="text-slate mt-3 text-xs leading-5">
-                    点击下方按钮会提示并定位到第一项未完成内容。
-                  </p>
-                )}
-              </div>
-
               {error && <ErrorNotice message={error} />}
 
               <PrimaryButton submitting={submitting}>
-                创建账户并发送验证邮件
+                发送邮箱验证码
               </PrimaryButton>
               <p className="text-slate text-center text-xs leading-5">
                 已有账户？{" "}
