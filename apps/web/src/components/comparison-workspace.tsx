@@ -4,6 +4,7 @@ import {
   ApiError,
   createZhaoniuClient,
   type ComparisonResponse,
+  type StockReadinessResponse,
 } from "@zhaoniu/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -47,6 +48,20 @@ export function ComparisonLauncher({
     queryKey: ["comparison-catalog"],
     queryFn: api.getComparisonCatalog,
   });
+  const canCheckReadiness =
+    left.trim().length >= 6 &&
+    right.trim().length >= 6 &&
+    left.trim().toUpperCase() !== right.trim().toUpperCase();
+  const readiness = useQuery({
+    queryKey: ["comparison-readiness", left.trim(), right.trim()],
+    queryFn: () => api.getStockReadiness([left.trim(), right.trim()]),
+    enabled: canCheckReadiness,
+    retry: false,
+  });
+  const readinessItems = readiness.data?.items ?? [];
+  const comparisonReady =
+    readinessItems.length === 2 &&
+    readinessItems.every((item) => comparisonInputsReady(item));
   const create = useMutation({
     mutationFn: () =>
       api.createComparison({
@@ -101,7 +116,7 @@ export function ComparisonLauncher({
           </div>
           <button
             type="button"
-            disabled={!left.trim() || !right.trim() || create.isPending}
+            disabled={!comparisonReady || create.isPending}
             onClick={() => create.mutate()}
             className="bg-blue inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -114,6 +129,13 @@ export function ComparisonLauncher({
           </button>
         </div>
       </Card>
+      <ComparisonInputReadiness
+        canCheck={canCheckReadiness}
+        isLoading={readiness.isPending}
+        isError={readiness.isError}
+        items={readinessItems}
+        ready={comparisonReady}
+      />
       {create.error && (
         <p
           className="border-risk/20 bg-risk/5 text-risk mt-4 rounded-xl border px-4 py-3 text-sm"
@@ -121,11 +143,106 @@ export function ComparisonLauncher({
         >
           {create.error instanceof ApiError && create.error.status === 403
             ? "当前账户没有对应权益，请联系客服开通高级研究能力。"
-            : "无法创建对比，请确认两只股票已进入研究覆盖。"}
+            : create.error instanceof ApiError && create.error.status === 409
+              ? "两只股票的核心研究数据尚未就绪，请先完成数据准备后再试。"
+              : "无法创建对比，请确认两只股票已进入研究覆盖。"}
         </p>
       )}
       <ComparisonLibrary />
     </div>
+  );
+}
+
+function comparisonInputsReady(item: StockReadinessResponse) {
+  const stages = new Map(item.stages.map((stage) => [stage.key, stage]));
+  return (
+    stages.get("market")?.status === "ready" &&
+    stages.get("deterministic_research")?.status === "ready"
+  );
+}
+
+function readinessStageLabel(item: StockReadinessResponse) {
+  if (comparisonInputsReady(item)) return "核心研究已就绪";
+  const deterministic = item.stages.find(
+    (stage) => stage.key === "deterministic_research",
+  );
+  if (deterministic?.status === "preparing") return "核心研究准备中";
+  if (deterministic?.status === "queued") return "已排队，等待准备";
+  if (deterministic?.status === "failed") return "核心研究准备失败";
+  if (deterministic?.status === "paused") return "研究准备已暂停";
+  return "核心研究尚未就绪";
+}
+
+function ComparisonInputReadiness({
+  canCheck,
+  isLoading,
+  isError,
+  items,
+  ready,
+}: {
+  canCheck: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  items: StockReadinessResponse[];
+  ready: boolean;
+}) {
+  if (!canCheck) {
+    return (
+      <p className="text-slate mt-4 text-xs" role="status">
+        请输入两只不同的股票代码，系统会先检查核心研究数据。
+      </p>
+    );
+  }
+  return (
+    <Card className="mt-4 p-4" role="status" aria-live="polite">
+      {isLoading && <p className="text-slate text-sm">正在检查两侧研究状态…</p>}
+      {isError && (
+        <p className="text-risk text-sm">
+          暂时无法读取研究状态，请稍后重试；数据未确认前不会创建对比任务。
+        </p>
+      )}
+      {!isLoading && !isError && items.length === 2 && (
+        <>
+          <div className="grid gap-2 md:grid-cols-2">
+            {items.map((item) => (
+              <div
+                key={item.canonical_symbol}
+                className="bg-mist flex items-center justify-between rounded-lg px-3 py-2 text-xs"
+              >
+                <span>
+                  <b className="font-medium">{item.name}</b>
+                  <span className="text-slate font-data ml-2">
+                    {item.canonical_symbol}
+                  </span>
+                </span>
+                <span
+                  className={
+                    comparisonInputsReady(item)
+                      ? "text-emerald-700"
+                      : "text-amber"
+                  }
+                >
+                  {readinessStageLabel(item)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate mt-3 text-xs">
+            {ready
+              ? "两侧核心数据已就绪，可以生成确定性对比。扩展研究或 AI 状态不会阻塞核心结果。"
+              : "请先在自选股中完成数据准备；核心数据就绪后才可生成对比。"}
+          </p>
+          {!ready && (
+            <Link
+              href="/watchlist"
+              className="text-blue mt-2 inline-flex text-xs"
+            >
+              前往自选股查看准备进度
+            </Link>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
@@ -219,23 +336,96 @@ function SymbolField({
 }
 
 export function ComparisonResult({ requestId }: { requestId: string }) {
+  const router = useRouter();
+  const startedAt = useRef<number | null>(null);
   const query = useQuery({
     queryKey: ["comparison", requestId],
     queryFn: () => api.getComparison(requestId),
-    refetchInterval: (state) =>
-      ["pending", "building"].includes(state.state.data?.status ?? "")
-        ? 1500
-        : false,
+    refetchInterval: (state) => {
+      const status = state.state.data?.status;
+      if (!status || !["pending", "building"].includes(status)) return false;
+      if (typeof document !== "undefined" && document.hidden) return false;
+      const elapsed = startedAt.current ? Date.now() - startedAt.current : 0;
+      return elapsed < 60_000 ? 5_000 : 15_000;
+    },
   });
+  useEffect(() => {
+    if (["pending", "building"].includes(query.data?.status ?? "")) {
+      startedAt.current ??= Date.now();
+    } else {
+      startedAt.current = null;
+    }
+  }, [query.data?.status]);
   if (query.isPending) return <ComparisonLoading />;
   if (query.isError || !query.data)
     return <ComparisonError onRetry={() => void query.refetch()} />;
   const comparison = query.data;
   if (["pending", "building"].includes(comparison.status))
     return <ComparisonLoading />;
+  if (comparison.status === "failed" || comparison.status === "unsupported") {
+    return (
+      <ComparisonTerminal
+        comparison={comparison}
+        onRetry={(nextId) => router.push(`/comparisons/${nextId}`)}
+      />
+    );
+  }
   if (!comparison.snapshot)
     return <ComparisonError onRetry={() => void query.refetch()} />;
   return <ComparisonReady comparison={comparison} />;
+}
+
+function ComparisonTerminal({
+  comparison,
+  onRetry,
+}: {
+  comparison: ComparisonResponse;
+  onRetry: (requestId: string) => void;
+}) {
+  const retry = useMutation({
+    mutationFn: () => api.retryComparison(comparison.id),
+    onSuccess: (response) => onRetry(response.id),
+  });
+  const unsupported = comparison.status === "unsupported";
+  return (
+    <Card
+      className="border-risk/20 mx-auto max-w-xl p-7 text-center"
+      role="alert"
+    >
+      <ShieldAlert className="text-risk mx-auto size-7" />
+      <h1 className="font-display mt-4 text-2xl font-semibold">
+        {unsupported ? "当前股票不支持对比" : "对比研究未能完成"}
+      </h1>
+      <p className="text-slate mt-2 text-sm">
+        {unsupported
+          ? "当前发行人模板不满足标准对比口径。"
+          : comparison.error_code === "comparison_build_stalled"
+            ? "准备任务超过允许时间，未生成不完整结果。"
+            : "核心数据或证据准备失败，未生成不完整结果。"}
+      </p>
+      <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+        {!unsupported && (
+          <button
+            type="button"
+            disabled={retry.isPending}
+            onClick={() => retry.mutate()}
+            className="bg-ink rounded-xl px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {retry.isPending ? "正在重新排队…" : "重新准备"}
+          </button>
+        )}
+        <Link
+          href="/comparisons"
+          className="border-ink/15 text-ink rounded-xl border px-4 py-2 text-sm"
+        >
+          返回对比入口
+        </Link>
+      </div>
+      {retry.error && (
+        <p className="text-risk mt-3 text-xs">重新准备失败，请稍后再试。</p>
+      )}
+    </Card>
+  );
 }
 
 function ComparisonReady({ comparison }: { comparison: ComparisonResponse }) {

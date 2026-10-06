@@ -53,6 +53,8 @@ from zhaoniu_api.ports.providers import LLMGatewayError
 from zhaoniu_api.provider_configuration.gateway import ManagedLiteLLMGateway
 from zhaoniu_api.provider_configuration.models import DeepSeekConfiguration
 from zhaoniu_api.provider_configuration.service import ProviderConfigurationService
+from zhaoniu_api.schemas import StockReadinessResponse
+from zhaoniu_api.stock_readiness import StockReadinessService
 
 SCHEMA_VERSION = "company-comparison-v1"
 RULE_VERSION = "company-comparison-rules-v1"
@@ -61,6 +63,7 @@ AI_CONTEXT_VERSION = "company-comparison-context-v1"
 AI_PROMPT_VERSION = "company-comparison-prompt-v7"
 AI_SCHEMA_VERSION = "company-comparison-ai-v1"
 AI_ROUTE_VERSION = "managed-deepseek-comparison-v1"
+COMPARISON_BUILD_STALE_AFTER = timedelta(minutes=10)
 
 METRICS: dict[str, tuple[str, str]] = {
     "revenue_yoy": ("营业收入同比", "成长与规模"),
@@ -107,6 +110,18 @@ def _decimal(value: Decimal | None) -> str | None:
 
 def _evidence_id(side: str, kind: str, source_id: UUID) -> str:
     return "EV-" + _hash(f"{side}|{kind}|{source_id}")[:12].upper()
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _comparison_inputs_ready(item: StockReadinessResponse) -> bool:
+    stages = {stage.key: stage for stage in item.stages}
+    return (
+        stages["market"].status == "ready"
+        and stages["deterministic_research"].status == "ready"
+    )
 
 
 class ComparisonService:
@@ -157,6 +172,11 @@ class ComparisonService:
             raise ValueError("comparison_access_required")
         if payload.include_ai and not entitlements.features.get("comparison_explanation", False):
             raise ValueError("advanced_access_required")
+        readiness = await StockReadinessService(self._session, self._settings).get_many(
+            [left, right]
+        )
+        if not all(_comparison_inputs_ready(item) for item in readiness):
+            raise ValueError("comparison_inputs_not_ready")
         now = datetime.now(UTC)
         row = ComparisonRequestRecord(
             id=uuid4(),
@@ -182,7 +202,45 @@ class ComparisonService:
         )
         if row is None:
             raise LookupError("comparison_not_found")
+        await self._reconcile_stale(row)
         return await self._response(row)
+
+    async def retry(self, user_id: UUID, request_id: UUID) -> ComparisonResponse:
+        row = await self._session.scalar(
+            select(ComparisonRequestRecord).where(
+                ComparisonRequestRecord.id == request_id,
+                ComparisonRequestRecord.user_id == user_id,
+            )
+        )
+        if row is None:
+            raise LookupError("comparison_not_found")
+        if row.status not in {"failed", "partial"}:
+            raise ValueError("comparison_retry_not_available")
+        return await self.create(
+            user_id,
+            ComparisonCreate(
+                left_symbol=row.left_symbol,
+                right_symbol=row.right_symbol,
+                include_ai=row.include_ai,
+            ),
+        )
+
+    async def _reconcile_stale(self, row: ComparisonRequestRecord) -> None:
+        if row.status not in {"pending", "building"}:
+            return
+        now = datetime.now(UTC)
+        stale = _as_utc(row.created_at) <= now - COMPARISON_BUILD_STALE_AFTER
+        if row.status == "building" and row.build_run_id is not None:
+            run = await self._session.get(ComparisonBuildRunRecord, row.build_run_id)
+            stale = run is None or (
+                run.lease_expires_at is not None and _as_utc(run.lease_expires_at) <= now
+            )
+        if not stale:
+            return
+        row.status = "failed"
+        row.error_code = "comparison_build_stalled"
+        row.finished_at = now
+        await self._session.commit()
 
     async def list_requests(self, user_id: UUID, limit: int = 20) -> list[ComparisonResponse]:
         rows = (
@@ -193,6 +251,8 @@ class ComparisonService:
                 .limit(limit)
             )
         ).all()
+        for row in rows:
+            await self._reconcile_stale(row)
         return [await self._response(row) for row in rows]
 
     async def execute(self, request_id: UUID) -> ComparisonResponse:

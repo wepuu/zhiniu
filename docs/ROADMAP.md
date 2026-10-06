@@ -313,6 +313,43 @@ field without sending an incomplete request. A root-owned host command provides 
 rollback-safe `status`, `open` and `close` controls without creating a cohort or revoking unused
 invites.
 
+## Phase 26 - Evaluation Reliability & First-Value Clarity (implementation)
+
+Phase 26 improves the small, non-commercial evaluation without creating a second scheduler or
+claiming commercial data rights. The first increment closes two observed reliability gaps. A
+deployment is not considered healthy until the API, Web, PostgreSQL and Redis containers report
+healthy with zero restarts; the retained host-evidence probes then tolerate only a short, bounded
+startup transport race and still fail on a persistent error.
+
+The shared stock-readiness response now exposes the latest successful preparation timestamp and the
+next enabled daily-policy check for stocks in the active scheduled universe. Watchlist and company
+views render those facts in Shanghai time so users can distinguish queued work, stale data and a
+deliberately disabled schedule instead of assuming that every incomplete research card is
+permanently stuck. These timestamps are projections from the existing automation policy and
+run-step records; they do not create per-user market data or a second task system.
+
+The same increment adds a default seven-day refresh of the free industry-membership projection to
+the existing scheduled policy. It reuses the retained peer-research service, is skipped while still
+current, and only affects peer scopes planned by a later immutable run. Clearer first-company
+guidance now includes a stable `next_action` and bounded `blocking_reason_code` in the readiness
+contract. The Web company card only offers retry for a retryable failed state; paused automation,
+unsupported issuer templates and partial free-source coverage are presented as distinct outcomes.
+The Phase 26B/26C increment closes the first-value and comparison gaps observed during evaluation.
+Readiness cards now expose a stable user action and bounded reason, while comparison creation
+requires both symbols to have market and deterministic-research artifacts. Comparison requests
+poll at bounded intervals, stale build leases become an explicit `comparison_build_stalled` terminal
+state, and users can create a controlled retry without mutating the failed audit record. Desktop
+and mobile comparison entry points show both sides' preparation status and send users to the
+existing watchlist preparation flow when core data is missing. Extended-source partial coverage
+and optional AI failures do not block a deterministic comparison once the core stages are ready.
+Factor and backtest work remains deferred.
+
+The Phase 26D feedback increment closes the evaluation support loop without introducing a second
+ticket system. User feedback may carry only bounded surface, symbol, request and reason context;
+users can query the latest 50 submissions and see `new`, `triaged` or `resolved` status without
+exposing operator notes. The operator queue supports status, feature and severity filters on both
+desktop and mobile, while the existing audit and rate-limit controls remain authoritative.
+
 ## Future - Factor / Backtest
 
 Versioned factor definitions and research simulations remain a future phase. They require

@@ -7,6 +7,7 @@ from zhaoniu_api.access_control.rate_limit import (
 from zhaoniu_api.config import get_settings
 from zhaoniu_api.coverage.models import (
     BetaFeedbackCreate,
+    BetaFeedbackListResponse,
     BetaFeedbackResponse,
     StockCoverageResponse,
 )
@@ -58,3 +59,16 @@ async def create_beta_feedback(
     except AccessRateLimitExceeded as error:
         raise HTTPException(status_code=429, detail="beta_feedback_rate_limited") from error
     return await service.create_feedback(user_id, payload)
+
+
+@router.get(
+    "/me/beta-feedback",
+    response_model=BetaFeedbackListResponse,
+    tags=["beta"],
+)
+async def list_my_beta_feedback(
+    user_id: CurrentUserId,
+    service: CoverageServiceDependency,
+) -> BetaFeedbackListResponse:
+    items = await service.list_user_feedback(user_id)
+    return BetaFeedbackListResponse(items=items, total=len(items))

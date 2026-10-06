@@ -210,3 +210,33 @@ record; a healthy Provider diagnostic alone is not an admission decision.
 
 Factor/backtest development remains deferred until point-in-time licensed history, delisting data,
 corporate actions, and survivorship-bias controls are available.
+
+## Phase 26 evaluation reliability increment
+
+Phase 26 keeps the existing shared readiness contract and single database-owned daily policy. The
+readiness API additionally reports:
+
+- `last_successful_refresh_at`, derived from the latest successful retained preparation step for the
+  stock; and
+- `next_scheduled_refresh_at`, exposed only for an active-watchlist, operator-pinned or fixed
+  acceptance symbol when the daily policy is enabled and the environment automation emergency stop
+  is released.
+
+The Web watchlist and company readiness card render these values in `Asia/Shanghai`. A missing next
+check is intentionally shown as unscheduled rather than guessed from the policy's configured wall
+clock. Deployment health also waits for Docker health on API, Web, PostgreSQL and Redis before
+collecting host evidence; the loopback evidence probes use a bounded retry for startup-only
+connection resets and continue to fail closed when the service remains unavailable.
+
+The readiness contract additionally returns `next_action` and `blocking_reason_code`. The first is
+the only client-facing action recommendation: users can view completed or partial research, wait
+for queued work, retry a failed preparation, understand that automation is paused, or see that an
+issuer template is unsupported. The reason code is stable and bounded; raw Provider exceptions are
+never exposed to the browser.
+
+Comparison readiness follows the same contract. The API checks both requested symbols before
+creating a comparison and returns `comparison_inputs_not_ready` when market or deterministic
+research artifacts are missing. The Web entry point shows each side's state and links to the
+existing watchlist preparation flow. Comparison polling backs off after one minute and pauses when
+the page is hidden. Expired build leases become the explicit `comparison_build_stalled` terminal
+state, and retry creates a new request so the original audit remains immutable.

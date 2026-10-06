@@ -23,6 +23,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
 import { StockSearchDialog } from "@/components/stock-search-dialog";
 import { Card } from "@/components/ui/card";
+import { formatReadinessTimestamp } from "@/lib/stock-readiness";
 
 const api = createZhaoniuClient();
 
@@ -441,6 +442,22 @@ function WatchlistGroup({
                   {state?.latest_trade_date && (
                     <span className="text-slate mt-1 block text-xs">
                       行情更新至 {state.latest_trade_date}
+                    </span>
+                  )}
+                  {state?.last_successful_refresh_at && (
+                    <span className="text-slate mt-1 block text-xs">
+                      最近准备成功{" "}
+                      {formatReadinessTimestamp(
+                        state.last_successful_refresh_at,
+                      )}
+                    </span>
+                  )}
+                  {state?.next_scheduled_refresh_at && (
+                    <span className="text-slate mt-1 block text-xs">
+                      下一次自动检查{" "}
+                      {formatReadinessTimestamp(
+                        state.next_scheduled_refresh_at,
+                      )}
                     </span>
                   )}
                   {state?.market_freshness &&

@@ -12,8 +12,14 @@ from zhaoniu_api.comparisons.models import (
     ComparisonSnapshotDocument,
     ComparisonValue,
 )
-from zhaoniu_api.comparisons.service import ComparisonService, _decimal, _evidence_id
+from zhaoniu_api.comparisons.service import (
+    ComparisonService,
+    _comparison_inputs_ready,
+    _decimal,
+    _evidence_id,
+)
 from zhaoniu_api.db import FundamentalMetricPointRecord
+from zhaoniu_api.schemas import StockReadinessResponse, StockReadinessStage
 
 
 def _point(
@@ -55,6 +61,29 @@ def test_metric_matching_requires_period_basis_unit_and_version() -> None:
     matched_left, matched_right = service._latest_comparable(left, right)
     assert matched_left is not None and matched_right is not None
     assert matched_left.period_end == matched_right.period_end == date(2024, 12, 31)
+
+
+def test_comparison_inputs_require_market_and_deterministic_artifacts() -> None:
+    stages = [
+        StockReadinessStage(key="market", status="ready", progress=100),
+        StockReadinessStage(
+            key="deterministic_research", status="ready", progress=100
+        ),
+        StockReadinessStage(key="extended_research", status="partial", progress=50),
+        StockReadinessStage(key="ai_research", status="queued", progress=0),
+    ]
+    item = StockReadinessResponse(
+        symbol="600519",
+        canonical_symbol="600519.SH",
+        name="贵州茅台",
+        overall_status="partial",
+        next_action="view",
+        progress=75,
+        stages=stages,
+    )
+    assert _comparison_inputs_ready(item)
+    item.stages[1].status = "preparing"
+    assert not _comparison_inputs_ready(item)
 
 
 @pytest.mark.parametrize("text", ["建议买入", "甲公司更好", "增长百分之十"])

@@ -31,8 +31,12 @@ pipeline. It is deliberately not a general workflow engine.
 - corporate-event and peer lanes enabled
 - automated AI disabled
 
-Coverage is a run finalizer, not a separately scheduled policy. Screening snapshot scheduling and
-industry taxonomy scheduling remain manual.
+Coverage is a run finalizer, not a separately scheduled policy. Screening snapshot scheduling
+remains manual. Phase 26 adds one bounded industry-membership refresh to the same scheduled run; it
+defaults to a 168-hour interval and reuses `PeerResearchService.sync_industries()` rather than
+calling a data source from automation code. This additive allow-list field advances the policy
+snapshot contract to `automation-policy-v2`; existing retained revisions remain readable through
+the model default.
 
 The service does not claim holiday-aware exchange scheduling. It performs at most one local-day
 check; a provider response with no new trading data is a valid skip. Only the current due slot can
@@ -53,6 +57,11 @@ Symbol steps are ordered across the whole run before the next stage starts:
 9. optional AI research when the Phase 3 snapshot changed, the latest snapshot has no current
    output for the published route/prompt/schema, or the retained output is stale
 10. one run-level coverage finalizer
+
+Scheduled runs also refresh the trading calendar and stock master when due. After stock-master
+refresh they check the development/evaluation industry-membership projection at the configured
+low-frequency interval. Newly created memberships participate in peer scopes on the following
+scheduled run; the scheduler never mutates a run's already-frozen universe or step plan.
 
 Provider, normalizer, canonical model and repository boundaries remain inside the existing
 application services. Automation never calls a vendor SDK directly.
@@ -109,6 +118,33 @@ Stock readiness also reports `market_freshness` (`current`, `stale`, or `unknown
 Development/evaluation operators can populate it with the free AKShare/Sina adapter using
 `uv run python -m zhaoniu_api.cli sync-trading-calendar`; this remains outside the licensed Beta
 acceptance gate and is never a weekday heuristic.
+
+The Phase 26 evaluation-reliability projection also reports `last_successful_refresh_at` from
+retained successful automation steps and `next_scheduled_refresh_at` from the enabled daily policy.
+The next timestamp is limited to active-watchlist, operator-pinned and fixed acceptance symbols and
+is omitted while the policy is disabled or the environment emergency stop is active. Clients must
+present that as unscheduled and must not infer a future run from the configured wall-clock time
+alone.
+
+It also reports `next_action` (`view`, `wait`, `retry`, `enable_preparation` or `unsupported`) and
+an optional bounded `blocking_reason_code`. These fields are user guidance, not a second task
+state: `retry` is emitted only when a retained failed step can be safely retried, while provider
+outages and incomplete free-source coverage remain visible without hiding completed research.
+
+Comparison requests use the same readiness projection. Creation is rejected with
+`comparison_inputs_not_ready` until both symbols have a retained market artifact and deterministic
+research artifact; extended-source partial coverage and optional AI failures do not block the
+deterministic snapshot. Pending/building comparisons are polled at 5 seconds for the first minute
+and 15 seconds thereafter, with browser-hidden polling paused. A build whose lease has expired is
+reconciled on read as `failed` with `comparison_build_stalled`; the retry endpoint creates a new
+audited request and never mutates the failed request. This keeps comparison status queryable without
+introducing another scheduler or task table.
+
+Phase 26D adds the support feedback loop for this evaluation. User submissions may include only
+bounded surface, canonical symbol, request identifier and reason context. The user-facing settings
+card reads the latest 50 submissions and shows `new`, `triaged` or `resolved`; operator notes remain
+private. The existing operator queue adds status, feature and severity filters on desktop and mobile,
+with the existing CSRF, rate-limit and audit controls unchanged.
 
 The release-level SLO result requires 20 samples per dimension, at least 95 percent acceptable
 terminal runs, no stale active runs and no unclassified failures. The readiness service also

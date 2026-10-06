@@ -18,6 +18,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -38,6 +39,7 @@ class CommandResult:
 
 
 Runner = Callable[[Sequence[str]], CommandResult]
+Sleeper = Callable[[float], None]
 
 
 def run_command(command: Sequence[str]) -> CommandResult:
@@ -49,6 +51,26 @@ def run_command(command: Sequence[str]) -> CommandResult:
         timeout=20,
     )
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+def run_until_success(
+    command: Sequence[str],
+    runner: Runner,
+    *,
+    attempts: int = 3,
+    delay_seconds: float = 2,
+    sleeper: Sleeper = time.sleep,
+) -> CommandResult:
+    """Retry transient post-start probes without hiding a persistent failure."""
+
+    result = CommandResult(1, "", "probe_not_attempted")
+    for attempt in range(attempts):
+        result = runner(command)
+        if result.returncode == 0:
+            return result
+        if attempt + 1 < attempts:
+            sleeper(delay_seconds)
+    return result
 
 
 def _read_release(path: Path) -> dict[str, str]:
@@ -163,7 +185,12 @@ def _latest_backup_age_seconds(backup_dir: Path, now: datetime) -> int | None:
     return max(0, int(now.timestamp() - latest.stat().st_mtime))
 
 
-def collect_host_facts(args: argparse.Namespace, *, runner: Runner = run_command) -> dict[str, Any]:
+def collect_host_facts(
+    args: argparse.Namespace,
+    *,
+    runner: Runner = run_command,
+    sleeper: Sleeper = time.sleep,
+) -> dict[str, Any]:
     now = datetime.now(UTC)
     release = _read_release(args.release_file)
     containers = [_container_fact(service, args.project_name, runner) for service in SERVICES]
@@ -219,7 +246,7 @@ def collect_host_facts(args: argparse.Namespace, *, runner: Runner = run_command
 
     timer_enabled = runner(("systemctl", "is-enabled", args.backup_timer))
     timer_active = runner(("systemctl", "is-active", args.backup_timer))
-    api = runner(
+    api = run_until_success(
         (
             "curl",
             "--fail",
@@ -230,9 +257,11 @@ def collect_host_facts(args: argparse.Namespace, *, runner: Runner = run_command
             "--header",
             f"Host: {args.public_host}",
             "http://127.0.0.1:8000/readyz",
-        )
+        ),
+        runner,
+        sleeper=sleeper,
     )
-    web = runner(
+    web = run_until_success(
         (
             "curl",
             "--fail",
@@ -241,7 +270,9 @@ def collect_host_facts(args: argparse.Namespace, *, runner: Runner = run_command
             "--max-time",
             "5",
             "http://127.0.0.1:3000/",
-        )
+        ),
+        runner,
+        sleeper=sleeper,
     )
 
     return {

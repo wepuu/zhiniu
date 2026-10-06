@@ -4,9 +4,10 @@ import {
   ApiError,
   createZhaoniuClient,
   type BetaFeedbackCreate,
+  type BetaFeedbackResponse,
 } from "@zhaoniu/api-client";
 import { CheckCircle2, LoaderCircle, MessageSquareText } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 const api = createZhaoniuClient();
 
@@ -28,6 +29,12 @@ const categories: Array<[BetaFeedbackCreate["category"], string]> = [
   ["other", "其他"],
 ];
 
+const feedbackStatusLabels: Record<BetaFeedbackResponse["status"], string> = {
+  new: "已收到",
+  triaged: "处理中",
+  resolved: "已处理",
+};
+
 export function BetaFeedbackCard() {
   const [feature, setFeature] =
     useState<BetaFeedbackCreate["feature_key"]>("stock_research");
@@ -38,6 +45,37 @@ export function BetaFeedbackCard() {
   const [result, setResult] = useState<
     "success" | "rate_limited" | "error" | null
   >(null);
+  const [feedbackItems, setFeedbackItems] = useState<BetaFeedbackResponse[]>(
+    [],
+  );
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+
+  const loadFeedback = useCallback(async () => {
+    try {
+      const response = await api.getBetaFeedback();
+      setFeedbackItems(response.items ?? []);
+    } catch {
+      // The feedback form remains usable when the history endpoint is unavailable.
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void api
+      .getBetaFeedback()
+      .then((response) => {
+        if (active) setFeedbackItems(response.items ?? []);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setFeedbackLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,6 +89,7 @@ export function BetaFeedbackCard() {
       });
       setMessage("");
       setResult("success");
+      await loadFeedback();
     } catch (error) {
       setResult(
         error instanceof ApiError && error.status === 429
@@ -161,6 +200,38 @@ export function BetaFeedbackCard() {
           暂时无法提交反馈，请稍后重试。
         </p>
       )}
+      <div className="border-ink/10 mt-6 border-t pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">我的反馈</h3>
+          <span className="text-slate text-xs">最多显示最近 50 条</span>
+        </div>
+        {feedbackLoading ? (
+          <p className="text-slate mt-3 text-sm">正在读取反馈状态…</p>
+        ) : feedbackItems.length === 0 ? (
+          <p className="text-slate mt-3 text-sm">
+            提交后可在这里查看处理进度。
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {feedbackItems.map((item) => (
+              <li
+                key={item.id}
+                className="bg-mist/60 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm"
+              >
+                <span>
+                  {features.find(
+                    ([value]) => value === item.feature_key,
+                  )?.[1] ?? "其他功能"}
+                </span>
+                <span className="text-slate text-xs">
+                  {feedbackStatusLabels[item.status]} ·{" "}
+                  {new Date(item.created_at).toLocaleDateString("zh-CN")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

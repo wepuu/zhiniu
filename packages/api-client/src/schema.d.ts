@@ -1065,6 +1065,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comparisons/{request_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Comparison */
+        post: operations["retry_comparison_api_v1_comparisons__request_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/access": {
         parameters: {
             query?: never;
@@ -1208,7 +1225,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List My Beta Feedback */
+        get: operations["list_my_beta_feedback_api_v1_me_beta_feedback_get"];
         put?: never;
         /** Create Beta Feedback */
         post: operations["create_beta_feedback_api_v1_me_beta_feedback_post"];
@@ -2435,6 +2453,11 @@ export interface components {
              */
             financial_normal_interval_hours: number;
             /**
+             * Industry Refresh Interval Hours
+             * @default 168
+             */
+            industry_refresh_interval_hours: number;
+            /**
              * Event Pipeline Enabled
              * @default true
              */
@@ -3004,6 +3027,21 @@ export interface components {
             /** Recipients */
             recipients?: components["schemas"]["BetaRecipientView"][];
         };
+        /** BetaFeedbackContext */
+        BetaFeedbackContext: {
+            /**
+             * Surface
+             * @default settings
+             * @enum {string}
+             */
+            surface: "settings" | "watchlist" | "stock" | "comparison" | "research_feed" | "other";
+            /** Canonical Symbol */
+            canonical_symbol?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+            /** Reason Code */
+            reason_code?: string | null;
+        };
         /** BetaFeedbackCreate */
         BetaFeedbackCreate: {
             /**
@@ -3018,6 +3056,14 @@ export interface components {
             category: "bug" | "data_missing" | "hard_to_understand" | "feature_request" | "other";
             /** Message */
             message: string;
+            context?: components["schemas"]["BetaFeedbackContext"];
+        };
+        /** BetaFeedbackListResponse */
+        BetaFeedbackListResponse: {
+            /** Items */
+            items: components["schemas"]["BetaFeedbackResponse"][];
+            /** Total */
+            total: number;
         };
         /** BetaFeedbackResponse */
         BetaFeedbackResponse: {
@@ -3041,6 +3087,9 @@ export interface components {
              * @enum {string}
              */
             status: "new" | "triaged" | "resolved";
+            context?: components["schemas"]["BetaFeedbackContext"];
+            /** Resolution Code */
+            resolution_code?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -6583,10 +6632,21 @@ export interface components {
              * @enum {string}
              */
             overall_status: "queued" | "preparing" | "ready" | "partial" | "failed" | "paused" | "unsupported";
+            /**
+             * Next Action
+             * @enum {string}
+             */
+            next_action: "view" | "wait" | "retry" | "enable_preparation" | "unsupported";
+            /** Blocking Reason Code */
+            blocking_reason_code?: string | null;
             /** Progress */
             progress: number;
             /** Updated At */
             updated_at?: string | null;
+            /** Last Successful Refresh At */
+            last_successful_refresh_at?: string | null;
+            /** Next Scheduled Refresh At */
+            next_scheduled_refresh_at?: string | null;
             /** Latest Price */
             latest_price?: string | null;
             /** Latest Trade Date */
@@ -9098,6 +9158,39 @@ export interface operations {
             };
         };
     };
+    retry_comparison_api_v1_comparisons__request_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_access_api_v1_me_access_get: {
         parameters: {
             query?: never;
@@ -9351,6 +9444,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockCoverageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_beta_feedback_api_v1_me_beta_feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                zhaoniu_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaFeedbackListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9773,6 +9897,8 @@ export interface operations {
         parameters: {
             query?: {
                 feedback_status?: ("new" | "triaged" | "resolved") | null;
+                feedback_feature?: string | null;
+                feedback_severity?: ("P0" | "P1" | "P2" | "P3") | null;
                 limit?: number;
             };
             header?: never;

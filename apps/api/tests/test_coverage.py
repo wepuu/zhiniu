@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from zhaoniu_api.config import Settings
 from zhaoniu_api.coverage.models import (
+    BetaFeedbackContext,
     BetaFeedbackCreate,
     CoverageDimension,
     StockCoverageResponse,
@@ -88,6 +89,34 @@ def test_beta_feedback_contract_rejects_short_and_unknown_content() -> None:
         message="600519 的同行研究页面缺少可追溯的行业归属说明。",
     )
     assert item.category == "data_missing"
+
+
+def test_beta_feedback_context_is_bounded_and_explicit() -> None:
+    item = BetaFeedbackCreate(
+        feature_key="stock_research",
+        category="bug",
+        message="页面显示的数据状态与研究页不一致，需要核对刷新时间。",
+        context=BetaFeedbackContext(
+            surface="stock",
+            canonical_symbol="600519.SH",
+            reason_code="readiness_stale",
+        ),
+    )
+
+    assert item.context.surface == "stock"
+    assert item.context.canonical_symbol == "600519.SH"
+
+    try:
+        BetaFeedbackCreate(
+            feature_key="stock_research",
+            category="bug",
+            message="页面显示的数据状态与研究页不一致，需要核对刷新时间。",
+            context={"surface": "stock", "unexpected": "value"},
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("feedback context must reject unknown fields")
 
 
 class _CoverageService:

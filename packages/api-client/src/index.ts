@@ -122,6 +122,8 @@ export type CoverageDimension = components["schemas"]["CoverageDimension"];
 export type BetaFeedbackCreate = components["schemas"]["BetaFeedbackCreate"];
 export type BetaFeedbackResponse =
   components["schemas"]["BetaFeedbackResponse"];
+export type BetaFeedbackListResponse =
+  components["schemas"]["BetaFeedbackListResponse"];
 export type BetaCohortCreate = components["schemas"]["BetaCohortCreate"];
 export type BetaCohortView = components["schemas"]["BetaCohortView"];
 export type BetaCohortList = components["schemas"]["BetaCohortList"];
@@ -423,6 +425,13 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
     getComparison(requestId: string) {
       return request<ComparisonResponse>(
         `/api/v1/comparisons/${encodeURIComponent(requestId)}`,
+      );
+    },
+    retryComparison(requestId: string) {
+      return jsonRequest<ComparisonResponse>(
+        `/api/v1/comparisons/${encodeURIComponent(requestId)}/retry`,
+        "POST",
+        {},
       );
     },
     listComparisons(limit = 20) {
@@ -756,6 +765,9 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         payload,
       );
     },
+    getBetaFeedback() {
+      return request<BetaFeedbackListResponse>("/api/v1/me/beta-feedback");
+    },
     getBetaOnboarding() {
       return request<BetaOnboardingView>("/api/v1/me/beta-onboarding");
     },
@@ -856,9 +868,15 @@ export function createZhaoniuClient(options: ZhaoniuClientOptions = {}) {
         { term, expires_in_days: 7 },
       );
     },
-    getOperatorFeedback(status?: "new" | "triaged" | "resolved") {
+    getOperatorFeedback(
+      status?: "new" | "triaged" | "resolved",
+      feature?: string,
+      severity?: "P0" | "P1" | "P2" | "P3",
+    ) {
       const query = new URLSearchParams({ limit: "50" });
       if (status) query.set("feedback_status", status);
+      if (feature) query.set("feedback_feature", feature);
+      if (severity) query.set("feedback_severity", severity);
       return request<OperatorFeedbackListResponse>(
         `/api/v1/admin/feedback?${query}`,
       );

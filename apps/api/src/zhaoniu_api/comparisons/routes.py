@@ -44,7 +44,11 @@ async def create_comparison(
     except ValueError as exc:
         code = str(exc)
         http_status = (
-            403 if code in {"advanced_access_required", "comparison_access_required"} else 422
+            403
+            if code in {"advanced_access_required", "comparison_access_required"}
+            else 409
+            if code == "comparison_inputs_not_ready"
+            else 422
         )
         raise HTTPException(status_code=http_status, detail=code) from exc
     if response.status == "pending":
@@ -103,3 +107,31 @@ async def get_comparison(
         return await service.get(user_id, request_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{request_id}/retry",
+    response_model=ComparisonResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def retry_comparison(
+    request_id: UUID,
+    _csrf: CSRFSafe,
+    user_id: CurrentUserId,
+    service: ComparisonServiceDependency,
+    dispatcher: ComparisonDispatcherDependency,
+) -> ComparisonResponse:
+    try:
+        response = await service.retry(user_id, request_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = str(exc)
+        http_status = 403 if code == "advanced_access_required" else 409
+        raise HTTPException(status_code=http_status, detail=code) from exc
+    if response.status == "pending":
+        try:
+            dispatcher.enqueue(response.id)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="comparison_dispatch_unavailable") from exc
+    return response

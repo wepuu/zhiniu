@@ -72,6 +72,24 @@ def test_phase25g_host_evidence_passes_only_with_healthy_host_facts() -> None:
     assert evidence.evaluate_host_facts(_healthy_facts()) == []
 
 
+def test_phase25g_readiness_probe_retries_a_transient_startup_failure() -> None:
+    calls = 0
+
+    def runner(_command: tuple[str, ...]) -> object:
+        nonlocal calls
+        calls += 1
+        return evidence.CommandResult(0 if calls == 2 else 56, "healthy\n")
+
+    result = evidence.run_until_success(
+        ("curl", "http://127.0.0.1:3000/"),
+        runner,
+        sleeper=lambda _seconds: None,
+    )
+
+    assert result.returncode == 0
+    assert calls == 2
+
+
 def test_phase25g_host_evidence_returns_bounded_blocking_reasons() -> None:
     facts = _healthy_facts()
     containers = facts["containers"]
@@ -150,9 +168,7 @@ def test_phase25g_collector_reads_only_bounded_operational_facts(
         if command[:2] == ("docker", "inspect"):
             service = command[2].removeprefix("zhaoniu-staging-").removesuffix("-1")
             health = (
-                {"Status": "healthy"}
-                if service in {"postgres", "redis", "api", "web"}
-                else None
+                {"Status": "healthy"} if service in {"postgres", "redis", "api", "web"} else None
             )
             return evidence.CommandResult(
                 0,
@@ -198,7 +214,7 @@ def test_phase25g_collector_reads_only_bounded_operational_facts(
         memory_min_available_mib=512,
     )
 
-    facts = evidence.collect_host_facts(args, runner=runner)
+    facts = evidence.collect_host_facts(args, runner=runner, sleeper=lambda _seconds: None)
 
     assert facts["release"]["commit_sha"] == "a" * 40
     assert facts["broker_queue_depth"] == 0

@@ -934,12 +934,22 @@ class OperatorService:
             expires_at=result.expires_at,
         )
 
-    async def list_feedback(self, status: str | None, limit: int) -> list[OperatorFeedbackItem]:
+    async def list_feedback(
+        self,
+        status: str | None,
+        feature: str | None,
+        severity: str | None,
+        limit: int,
+    ) -> list[OperatorFeedbackItem]:
         statement = select(BetaFeedbackItemRecord).order_by(
             BetaFeedbackItemRecord.created_at.desc()
         )
         if status:
             statement = statement.where(BetaFeedbackItemRecord.status == status)
+        if feature:
+            statement = statement.where(BetaFeedbackItemRecord.feature_key == feature)
+        if severity:
+            statement = statement.where(BetaFeedbackItemRecord.severity == severity)
         rows = (await self._session.scalars(statement.limit(limit))).all()
         return [OperatorFeedbackItem.model_validate(row) for row in rows]
 

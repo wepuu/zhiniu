@@ -23,6 +23,7 @@ class AutomationPolicyConfiguration(BaseModel):
     max_universe_size: int = Field(default=100, ge=1, le=500)
     financial_reporting_interval_hours: int = Field(default=72, ge=24, le=168)
     financial_normal_interval_hours: int = Field(default=168, ge=72, le=720)
+    industry_refresh_interval_hours: int = Field(default=168, ge=24, le=720)
     event_pipeline_enabled: bool = True
     peer_research_enabled: bool = True
     ai_research_enabled: bool = False

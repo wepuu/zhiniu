@@ -333,10 +333,14 @@ async def list_feedback(
     context: OperatorContextDependency,
     service: OperatorServiceDependency,
     feedback_status: Literal["new", "triaged", "resolved"] | None = None,
+    feedback_feature: str | None = Query(default=None, min_length=1, max_length=48),
+    feedback_severity: Literal["P0", "P1", "P2", "P3"] | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> OperatorFeedbackListResponse:
     _require(context, service, "feedback.manage")
-    items = await service.list_feedback(feedback_status, limit)
+    items = await service.list_feedback(
+        feedback_status, feedback_feature, feedback_severity, limit
+    )
     return OperatorFeedbackListResponse(items=items, total=len(items))
 
 

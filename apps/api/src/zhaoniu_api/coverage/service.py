@@ -15,6 +15,7 @@ from zhaoniu_api.config import Settings
 from zhaoniu_api.coverage.models import (
     BackfillItemResponse,
     BackfillRunResponse,
+    BetaFeedbackContext,
     BetaFeedbackCreate,
     BetaFeedbackOperatorView,
     BetaFeedbackResponse,
@@ -1075,6 +1076,7 @@ class ResearchCoverageService:
             category=payload.category,
             message=message,
             status="new",
+            context_json=payload.context.model_dump(mode="json"),
         )
         self._session.add(row)
         await self._session.commit()
@@ -1084,8 +1086,32 @@ class ResearchCoverageService:
             feature_key=cast(Any, row.feature_key),
             category=cast(Any, row.category),
             status=cast(Any, row.status),
+            context=BetaFeedbackContext.model_validate(row.context_json or {}),
+            resolution_code=row.resolution_code,
             created_at=row.created_at,
         )
+
+    async def list_user_feedback(self, user_id: UUID) -> list[BetaFeedbackResponse]:
+        rows = (
+            await self._session.scalars(
+                select(BetaFeedbackItemRecord)
+                .where(BetaFeedbackItemRecord.user_id == user_id)
+                .order_by(BetaFeedbackItemRecord.created_at.desc())
+                .limit(50)
+            )
+        ).all()
+        return [
+            BetaFeedbackResponse(
+                id=row.id,
+                feature_key=cast(Any, row.feature_key),
+                category=cast(Any, row.category),
+                status=cast(Any, row.status),
+                context=BetaFeedbackContext.model_validate(row.context_json or {}),
+                resolution_code=row.resolution_code,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
 
     async def list_feedback(self, limit: int = 100) -> list[BetaFeedbackOperatorView]:
         rows = (
@@ -1103,6 +1129,9 @@ class ResearchCoverageService:
                 category=cast(Any, row.category),
                 message=row.message,
                 status=cast(Any, row.status),
+                context=BetaFeedbackContext.model_validate(row.context_json or {}),
+                resolution_code=row.resolution_code,
+                severity=cast(Any, row.severity),
                 created_at=row.created_at,
                 updated_at=row.updated_at,
             )
@@ -1127,6 +1156,9 @@ class ResearchCoverageService:
             category=cast(Any, row.category),
             message=row.message,
             status=cast(Any, row.status),
+            context=BetaFeedbackContext.model_validate(row.context_json or {}),
+            resolution_code=row.resolution_code,
+            severity=cast(Any, row.severity),
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
