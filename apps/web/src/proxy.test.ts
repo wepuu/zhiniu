@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 describe("authenticated application proxy", () => {
   it("keeps an unauthenticated visitor on the login flow", () => {
@@ -23,5 +23,12 @@ describe("authenticated application proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("keeps public research entry points outside the auth matcher", () => {
+    const matchers = config.matcher as string[];
+
+    expect(matchers).not.toContain("/");
+    expect(matchers).not.toContain("/stock/:path*");
   });
 });
