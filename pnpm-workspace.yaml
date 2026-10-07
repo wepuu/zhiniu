@@ -3,7 +3,7 @@ packages:
   - packages/api-client
 
 overrides:
-  sharp: 0.35.4
+  sharp: 0.35.5
 
 allowBuilds:
   unrs-resolver: true
