@@ -30,9 +30,9 @@ def token_from_message(message: TransactionalEmail) -> str:
 
 
 def verification_code_from_message(message: TransactionalEmail) -> str:
-    match = re.search(r"\b(\d{4})-(\d{4})\b", message.text_body)
+    match = re.search(r"\b(\d{6})\b", message.text_body)
     assert match is not None
-    return "".join(match.groups())
+    return match.group(1)
 
 
 @pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL is not configured")

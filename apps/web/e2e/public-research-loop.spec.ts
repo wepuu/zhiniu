@@ -1,8 +1,24 @@
 import { expect, test } from "@playwright/test";
 
+test("redirects an unauthenticated visitor from the application home", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login\?next=%2F/);
+});
+
 test("searches by Chinese name, pinyin and code, then opens a deduplicated company timeline", async ({
+  context,
   page,
 }, testInfo) => {
+  const applicationUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
+  await context.addCookies([
+    {
+      name: "zhaoniu_session",
+      value: "e2e-route-boundary",
+      url: applicationUrl,
+    },
+  ]);
   await page.goto("/");
   const searchButton =
     testInfo.project.name === "mobile-chromium"

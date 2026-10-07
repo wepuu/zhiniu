@@ -93,7 +93,7 @@ class FakeAuthService:
         raise AuthenticationError("email_verification_invalid")
 
     async def verify_email_code(self, user_id: UUID, code: str) -> str:
-        if user_id == self.user.id and code == "12345678":
+        if user_id == self.user.id and code == "123456":
             return self.verification_status
         raise AuthenticationError("email_verification_invalid")
 
@@ -222,7 +222,7 @@ def test_account_recovery_routes_use_generic_request_and_single_use_contract() -
 
     verified_by_code = client.post(
         "/api/v1/auth/email-verification/code/verify",
-        json={"code": "12345678"},
+        json={"code": "123456"},
         cookies={
             "zhaoniu_session": "valid-token",
             "zhaoniu_csrf": "valid-csrf-token",
@@ -234,7 +234,7 @@ def test_account_recovery_routes_use_generic_request_and_single_use_contract() -
 
     invalid_code = client.post(
         "/api/v1/auth/email-verification/code/verify",
-        json={"code": "1234-5678"},
+        json={"code": "123-456"},
         cookies={
             "zhaoniu_session": "valid-token",
             "zhaoniu_csrf": "valid-csrf-token",

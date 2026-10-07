@@ -28,7 +28,7 @@ const registrationSteps = [
   },
   {
     label: "验证邮箱",
-    detail: "输入邮件中的八位验证码",
+    detail: "输入邮件中的六位验证码",
     icon: MailCheck,
   },
   {
@@ -45,8 +45,9 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
   const invitedEmail = isRegister ? (search.get("email") ?? "").trim() : "";
   const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [invitationCode, setInvitationCode] = useState(
-    isRegister ? (search.get("invite") ?? "").trim().toUpperCase() : "",
+    isRegister ? formatInvitationCode(search.get("invite") ?? "") : "",
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -115,8 +116,8 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
     event.preventDefault();
     setError(null);
     if (isRegister) {
-      const invalidField = !invitationCode.trim()
-        ? ["registration-invitation-code", "请输入邀请码。"]
+      const invalidField = !isCompleteInvitationCode(invitationCode)
+        ? ["registration-invitation-code", "请输入完整的八位邀请码。"]
         : !isValidEmail(email)
           ? ["auth-email", "请输入有效的邮箱地址。"]
           : password.length < passwordMinLength
@@ -124,11 +125,18 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 "registration-password",
                 `密码至少需要 ${passwordMinLength} 位。`,
               ]
-            : !termsAccepted
-              ? ["registration-terms", "请阅读并同意用户协议。"]
-              : !privacyAccepted
-                ? ["registration-privacy", "请阅读并同意隐私政策。"]
-                : null;
+            : password.length > 128
+              ? ["registration-password", "密码不能超过 128 位字符。"]
+              : passwordConfirmation !== password
+                ? [
+                    "registration-password-confirmation",
+                    "两次输入的密码不一致。",
+                  ]
+                : !termsAccepted
+                  ? ["registration-terms", "请阅读并同意用户协议。"]
+                  : !privacyAccepted
+                    ? ["registration-privacy", "请阅读并同意隐私政策。"]
+                    : null;
       if (invalidField) {
         setError(invalidField[1]);
         window.requestAnimationFrame(() => {
@@ -234,9 +242,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
               Invitation route
             </p>
             <h1 className="font-display mt-3 text-3xl font-semibold leading-tight">
-              从邀请到研究工作台，
-              <br />
-              只需三步。
+              快速注册开始投资研究。
             </h1>
             <ol className="mt-9 space-y-1" aria-label="注册步骤">
               {registrationSteps.map((step, index) => {
@@ -278,7 +284,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
             创建研究账户
           </h2>
           <p className="text-slate mt-2 text-sm leading-6">
-            输入邀请码、邮箱和密码，我们会向该邮箱发送验证码。
+            使用邀请码完成注册，验证邮箱后即可开始使用知牛。
           </p>
 
           {registrationState === "loading" && (
@@ -341,11 +347,13 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                   id="registration-invitation-code"
                   type="text"
                   className={`${inputClass} font-data uppercase tracking-wide`}
-                  placeholder="INV-XXXX-XXXX-…"
+                  placeholder="XXXX-XXXX"
                   value={invitationCode}
                   onChange={(event) =>
                     updateField(() =>
-                      setInvitationCode(event.target.value.toUpperCase()),
+                      setInvitationCode(
+                        formatInvitationCode(event.target.value),
+                      ),
                     )
                   }
                   autoComplete="one-time-code"
@@ -358,7 +366,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                   id="registration-invitation-code-hint"
                   className="text-slate mt-1.5 block text-xs leading-5"
                 >
-                  可直接粘贴，大小写、空格和连字符不会影响识别。
+                  输入八位字母或数字，系统会自动显示为 XXXX-XXXX。
                 </span>
               </label>
 
@@ -380,6 +388,25 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
                 autoComplete="new-password"
                 label="设置密码"
                 helper={`至少 ${passwordMinLength} 位，可使用特殊字符、大小写字母和数字`}
+                minLength={passwordMinLength}
+              />
+
+              <PasswordField
+                id="registration-password-confirmation"
+                value={passwordConfirmation}
+                onChange={(value) =>
+                  updateField(() => setPasswordConfirmation(value))
+                }
+                autoComplete="new-password"
+                label="确认密码"
+                helper={
+                  passwordConfirmation && passwordConfirmation === password
+                    ? "两次输入的密码一致"
+                    : "请再次输入设置的密码"
+                }
+                invalid={Boolean(
+                  passwordConfirmation && passwordConfirmation !== password,
+                )}
                 minLength={passwordMinLength}
               />
 
@@ -557,6 +584,7 @@ function PasswordField({
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
         minLength={minLength}
+        maxLength={128}
         aria-invalid={invalid}
         aria-describedby={helperId}
         required
@@ -615,6 +643,26 @@ function LegalAcceptance({
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function formatInvitationCode(value: string) {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const hasInvitationPrefix =
+    compact.startsWith("INV") &&
+    (/^\s*INV[\s-]/i.test(value) || compact.length > 8);
+  const body = hasInvitationPrefix ? compact.slice(3, 29) : compact.slice(0, 8);
+
+  if (hasInvitationPrefix && body.length > 8) {
+    return `INV-${body.match(/.{1,4}/g)?.join("-") ?? body}`;
+  }
+  return body.length > 4 ? `${body.slice(0, 4)}-${body.slice(4)}` : body;
+}
+
+function isCompleteInvitationCode(value: string) {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return (
+    compact.length === 8 || (compact.startsWith("INV") && compact.length === 29)
+  );
 }
 
 function RegistrationStateNotice({
