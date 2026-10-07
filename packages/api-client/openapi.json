@@ -12648,7 +12648,7 @@
         "properties": {
           "code": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^[0-9]{6}$",
             "title": "Code"
           }
         },

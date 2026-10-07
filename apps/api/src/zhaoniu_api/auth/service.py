@@ -365,7 +365,7 @@ class AuthService:
         return await self._consume_email_verification(row, now)
 
     async def verify_email_code(self, user_id: UUID, code: str) -> str:
-        if len(code) != 8 or not code.isascii() or not code.isdigit():
+        if len(code) != 6 or not code.isascii() or not code.isdigit():
             raise AuthenticationError("email_verification_invalid")
         now = datetime.now(UTC)
         row = await self._session.scalar(
@@ -577,7 +577,7 @@ class AuthService:
         code = ""
         token_hash = ""
         for _ in range(10):
-            code = f"{randbelow(100_000_000):08d}"
+            code = f"{randbelow(1_000_000):06d}"
             token_hash = hash_email_verification_code(user.id, code)
             existing = await self._session.scalar(
                 select(EmailVerificationTokenRecord.id).where(
@@ -601,7 +601,7 @@ class AuthService:
             id=uuid4(),
             user_id=user.id,
             template_key="verify_email",
-            template_version="v2",
+            template_version="v3",
             provider=self._email.provider_name,
             logical_delivery_key=f"verify_email/{token_record.id}",
             status="pending",
@@ -704,7 +704,7 @@ def hash_email_verification_code(user_id: UUID, code: str) -> str:
 
 
 def format_email_verification_code(code: str) -> str:
-    return f"{code[:4]}-{code[4:]}"
+    return code
 
 
 def user_to_domain(user: User) -> UserAccount:

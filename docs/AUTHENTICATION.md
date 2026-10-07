@@ -57,18 +57,25 @@ New invitation registrations receive the versioned `basic` access baseline. Acco
 before the Phase 11 migration retain the versioned `legacy_beta` baseline so deployment does not
 silently remove existing capabilities.
 
-The registration form asks for invitation code, email and one password. Passwords must contain at
-least eight characters and may use special characters, uppercase or lowercase letters and digits;
-the service does not impose a composition rule beyond the configured length bounds. Successful
-registration creates an authenticated but unverified session and keeps protected application pages
-behind the session-cookie boundary.
+New invitation codes contain eight unambiguous letters or digits and are displayed as `XXXX-XXXX`.
+Input normalization ignores case, spaces and separators. Previously issued long `INV-...` codes
+remain valid until they are consumed, revoked or expire; access-activation code formatting is
+unchanged.
+
+The registration form asks for invitation code, email, password and password confirmation.
+Passwords must contain at least eight characters and may use special characters, uppercase or
+lowercase letters and digits; the service does not impose a composition rule beyond the configured
+length bounds. Confirmation is checked in the Web client while the API independently validates the
+submitted password. Successful registration creates an authenticated but unverified session and
+keeps the home page, company research and all other application pages behind the session-cookie
+boundary.
 
 ## Email verification and recovery
 
 New registrations record the accepted current terms and privacy versions, then receive a one-time,
-eight-digit verification code through the configured transactional-email adapter. The UI displays
-the code as `XXXX-XXXX`, but sends only the eight digits to the API. Codes expire after fifteen
-minutes by default. Only a SHA-256 digest scoped to the user id is stored; plaintext codes never
+six-digit verification code through the configured transactional-email adapter. The UI and email
+display the six digits without separators. Codes expire after fifteen minutes by default. Only a
+SHA-256 digest scoped to the user id is stored; plaintext codes never
 enter the database or logs. Code verification requires the registration session, CSRF validation
 and a bounded attempt rate. Verification and resend operations revoke sibling codes. Legacy
 long-link verification remains accepted only for already issued tokens during the compatibility

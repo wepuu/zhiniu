@@ -15,6 +15,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/admin/:path*",
     "/alerts/:path*",
     "/comparisons/:path*",
@@ -22,6 +23,7 @@ export const config = {
     "/saved-screens/:path*",
     "/screens/:path*",
     "/settings/:path*",
+    "/stock/:path*",
     "/watchlist/:path*",
   ],
 };

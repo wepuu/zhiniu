@@ -69,9 +69,9 @@ export function AccountRecoveryCard({
         await api.confirmPasswordReset(token, password);
         setMessage("密码已重置，所有旧登录会话均已退出。请重新登录。");
       } else {
-        if (verificationCode.length !== 8) {
+        if (verificationCode.length !== 6) {
           setState("error");
-          setMessage("请输入邮件中的八位验证码。");
+          setMessage("请输入邮件中的六位验证码。");
           return;
         }
         const result = await api.verifyEmailCode(verificationCode);
@@ -100,7 +100,7 @@ export function AccountRecoveryCard({
           ? "邮件服务暂时不可用，请稍后重试。"
           : result.status === "already_verified"
             ? "邮箱已经完成验证。"
-            : "新的八位验证码已发送，请查看注册邮箱。",
+            : "新的六位验证码已发送，请查看注册邮箱。",
       );
       if (result.status === "already_verified") {
         setVerified(true);
@@ -121,8 +121,8 @@ export function AccountRecoveryCard({
   const description =
     mode === "verify"
       ? isRegistration
-        ? "验证码已发送到注册邮箱。输入八位数字即可完成注册。"
-        : "输入邮件中的八位验证码，完成邮箱验证。"
+        ? "验证码已发送到注册邮箱。输入六位数字即可完成注册。"
+        : "输入邮件中的六位验证码，完成邮箱验证。"
       : mode === "forgot"
         ? "输入注册邮箱。为保护账户，无论邮箱是否存在都会显示相同结果。"
         : "新密码生效后，其他设备上的登录会话会全部退出。";
@@ -184,23 +184,20 @@ export function AccountRecoveryCard({
                 邮箱验证码
                 <input
                   type="text"
-                  className="border-ink/15 focus:border-blue font-data mt-2 w-full rounded-xl border bg-white px-4 py-3 text-center text-xl tracking-[0.22em] outline-none"
-                  value={formatVerificationCode(verificationCode)}
+                  className="border-ink/15 focus:border-blue mt-2 w-full rounded-xl border bg-white px-4 py-3 outline-none"
+                  value={verificationCode}
                   onChange={(event) =>
                     setVerificationCode(
-                      event.target.value.replace(/\D/g, "").slice(0, 8),
+                      event.target.value.replace(/\D/g, "").slice(0, 6),
                     )
                   }
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={9}
-                  placeholder="XXXX-XXXX"
+                  maxLength={6}
+                  placeholder="请输入 6 位验证码"
                   aria-label="邮箱验证码"
                   required
                 />
-                <span className="text-slate mt-1.5 block text-xs leading-5">
-                  输入数字时会自动显示为 XXXX-XXXX，无需手动输入连字符。
-                </span>
               </label>
             )}
             {((mode !== "verify" && state !== "success") ||
@@ -209,7 +206,7 @@ export function AccountRecoveryCard({
                 className="bg-blue flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
                 disabled={
                   state === "loading" ||
-                  (mode === "verify" && verificationCode.length !== 8)
+                  (mode === "verify" && verificationCode.length !== 6)
                 }
               >
                 {state === "loading" && (
@@ -282,10 +279,6 @@ function PasswordField({
       />
     </label>
   );
-}
-
-function formatVerificationCode(value: string) {
-  return value.length > 4 ? `${value.slice(0, 4)}-${value.slice(4)}` : value;
 }
 
 function emailVerificationErrorMessage(

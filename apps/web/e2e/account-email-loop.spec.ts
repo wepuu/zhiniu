@@ -19,6 +19,7 @@ test("registers an invited account and submits real verification and recovery em
   await page.getByLabel("邀请码").fill(inviteCode!);
   await page.getByLabel("邮箱", { exact: true }).fill(accountEmail!);
   await page.getByLabel("设置密码").fill(accountPassword!);
+  await page.getByLabel("确认密码").fill(accountPassword!);
   await page
     .getByLabel(/我已阅读并同意/)
     .nth(0)
@@ -31,7 +32,7 @@ test("registers an invited account and submits real verification and recovery em
 
   await expect(page).toHaveURL(/\/verify-email/);
   await page.getByRole("button", { name: "重新发送验证码" }).click();
-  await expect(page.getByRole("status")).toContainText("新的八位验证码已发送");
+  await expect(page.getByRole("status")).toContainText("新的六位验证码已发送");
 
   await page.goto("/forgot-password");
   await page.getByLabel("注册邮箱").fill(accountEmail!);

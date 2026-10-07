@@ -25,10 +25,30 @@ describe("authenticated application proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("keeps public research entry points outside the auth matcher", () => {
+  it("protects the home and company-research entry points", () => {
     const matchers = config.matcher as string[];
 
-    expect(matchers).not.toContain("/");
-    expect(matchers).not.toContain("/stock/:path*");
+    expect(matchers).toContain("/");
+    expect(matchers).toContain("/stock/:path*");
+  });
+
+  it("redirects an unauthenticated home request to login", () => {
+    const response = proxy(new NextRequest("https://app.zhiniu.cc/"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://app.zhiniu.cc/login?next=%2F",
+    );
+  });
+
+  it("preserves a company page as the post-login destination", () => {
+    const response = proxy(
+      new NextRequest("https://app.zhiniu.cc/stock/600519.SH?tab=research"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://app.zhiniu.cc/login?next=%2Fstock%2F600519.SH%3Ftab%3Dresearch",
+    );
   });
 });

@@ -117,18 +117,21 @@ describe("AuthCard registration", () => {
 
   it("prefills an emailed invitation and submits the explicit legal versions", async () => {
     navigation.params = new URLSearchParams(
-      "invite=inv-abcd-efgh&email=invited%40example.com",
+      "invite=abcd1234&email=invited%40example.com",
     );
 
     render(<AuthCard mode="register" />);
 
     const invite = await screen.findByLabelText("邀请码");
     const email = screen.getByLabelText("邮箱");
-    expect(invite).toHaveValue("INV-ABCD-EFGH");
+    expect(invite).toHaveValue("ABCD-1234");
     expect(email).toHaveValue("invited@example.com");
     expect(email).toHaveAttribute("readonly");
 
     fireEvent.change(screen.getByLabelText("设置密码"), {
+      target: { value: "long-password-value" },
+    });
+    fireEvent.change(screen.getByLabelText("确认密码"), {
       target: { value: "long-password-value" },
     });
     fireEvent.click(screen.getByRole("checkbox", { name: /用户协议/ }));
@@ -138,7 +141,7 @@ describe("AuthCard registration", () => {
     expect(api.register).toHaveBeenCalledWith(
       "invited@example.com",
       "long-password-value",
-      "INV-ABCD-EFGH",
+      "ABCD-1234",
       [
         {
           document_type: "terms_of_service",
@@ -157,13 +160,26 @@ describe("AuthCard registration", () => {
     );
   });
 
+  it("keeps a previously issued long invitation usable", async () => {
+    navigation.params = new URLSearchParams(
+      "invite=INV-ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-23",
+    );
+
+    render(<AuthCard mode="register" />);
+
+    expect(await screen.findByLabelText("邀请码")).toHaveValue(
+      "INV-ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-23",
+    );
+  });
+
   it("shows a direct field error without an incomplete-item summary", async () => {
     render(<AuthCard mode="register" />);
 
     await screen.findByLabelText("邀请码");
     fireEvent.change(screen.getByLabelText("邀请码"), {
-      target: { value: "INV-ABCD-EFGH" },
+      target: { value: "abcd1234" },
     });
+    expect(screen.getByLabelText("邀请码")).toHaveValue("ABCD-1234");
     fireEvent.change(screen.getByLabelText("邮箱"), {
       target: { value: "invited@example.com" },
     });
@@ -192,12 +208,15 @@ describe("AuthCard registration", () => {
 
     await screen.findByLabelText("邀请码");
     fireEvent.change(screen.getByLabelText("邀请码"), {
-      target: { value: "INV-ABCD-EFGH" },
+      target: { value: "ABCD1234" },
     });
     fireEvent.change(screen.getByLabelText("邮箱"), {
       target: { value: "invited@example.com" },
     });
     fireEvent.change(screen.getByLabelText("设置密码"), {
+      target: { value: "long-password-value" },
+    });
+    fireEvent.change(screen.getByLabelText("确认密码"), {
       target: { value: "long-password-value" },
     });
     fireEvent.click(screen.getByRole("checkbox", { name: /用户协议/ }));
@@ -209,6 +228,34 @@ describe("AuthCard registration", () => {
         "邀请码无效、已过期、已使用，或与当前邮箱不匹配。请从邀请邮件重新打开注册链接。",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("requires both password entries to match", async () => {
+    render(<AuthCard mode="register" />);
+
+    await screen.findByLabelText("邀请码");
+    fireEvent.change(screen.getByLabelText("邀请码"), {
+      target: { value: "ABCD1234" },
+    });
+    fireEvent.change(screen.getByLabelText("邮箱"), {
+      target: { value: "invited@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("设置密码"), {
+      target: { value: "long-password-value" },
+    });
+    fireEvent.change(screen.getByLabelText("确认密码"), {
+      target: { value: "different-password" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "发送邮箱验证码" }));
+
+    expect(
+      await screen.findByText("两次输入的密码不一致。"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByLabelText("确认密码")).toHaveFocus(),
+    );
+    expect(api.register).not.toHaveBeenCalled();
   });
 
   it("fails closed when registration status cannot be loaded", async () => {

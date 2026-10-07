@@ -59,22 +59,22 @@ afterEach(() => {
 });
 
 describe("AccountRecoveryCard", () => {
-  it("formats and verifies an eight-digit registration code", async () => {
+  it("accepts and verifies a six-digit registration code", async () => {
     navigation.params = new URLSearchParams("registration=1");
     render(<AccountRecoveryCard mode="verify" />);
 
     expect(
-      screen.getByText("验证码已发送到注册邮箱。输入八位数字即可完成注册。"),
+      screen.getByText("验证码已发送到注册邮箱。输入六位数字即可完成注册。"),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("邮箱验证码"), {
-      target: { value: "12345678" },
+      target: { value: "123456" },
     });
-    expect(screen.getByLabelText("邮箱验证码")).toHaveValue("1234-5678");
+    expect(screen.getByLabelText("邮箱验证码")).toHaveValue("123456");
 
     fireEvent.click(screen.getByRole("button", { name: "验证并完成注册" }));
 
     await waitFor(() =>
-      expect(api.verifyEmailCode).toHaveBeenCalledWith("12345678"),
+      expect(api.verifyEmailCode).toHaveBeenCalledWith("123456"),
     );
     expect(
       await screen.findByText("注册完成，邮箱验证成功。"),
